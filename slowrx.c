@@ -1,6 +1,8 @@
 /*
  * slowrx - an SSTV decoder
  * * * * * * * * * * * * * *
+ * 
+ * ISC license
  *
  * Usage:
  * ./slowrx -w file.wav -m mode
@@ -15,13 +17,9 @@
  *    Gasior M, Gonzalez J L (2004). "Improving FFT Frequency Measurement Resolution by Parabolic and
  *      Gaussian Spectrum Interpolation". AIP Conf. Proc. (Geneva: CERN) 732 (2004): 276–285.
  * 
- * Implemented in C by OH2-250
  *
  * Needs libfftw3-dev, libpnglite-dev, libgtk2.0-dev and sox
  *
- * Bugs:
- *
- *  * Sync detection not robust enough in noisy conditions
  *
  */
 
