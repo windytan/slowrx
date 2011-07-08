@@ -2,25 +2,6 @@
  * slowrx - an SSTV decoder
  * * * * * * * * * * * * * *
  * 
- * ISC license
- *
- * Usage:
- * ./slowrx -w file.wav -m mode
- *
- * Articles:
- *
- *    Cordesses, L (2003). "Some Thoughts on 'Real-Time' SSTV Processing" (QEX)
- *
- *    Barber, JL (2000). "Proposal for SSTV Mode Specifications". Presented at the
- *      Dayton SSTV forum, 20 May 2000
- *
- *    Gasior M, Gonzalez J L (2004). "Improving FFT Frequency Measurement Resolution by Parabolic and
- *      Gaussian Spectrum Interpolation". AIP Conf. Proc. (Geneva: CERN) 732 (2004): 276–285.
- * 
- *
- * Needs libfftw3-dev, libpnglite-dev, libgtk2.0-dev and sox
- *
- *
  */
 
 #include <stdio.h>
