@@ -1,6 +1,5 @@
 =slowrx=
 '''slowrx''' decodes analogue [http://en.wikipedia.org/wiki/Slow-scan_television SSTV] images received through the sound card.
-are automagique.
 
 ==Prerequisites==
 Needs linux and sox. Depends on libs gtk2, fftw3, and pnglite.
