@@ -13,10 +13,10 @@ Needs linux and sox. Depends on libs gtk2, fftw3, and pnglite.
 
 ==References==
 The program utilizes several articles:
-*Cordesses L, Cordesses R [F2DC] (May 2003). [http://lionel.cordesses.free.fr/gpages/Cordesses.pdf "Some thoughts on 'Real-Time' SSTV Processing"]. ''QEX'' May/June 2003: 3-20.
-*Barber, JL [N7CXI] (May 2000). [http://www.barberdsp.com/files/Dayton%20Paper.pdf "Proposal for SSTV Mode Specifications"]. Presented at the Dayton SSTV forum, 20 May 2000.
-*Jones, D [KB4YZ] (Feb 1998). [http://www.tima.com/~djones/vis.txt "List of SSTV Modes with VIS Codes"].
-*Jones, D KB4YZ (May 1999). [http://www.tima.com/~djones/line.txt "List of SSTV Modes with Line Timing"].
+*Cordesses L, Cordesses R (F2DC) (May 2003). [http://lionel.cordesses.free.fr/gpages/Cordesses.pdf "Some thoughts on 'Real-Time' SSTV Processing"]. ''QEX'' May/June 2003: 3-20.
+*Barber, JL (N7CXI) (May 2000). [http://www.barberdsp.com/files/Dayton%20Paper.pdf "Proposal for SSTV Mode Specifications"]. Presented at the Dayton SSTV forum, 20 May 2000.
+*Jones, D (KB4YZ) (Feb 1998). [http://www.tima.com/~djones/vis.txt "List of SSTV Modes with VIS Codes"].
+*Jones, D (KB4YZ) (May 1999). [http://www.tima.com/~djones/line.txt "List of SSTV Modes with Line Timing"].
 *Gasior M, Gonzalez J L (May 2004). [http://cdsweb.cern.ch/record/738182/files/ab-2004-023.pdf "Improving FFT Frequency Measurement Resolution by Parabolic and Gaussian Spectrum Interpolation"]. ''AIP Conf. Proc.'' (Geneva: CERN) '''732''' (2004): 276-285.
 
 ==Licensing==
