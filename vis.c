@@ -30,13 +30,13 @@ int GetVIS () {
   // Plan for frequency estimation
   in      = fftw_malloc(sizeof(double) * FFTLen);
   if (in == NULL) {
-    perror("GetVIS: Unable to allocate memory for FFT\n");
+    perror("GetVIS: Unable to allocate memory for FFT");
     pclose(PcmInStream);
     exit(EXIT_FAILURE);
   }
   out     = fftw_malloc(sizeof(double) * FFTLen);
   if (out == NULL) {
-    perror("GetVIS: Unable to allocate memory for FFT\n");
+    perror("GetVIS: Unable to allocate memory for FFT");
     pclose(PcmInStream);
     fftw_free(in);
     exit(EXIT_FAILURE);
@@ -58,7 +58,7 @@ int GetVIS () {
   // Allocate space for PCM (1 second)
   PCM = calloc(44100, sizeof(double));
   if (PCM == NULL) {
-    perror("GetVIS: Unable to allocate memory for PCM\n");
+    perror("GetVIS: Unable to allocate memory for PCM");
     pclose(PcmInStream);
     exit(EXIT_FAILURE);
   }
@@ -190,7 +190,7 @@ int GetVIS () {
   // Skip 20 ms 
   samplesread = fread(PcmBuffer, 2, 441*2, PcmInStream);
 
-  if      (feof(PcmInStream))      perror("unable to read from dsp\n");
+  if      (feof(PcmInStream))      perror("unable to read from dsp");
   else if (VISmap[VIS] != UNKNOWN) return VISmap[VIS];
   else                             printf("  No VIS found\n");
   return -1;

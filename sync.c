@@ -16,23 +16,18 @@ double FindSync (unsigned int Length, int Mode, double Rate, int *Skip) {
   unsigned int       i, s, j, TotPix;
   double             NextImgSample;
   double             t=0, slantAngle;
-  unsigned short int SyncImg[700][500];
+  unsigned short int SyncImg[SYNCW][500];
   int                x,y;
 
   double  Praw, Psync;
   char    *HasSync;
   HasSync = malloc(Length * sizeof(char));
   if (HasSync == NULL) {
-    perror("FindSync: Unable to allocate memory for sync signal\n");
+    perror("FindSync: Unable to allocate memory for sync signal");
     exit(EXIT_FAILURE);
   }
   
-  unsigned short int *lines;
-  lines = calloc(3000*720, sizeof(unsigned short int));
-  if (HasSync == NULL) {
-    perror("FindSync: Unable to allocate memory for Hough transform\n");
-    exit(EXIT_FAILURE);
-  }
+  unsigned short int lines[SYNCW+SYNCW/4][(MAXSLANT-MINSLANT)*2];
 
   unsigned short int cy, cx;
   int                q, d, qMost, dMost;
@@ -40,7 +35,7 @@ double FindSync (unsigned int Length, int Mode, double Rate, int *Skip) {
   int                maxsy = 0;
   FILE               *GrayFile;
   char               PixBuf[1] = {0};
-  unsigned short int xAcc[700] = {0};
+  unsigned short int xAcc[SYNCW] = {0};
   unsigned short int xMax = 0;
   unsigned short int Leftmost;
     
@@ -52,13 +47,13 @@ double FindSync (unsigned int Length, int Mode, double Rate, int *Skip) {
 
   in      = fftw_malloc(sizeof(double) * FFTLen);
   if (in == NULL) {
-    perror("FindSync: Unable to allocate memory for FFT\n");
+    perror("FindSync: Unable to allocate memory for FFT");
     free(HasSync);
     exit(EXIT_FAILURE);
   }
   out     = fftw_malloc(sizeof(double) * FFTLen);
   if (out == NULL) {
-    perror("FindSync: Unable to allocate memory for FFT\n");
+    perror("FindSync: Unable to allocate memory for FFT");
     fftw_free(in);
     free(HasSync);
     exit(EXIT_FAILURE);
@@ -110,13 +105,17 @@ double FindSync (unsigned int Length, int Mode, double Rate, int *Skip) {
   while (1) {
 
     GrayFile = fopen("sync.gray","w");
+    if (GrayFile == NULL) {
+      perror("Unable to open sync.gray for writing");
+      exit(EXIT_FAILURE);
+    }
 
     TotPix        = 0;
     NextImgSample = 0;
     t             = 0;
     maxsy         = 0;
 
-    for (i=0;i<700;i++)
+    for (i=0;i<SYNCW;i++)
       for (j=0;j<500;j++)
         SyncImg[i][j] = 0;
 
@@ -128,8 +127,8 @@ double FindSync (unsigned int Length, int Mode, double Rate, int *Skip) {
 
       if (t >= NextImgSample) {
 
-        x = TotPix % 700;
-        y = TotPix / 700;
+        x = TotPix % SYNCW;
+        y = TotPix / SYNCW;
 
         SyncImg[x][y] = HasSync[s];
 
@@ -140,7 +139,7 @@ double FindSync (unsigned int Length, int Mode, double Rate, int *Skip) {
 
         TotPix++;
 
-        NextImgSample += ModeSpec[Mode].LineLen / 700.0;
+        NextImgSample += ModeSpec[Mode].LineLen / (1.0 * SYNCW);
       }
     }
     fclose(GrayFile);
@@ -149,27 +148,26 @@ double FindSync (unsigned int Length, int Mode, double Rate, int *Skip) {
 
     // zero arrays
     dMost = qMost = 0;
-    for (d=0;d<3000;d++)
-      for (q=MINSLANT*2; q <= MAXSLANT * 2; q++)
-        lines[d*720 + q] = 0;
+    for (d=0; d<SYNCW+SYNCW/4; d++)
+      for (q=MINSLANT*2; q < MAXSLANT * 2; q++)
+        lines[d][q-MINSLANT*2] = 0;
 
-    // Find white pixels that likely belong to the left edge of a sync pulse
-    for (cy = 0; cy < TotPix / 700; cy++) {
-      for (cx = 0; cx < 700; cx++) {
-        if (cx > 0 && cx < 697 && !SyncImg[cx - 1][cy] && SyncImg[cx][cy]) {
+    // Find white pixels
+    for (cy = 0; cy < TotPix / SYNCW; cy++) {
+      for (cx = 0; cx < SYNCW; cx++) {
+        if (SyncImg[cx][cy]) {
 
           // Slant angles to consider
-          for (q = MINSLANT*2; q <= MAXSLANT*2; q ++) {
+          for (q = MINSLANT*2; q < MAXSLANT*2; q ++) {
 
-            // Find the line parameters with most occurrences
-            d = round( -cx * sin(deg2rad(q/2.0)) + cy * cos(deg2rad(q/2.0)) );
-            d = abs(d+2000);
-            if (d<0)    d = 0;
-            if (d>2999) d = 2999;
-            lines[d*720 + q] ++;
-            if (lines[d*720 + q] > lines[dMost*720 + qMost]) {
-              dMost = d;
-              qMost = q;
+            // Line accumulator
+            d = SYNCW + round( -cx * sin(deg2rad(q/2.0)) + cy * cos(deg2rad(q/2.0)) );
+            if (d > 0 && d < SYNCW+SYNCW/4) {
+              lines[d][q-MINSLANT*2] ++;
+              if (lines[d][q-MINSLANT*2] > lines[dMost][qMost-MINSLANT*2]) {
+                dMost = d;
+                qMost = q;
+              }
             }
           }
         }
@@ -186,7 +184,7 @@ double FindSync (unsigned int Length, int Mode, double Rate, int *Skip) {
     //printf("  most (%d occurrences): d=%d  q=%f\n", LineAcc[dMost][ (int)(qMost * 10) ], dMost, qMost);
     printf("    %.1f° @ %.2f Hz", 90 - slantAngle, Rate);
 
-    Rate = Rate + tan(deg2rad(90 - slantAngle)) / 700.0 * Rate;
+    Rate = Rate + tan(deg2rad(90 - slantAngle)) / (1.0 * SYNCW) * Rate;
 
     if (Rate < 40000 || Rate > 50000) {
       printf("    unrealistic receiving conditions; giving up.\n");
@@ -208,15 +206,13 @@ double FindSync (unsigned int Length, int Mode, double Rate, int *Skip) {
     }
   }
 
-  free(lines);
-
-  printf("    gray = %dx%d\n", 700, maxsy);
+  printf("    gray = %dx%d\n", SYNCW, maxsy);
 
   // Find the abscissa of the now vertical sync pulse
-  for (i=0;i<700;i++) xAcc[i] = 0;
+  for (i=0;i<SYNCW;i++) xAcc[i] = 0;
   xMax = 0;
-  for (cy = 0; cy < TotPix / 700; cy++) {
-    for (cx = 1; cx < 700; cx++) {
+  for (cy = 0; cy < TotPix / SYNCW; cy++) {
+    for (cx = 1; cx < SYNCW; cx++) {
       if (!SyncImg[cx - 1][cy] && SyncImg[cx][cy]) {
         xAcc[cx]++;
         if (xAcc[cx] > xAcc[xMax]) xMax = cx;
@@ -224,15 +220,15 @@ double FindSync (unsigned int Length, int Mode, double Rate, int *Skip) {
     }
   }
   // Now, find the leftmost one of those vertical lines with the maximum occurrences
-  Leftmost = 700;
-  for (i = 0; i < 700; i++) {
-    if (xAcc[i] == xAcc[xMax] && i < Leftmost) Leftmost = i;
-  }
+  Leftmost = SYNCW;
+  for (i = 0; i < SYNCW; i++)
+    if (xAcc[i] == xAcc[xMax] && i < Leftmost)
+      Leftmost = i;
 
   if (Rate == 44100)  Leftmost = 0;
 
   printf("    abscissa = %d (%d occurrences)",  Leftmost, xAcc[Leftmost]);
-  Leftmost = Leftmost * (ModeSpec[Mode].LineLen / 700.0) * Rate;
+  Leftmost = Leftmost * (ModeSpec[Mode].LineLen / (1.0 * SYNCW)) * Rate;
   printf(" (need to skip %d samples)\n", Leftmost);
 
   *Skip = Leftmost;

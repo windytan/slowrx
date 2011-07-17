@@ -45,14 +45,14 @@ int GetVideo(int Mode, double Rate, int Skip, int FShift, int Adaptive, int Redr
   // Plan for frequency estimation
   in      = fftw_malloc(sizeof(double) * 1024);
   if (in == NULL) {
-    perror("GetVideo: Unable to allocate memory for FFT\n");
+    perror("GetVideo: Unable to allocate memory for FFT");
     pclose(PcmInStream);
     free(PCM);
     exit(EXIT_FAILURE);
   }
   out     = fftw_malloc(sizeof(double) * 1024);
   if (out == NULL) {
-    perror("GetVideo: Unable to allocate memory for FFT\n");
+    perror("GetVideo: Unable to allocate memory for FFT");
     pclose(PcmInStream);
     fftw_free(in);
     free(PCM);
@@ -66,7 +66,7 @@ int GetVideo(int Mode, double Rate, int Skip, int FShift, int Adaptive, int Redr
   // Plan for SNR estimation
   SNR_in   = fftw_malloc(sizeof(double) * 2048);
   if (SNR_in == NULL) {
-    perror("GetVideo: Unable to allocate memory for FFT\n");
+    perror("GetVideo: Unable to allocate memory for FFT");
     pclose(PcmInStream);
     fftw_free(in);
     fftw_free(out);
@@ -75,7 +75,7 @@ int GetVideo(int Mode, double Rate, int Skip, int FShift, int Adaptive, int Redr
   }
   SNR_out  = fftw_malloc(sizeof(double) * 2048);
   if (SNR_out == NULL) {
-    perror("GetVideo: Unable to allocate memory for FFT\n");
+    perror("GetVideo: Unable to allocate memory for FFT");
     pclose(PcmInStream);
     fftw_free(in);
     fftw_free(out);

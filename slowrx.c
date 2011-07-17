@@ -41,8 +41,8 @@ void *Cam() {
 
   while (1) {
  
-    PcmInStream = popen( "sox -q -t alsa hw:0 -t .raw -b 16 -c 1 -e signed-integer -r 44100 -L - 2>/dev/null", "r");
-    //PcmInStream = popen( "sox -q sstvS1-testikuva.wav -t raw -b 16 -c 1 -e signed-integer -r 44100 -L - 2>/dev/null", "r");
+    //PcmInStream = popen( "sox -q -t alsa hw:0 -t .raw -b 16 -c 1 -e signed-integer -r 44100 -L - 2>/dev/null", "r");
+    PcmInStream = popen( "sox -q SSTV_sunset_audio.ogg -t raw -b 16 -c 1 -e signed-integer -r 44100 -L - 2>/dev/null", "r");
 
     // Wait for VIS
     HedrShift = 0;
@@ -65,7 +65,7 @@ void *Cam() {
     // Allocate space for PCM
     PCM = calloc( (int)(ModeSpec[Mode].LineLen * ModeSpec[Mode].ImgHeight + 1) * 44100, sizeof(double));
     if (PCM == NULL) {
-      perror("Cam: Unable to allocate memory for PCM\n");
+      perror("Cam: Unable to allocate memory for PCM");
       pclose(PcmInStream);
       exit(EXIT_FAILURE);
     }
@@ -73,7 +73,7 @@ void *Cam() {
     // Allocate space for cached FFT
     StoredFreq = calloc( (int)(ModeSpec[Mode].LineLen * ModeSpec[Mode].ImgHeight + 1) * 44100, sizeof(double));
     if (StoredFreq == NULL) {
-      perror("Cam: Unable to allocate memory for demodulated signal\n");
+      perror("Cam: Unable to allocate memory for demodulated signal");
       pclose(PcmInStream);
       free(PCM);
       exit(EXIT_FAILURE);
@@ -125,6 +125,10 @@ void *Cam() {
 
     FILE *LumFile;
     LumFile = fopen(lumfilename,"w");
+    if (LumFile == NULL) {
+      perror("Unable to open luma file for writing");
+      exit(EXIT_FAILURE);
+    }
 
     char Lum[1] = {0};
 
