@@ -21,7 +21,7 @@ int GetVideo(int Mode, double Rate, int Skip, int FShift, int Adaptive, int Redr
   unsigned int  VideoPlusNoiseBins=0, ReceiverBins=0, NoiseOnlyBins=0;
   int           i=0, j=0;
   unsigned int  n=0;
-  int  Length=0, Sample=0;
+  int           Length=0, Sample=0;
   int           FFTLen    = 512;
   int           WinLength = 37;
   int           samplesread = 0, WinIdx = 0, LineNum = 0;
@@ -210,18 +210,18 @@ int GetVideo(int Mode, double Rate, int Skip, int FShift, int Adaptive, int Redr
           // Calculate video-plus-noise power (1500-2300 Hz)
 
           for (n = GetBin(1500+HedrShift, 2048, 44100); n <= GetBin(2300+HedrShift, 2048, 44100); n++) {
-            Pvideo_plus_noise += pow(SNR_out[n], 2) + pow(SNR_out[2048 - n], 2);
+            Pvideo_plus_noise += pow(SNR_out[n], 2);// + pow(SNR_out[2048 - n], 2);
             VideoPlusNoiseBins++;
           }
 
           // Calculate noise-only power (400-800 Hz + 2700-3400 Hz)
 
           for (n = GetBin(400+HedrShift, 2048, 44100);  n <= GetBin(800+HedrShift, 2048, 44100);  n++) {
-            Pnoise_only += pow(SNR_out[n], 2) + pow(SNR_out[2048 - n], 2);
+            Pnoise_only += pow(SNR_out[n], 2);// + pow(SNR_out[2048 - n], 2);
             NoiseOnlyBins++;
           }
           for (n = GetBin(2700+HedrShift, 2048, 44100); n <= GetBin(3400+HedrShift, 2048, 44100); n++) {
-            Pnoise_only += pow(SNR_out[n], 2) + pow(SNR_out[2048 - n], 2);
+            Pnoise_only += pow(SNR_out[n], 2);// + pow(SNR_out[2048 - n], 2);
             NoiseOnlyBins++;
           }
 
@@ -298,7 +298,7 @@ int GetVideo(int Mode, double Rate, int Skip, int FShift, int Adaptive, int Redr
         for (n = GetBin(1500 + FShift+HedrShift, FFTLen, 44100) - 1; n <= GetBin(2300 + FShift+HedrShift, FFTLen, 44100) + 1; n++) {
 
           // Power in this frequency bin
-          Power[n] = pow(out[n], 2) + pow(out[FFTLen - n], 2);
+          Power[n] = pow(out[n],2) + pow(out[FFTLen - n], 2);
 
           // Find the bin with most power
           if (Power[n] > Power[MaxBin]) MaxBin = n;

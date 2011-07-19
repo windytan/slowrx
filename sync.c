@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <math.h>
+#include <string.h>
 #include <fftw3.h>
 #include <gtk/gtk.h>
 #include "common.h"
@@ -16,11 +17,11 @@ double FindSync (unsigned int Length, int Mode, double Rate, int *Skip) {
   unsigned int       i, s, j, TotPix;
   double             NextImgSample;
   double             t=0, slantAngle;
-  unsigned short int SyncImg[SYNCW][500];
+  unsigned char      SyncImg[SYNCW][500];
   int                x,y;
 
   double  Praw, Psync;
-  char    *HasSync;
+  unsigned char    *HasSync;
   HasSync = malloc(Length * sizeof(char));
   if (HasSync == NULL) {
     perror("FindSync: Unable to allocate memory for sync signal");
@@ -38,6 +39,7 @@ double FindSync (unsigned int Length, int Mode, double Rate, int *Skip) {
   unsigned short int xAcc[SYNCW] = {0};
   unsigned short int xMax = 0;
   unsigned short int Leftmost;
+  double Pwr[2048], TotPwr=0;
     
   // FFT plan
   fftw_plan    Plan;
@@ -67,6 +69,8 @@ double FindSync (unsigned int Length, int Mode, double Rate, int *Skip) {
   // Zero fill input array
   for (i = 0; i < FFTLen; i++) in[i] = 0;
 
+  printf("power est.\n");
+
   // Power estimation
   for (s = 0; s < Length; s+=50) {
 
@@ -76,22 +80,23 @@ double FindSync (unsigned int Length, int Mode, double Rate, int *Skip) {
     // FFT
     fftw_execute(Plan);
 
-    // Power in raw band
-    i = GetBin(700+HedrShift, FFTLen, 44100);
-    Praw  = (pow(out[i-1],   2) + pow(out[FFTLen - (i-1)],   2) +
-             pow(out[i],     2) + pow(out[FFTLen - i],       2) +
-             pow(out[i+1],   2) + pow(out[FFTLen - (i+1)],   2))  / 3.0;
+    // Power in the whole band
+    Praw = 0;
+    for (i=0;i<GetBin(3000, FFTLen, 44100);i++) {
+      Pwr[i] = pow(out[i], 2) + pow(out[FFTLen-i], 2);
+      Praw += Pwr[i];
+    }
 
-    // Power in the sync band
+    Praw /= (FFTLen/2.0)*(3000/22050.0);
+
+    // Power around the sync band
     i = GetBin(1200+HedrShift, FFTLen, 44100);
-    Psync  = pow(out[i],   2) + pow(out[FFTLen - i],   2);
+    Psync = (Pwr[i-1] + Pwr[i] + Pwr[i+1]) / 3.0;
 
     // If there is more than twice the amount of Power per Hz in the
-    // sync band than in the empty band, we have a sync signal here
+    // sync band than in the rest of the band, we have a sync signal here
     if (Psync > 2*Praw) HasSync[s] = TRUE;
     else                HasSync[s] = FALSE;
-
-    HasSync[s] = !HasSync[s];  // Bug: Otherwise would produce reverse grayscale!
 
     for (i = 0; i < 50; i++) {
       if (s+i >= Length) break;
@@ -100,24 +105,24 @@ double FindSync (unsigned int Length, int Mode, double Rate, int *Skip) {
 
   }
 
+  printf("hough\n");
+
 
   // Repeat until slant < 0.5° or until we give up
   while (1) {
 
-    GrayFile = fopen("sync.gray","w");
+    /*GrayFile = fopen("sync.gray","w");
     if (GrayFile == NULL) {
       perror("Unable to open sync.gray for writing");
       exit(EXIT_FAILURE);
-    }
+    }*/
 
     TotPix        = 0;
     NextImgSample = 0;
     t             = 0;
     maxsy         = 0;
 
-    for (i=0;i<SYNCW;i++)
-      for (j=0;j<500;j++)
-        SyncImg[i][j] = 0;
+    memset(SyncImg, 0, sizeof(SyncImg[0][0]) * SYNCW * 500);
 
     // Draw the sync signal into memory
     for (s = 0; s < Length; s++) {
@@ -134,15 +139,15 @@ double FindSync (unsigned int Length, int Mode, double Rate, int *Skip) {
 
         if (y > maxsy) maxsy = y;
 
-        PixBuf[0] = (SyncImg[x][y] ? 255 : 0);
-        fwrite(PixBuf, 1, 1, GrayFile);
+        //PixBuf[0] = (SyncImg[x][y] ? 255 : 0);
+        //fwrite(PixBuf, 1, 1, GrayFile);
 
         TotPix++;
 
         NextImgSample += ModeSpec[Mode].LineLen / (1.0 * SYNCW);
       }
     }
-    fclose(GrayFile);
+    //fclose(GrayFile);
 
     /** Linear Hough transform **/
 
@@ -182,7 +187,7 @@ double FindSync (unsigned int Length, int Mode, double Rate, int *Skip) {
     slantAngle = qMost / 2.0;
 
     //printf("  most (%d occurrences): d=%d  q=%f\n", LineAcc[dMost][ (int)(qMost * 10) ], dMost, qMost);
-    printf("    %.1f° @ %.2f Hz", 90 - slantAngle, Rate);
+    printf("    %.1f° @ %.2f Hz", slantAngle, Rate);
 
     Rate = Rate + tan(deg2rad(90 - slantAngle)) / (1.0 * SYNCW) * Rate;
 
@@ -201,7 +206,7 @@ double FindSync (unsigned int Length, int Mode, double Rate, int *Skip) {
       printf("    -> 44100\n");
       break;
     } else {
-      printf(" -> %.2f    still slanted; retrying\n", Rate);
+      printf(" -> %.2f    recalculating\n", Rate);
       Retries ++;
     }
   }
