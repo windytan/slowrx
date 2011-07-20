@@ -5,7 +5,7 @@
 Needs linux and sox. Depends on libs gtk2, fftw3, and pnglite.
 
 ==Features==
-*Supports a multitude of modes (see <code>modespec.c</code>)
+*Supports a multitude of modes (see modespec.c)
 *Detects calibration headers even when frequency-shifted and shifts reception window accordingly
 *Slant correction by linear Hough transform
 *Noise reduction by adaptive windowing
