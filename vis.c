@@ -163,7 +163,6 @@ int GetVIS () {
               gtk_label_set_markup(GTK_LABEL(infolabel), infostr);
               gdk_threads_leave();
             } else {
-              printf("  Parity check OK\n");
               break;
             }
           }

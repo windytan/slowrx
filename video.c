@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
+#include <string.h>
 #include <fftw3.h>
 #include <gtk/gtk.h>
 
@@ -210,18 +211,18 @@ int GetVideo(int Mode, double Rate, int Skip, int FShift, int Adaptive, int Redr
           // Calculate video-plus-noise power (1500-2300 Hz)
 
           for (n = GetBin(1500+HedrShift, 2048, 44100); n <= GetBin(2300+HedrShift, 2048, 44100); n++) {
-            Pvideo_plus_noise += pow(SNR_out[n], 2);// + pow(SNR_out[2048 - n], 2);
+            Pvideo_plus_noise += pow(SNR_out[n], 2) + pow(SNR_out[2048 - n], 2);
             VideoPlusNoiseBins++;
           }
 
           // Calculate noise-only power (400-800 Hz + 2700-3400 Hz)
 
           for (n = GetBin(400+HedrShift, 2048, 44100);  n <= GetBin(800+HedrShift, 2048, 44100);  n++) {
-            Pnoise_only += pow(SNR_out[n], 2);// + pow(SNR_out[2048 - n], 2);
+            Pnoise_only += pow(SNR_out[n], 2) + pow(SNR_out[2048 - n], 2);
             NoiseOnlyBins++;
           }
           for (n = GetBin(2700+HedrShift, 2048, 44100); n <= GetBin(3400+HedrShift, 2048, 44100); n++) {
-            Pnoise_only += pow(SNR_out[n], 2);// + pow(SNR_out[2048 - n], 2);
+            Pnoise_only += pow(SNR_out[n], 2) + pow(SNR_out[2048 - n], 2);
             NoiseOnlyBins++;
           }
 
@@ -271,6 +272,7 @@ int GetVideo(int Mode, double Rate, int Skip, int FShift, int Adaptive, int Redr
         AvgSNR = ((AvgSNR * NumSNR) + SNR) / (NumSNR + 1);
         NumSNR++;
 
+        memset(in, 0, sizeof(double)*1024);
 
         // Select window function based on SNR
 
@@ -285,9 +287,6 @@ int GetVideo(int Mode, double Rate, int Skip, int FShift, int Adaptive, int Redr
           // Apply Chebyshev window
            for (i = 0; i < 37; i++) in[i] = (Sample + i >= (37>>1) ? PCM[Sample + i - (37 >> 1)] * Cheb[i] : 0);
         }
-
-        // Zero padding
-        for (i = WinLength; i < FFTLen; i++) in[i] = 0;
 
         // FFT
         if (FFTLen == 1024) fftw_execute(BigPlan);

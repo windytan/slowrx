@@ -14,10 +14,10 @@
  */
 double FindSync (unsigned int Length, int Mode, double Rate, int *Skip) {
 
-  unsigned int       i, s, j, TotPix;
+  unsigned int       i, s, TotPix;
   double             NextImgSample;
   double             t=0, slantAngle;
-  unsigned char      SyncImg[SYNCW][500];
+  unsigned char      SyncImg[SYNCW][630];
   int                x,y;
 
   double  Praw, Psync;
@@ -39,7 +39,7 @@ double FindSync (unsigned int Length, int Mode, double Rate, int *Skip) {
   unsigned short int xAcc[SYNCW] = {0};
   unsigned short int xMax = 0;
   unsigned short int Leftmost;
-  double Pwr[2048], TotPwr=0;
+  double             Pwr[2048];
     
   // FFT plan
   fftw_plan    Plan;
@@ -63,11 +63,13 @@ double FindSync (unsigned int Length, int Mode, double Rate, int *Skip) {
   Plan    = fftw_plan_r2r_1d(FFTLen, in, out, FFTW_FORWARD, FFTW_ESTIMATE);
 
   // Create 50-point Hann window
-  double Hann[50] = {0};
+  double Hann[50];
   for (i = 0; i < 50; i++) Hann[i] = 0.5 * (1 - cos( 2 * M_PI * i / 49.0) );
 
   // Zero fill input array
-  for (i = 0; i < FFTLen; i++) in[i] = 0;
+  memset(in, 0, FFTLen * sizeof(in[0]));
+    
+  int LopassBin = GetBin(3000, FFTLen, 44100);
 
   printf("power est.\n");
 
@@ -75,19 +77,19 @@ double FindSync (unsigned int Length, int Mode, double Rate, int *Skip) {
   for (s = 0; s < Length; s+=50) {
 
     // Hann window
-    for (i = 0; i < 50; i++) in[i] = PCM[s+i] * 32768 * Hann[i];
+    for (i = 0; i < 50; i++) in[i] = PCM[s+i] * Hann[i];
 
     // FFT
     fftw_execute(Plan);
 
     // Power in the whole band
     Praw = 0;
-    for (i=0;i<GetBin(3000, FFTLen, 44100);i++) {
+    for (i=0;i<LopassBin;i++) {
       Pwr[i] = pow(out[i], 2) + pow(out[FFTLen-i], 2);
       Praw += Pwr[i];
     }
 
-    Praw /= (FFTLen/2.0)*(3000/22050.0);
+    Praw /= (FFTLen/2.0) * ( LopassBin/(FFTLen/2.0));
 
     // Power around the sync band
     i = GetBin(1200+HedrShift, FFTLen, 44100);
@@ -106,7 +108,6 @@ double FindSync (unsigned int Length, int Mode, double Rate, int *Skip) {
   }
 
   printf("hough\n");
-
 
   // Repeat until slant < 0.5° or until we give up
   while (1) {
