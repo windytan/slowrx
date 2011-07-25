@@ -4,6 +4,7 @@
 #define MINSLANT 30
 #define MAXSLANT 150
 #define SYNCW    350
+#define SNRSIZE  2048
 
 extern int VISmap[128];
 
@@ -71,9 +72,9 @@ extern ModeSpecDef ModeSpec[];
 void               ClearPixbuf(GdkPixbuf *, unsigned int, unsigned int);
 void               createGUI  ();
 
-int                GetVideo   (int, double, int, int, int, int);
+int                GetVideo   (int, double, int, int, int);
 
-unsigned int       GetBin     (double, int, double);
+unsigned int       GetBin     (double, int);
 unsigned char      clip       (double);
 void               setVU      (short int, double);
 

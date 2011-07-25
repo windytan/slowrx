@@ -13,8 +13,6 @@
 #include <pthread.h>
 #include <pnglite.h>
 
-#include <string.h>
-
 #include "common.h"
 
 void wavdemod () {
@@ -40,11 +38,13 @@ void *Cam() {
   char           infostr[60];
   char           rctime[8];
   unsigned char *Lum;
+  FILE          *LumFile;
 
 
   while (1) {
  
-    PcmInStream = popen( "sox -q -t alsa hw:0 -t .raw -b 16 -c 1 -e signed-integer -r 44100 -L - 2>/dev/null", "r");
+    //PcmInStream = popen( "sox -q -t alsa hw:0 -t .raw -b 16 -c 1 -e signed-integer -r 44100 -L - 2>/dev/null", "r");
+    PcmInStream = popen( "sox -q iss.ogg -t raw -b 16 -c 1 -e signed-integer -r 44100 -L - 2>/dev/null", "r");
 
     if (PcmInStream == NULL) {
       perror("Unable to open sox pipe");
@@ -97,9 +97,9 @@ void *Cam() {
     Sample     = 0;
     Rate       = 44100;
     Skip       = 0;
-    printf("  getvideo @ %.02f Hz, Skip %d, FShift %.0f Hz\n", Rate, Skip, HedrShift);
+    printf("  getvideo @ %.02f Hz, Skip %d, HedrShift %.0f Hz\n", Rate, Skip, HedrShift);
 
-    GetVideo(Mode, Rate, Skip, 0, TRUE, FALSE);
+    GetVideo(Mode, Rate, Skip, TRUE, FALSE);
 
     // Done with the input stream
     pclose(PcmInStream);
@@ -121,33 +121,32 @@ void *Cam() {
       gdk_threads_enter();
       gtk_statusbar_push( GTK_STATUSBAR(statusbar), 0, "Redrawing" );
       gdk_threads_leave();
-      printf("  getvideo @ %.02f Hz, Skip %d, FShift %.0f Hz\n", Rate, Skip, HedrShift);
-      GetVideo(Mode, Rate, Skip, 0, TRUE, TRUE);
+      printf("  getvideo @ %.02f Hz, Skip %d, HedrShift %.0f Hz\n", Rate, Skip, HedrShift);
+      GetVideo(Mode, Rate, Skip, TRUE, TRUE);
     }
 
-    // Write cam image to PNG
     gdk_threads_enter();
     gtk_statusbar_push( GTK_STATUSBAR(statusbar), 0, "Saving" );
     gdk_threads_leave();
 
-    FILE *LumFile;
-    LumFile = fopen(lumfilename,"w");
-    if (LumFile == NULL) {
-      perror("Unable to open luma file for writing");
-      exit(EXIT_FAILURE);
-    }
-
+    // Save the raw signal
     Lum = malloc( (ModeSpec[Mode].LineLen * ModeSpec[Mode].ImgHeight) * 44100 );
     if (Lum == NULL) {
       perror("Unable to allocate memory for lum data");
       exit(EXIT_FAILURE);
     }
     for (i=0; i<(ModeSpec[Mode].LineLen * ModeSpec[Mode].ImgHeight) * 44100; i++)
-      Lum[0] = clip((StoredFreq[i] - (1500 + HedrShift)) / 3.1372549);
+      Lum[i] = clip((StoredFreq[i] - (1500 + HedrShift)) / 3.1372549);
 
+    LumFile = fopen(lumfilename,"w");
+    if (LumFile == NULL) {
+      perror("Unable to open luma file for writing");
+      exit(EXIT_FAILURE);
+    }
     fwrite(Lum,1,(ModeSpec[Mode].LineLen * ModeSpec[Mode].ImgHeight) * 44100,LumFile);
     fclose(LumFile);
 
+    // Save the received image as PNG
     png_t png;
     png_init(0,0);
 

@@ -69,7 +69,7 @@ double FindSync (unsigned int Length, int Mode, double Rate, int *Skip) {
   // Zero fill input array
   memset(in, 0, FFTLen * sizeof(in[0]));
     
-  unsigned int LopassBin = GetBin(3000, FFTLen, 44100);
+  unsigned int LopassBin = GetBin(3000, FFTLen);
 
   printf("power est.\n");
 
@@ -92,7 +92,7 @@ double FindSync (unsigned int Length, int Mode, double Rate, int *Skip) {
     Praw /= (FFTLen/2.0) * ( LopassBin/(FFTLen/2.0));
 
     // Power around the sync band
-    i = GetBin(1200+HedrShift, FFTLen, 44100);
+    i = GetBin(1200+HedrShift, FFTLen);
     Psync = (Pwr[i-1] + Pwr[i] + Pwr[i+1]) / 3.0;
 
     // If there is more than twice the amount of Power per Hz in the

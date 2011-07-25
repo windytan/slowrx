@@ -11,47 +11,41 @@
  *  Mode:      M1, M2, S1, S2, R72, R36...
  *  Rate:      exact sampling rate used
  *  Skip:      number of PCM samples to skip at the beginning (for sync phase adjustment)
- *  FShift:    Hz to shift the frequency reading frame
  *  Adaptive:  false = Static window size, true = Adapt window to noise
  *  Redraw:    false = Apply windowing and FFT to the signal, true = Redraw from cached FFT data
  */
-int GetVideo(int Mode, double Rate, int Skip, int FShift, int Adaptive, int Redraw) {
+int GetVideo(int Mode, double Rate, int Skip, int Adaptive, int Redraw) {
 
   unsigned int  MaxBin = 0;
-  unsigned int  NumSNR = 0;
   unsigned int  VideoPlusNoiseBins=0, ReceiverBins=0, NoiseOnlyBins=0;
   int           i=0, j=0;
   unsigned int  n=0;
   int           Length=0, Sample=0;
-  int           FFTLen    = 512;
-  int           WinLength = 37;
+  int           FFTLen=0, WinLength=0;
   int           samplesread = 0, WinIdx = 0, LineNum = 0;
   int           x = 0, y = 0, prevline=0, tx=0, ty=0, MaxPcm=0;
   int           HannLens[7]   = { 64, 96, 128, 256, 512, 1024, 2048 };
   double        Hann[7][2048] = {{0}};
   double        t=0, Freq = 0, NextPixel = 0, NextSNR = 0, NextFFT = 0;
-  double        *in,  *SNR_in;
-  double        *out, *SNR_out;
+  double        *in,  *out;
   double        Power[2048] = {0};
   double        Pvideo_plus_noise=0, Pnoise_only=0, Pnoise=0, Psignal=0;
-  double        SNR = 0, MaxSNR = -60, MinSNR = 60, AvgSNR = 0;
+  double        SNR = 0;
   double        CurLineTime = 0;
   double        ChanStart[3] = {0}, ChanLen[3] = {0};
   unsigned char Lum=0, Image[800][616][3] = {{{0}}};
   unsigned char Channel = 0;
+  fftw_plan     Plan, BigPlan, SNRPlan;
 
   // Prepare FFT
-  fftw_plan Plan, BigPlan, SNRPlan;
-
-  // Plan for frequency estimation
-  in      = fftw_malloc(sizeof(double) * 1024);
+  in      = fftw_malloc(sizeof(double) * 2048);
   if (in == NULL) {
     perror("GetVideo: Unable to allocate memory for FFT");
     pclose(PcmInStream);
     free(PCM);
     exit(EXIT_FAILURE);
   }
-  out     = fftw_malloc(sizeof(double) * 1024);
+  out     = fftw_malloc(sizeof(double) * 2048);
   if (out == NULL) {
     perror("GetVideo: Unable to allocate memory for FFT");
     pclose(PcmInStream);
@@ -59,32 +53,13 @@ int GetVideo(int Mode, double Rate, int Skip, int FShift, int Adaptive, int Redr
     free(PCM);
     exit(EXIT_FAILURE);
   }
-  Plan    = fftw_plan_r2r_1d(FFTLen, in, out, FFTW_FORWARD, FFTW_ESTIMATE);
-
-  // Plan for frequency estimation (1024)
+  
+  // FFTW plans for frequency estimation
+  Plan    = fftw_plan_r2r_1d(512,  in, out, FFTW_FORWARD, FFTW_ESTIMATE);
   BigPlan = fftw_plan_r2r_1d(1024, in, out, FFTW_FORWARD, FFTW_ESTIMATE);
 
-  // Plan for SNR estimation
-  SNR_in   = fftw_malloc(sizeof(double) * 2048);
-  if (SNR_in == NULL) {
-    perror("GetVideo: Unable to allocate memory for FFT");
-    pclose(PcmInStream);
-    fftw_free(in);
-    fftw_free(out);
-    free(PCM);
-    exit(EXIT_FAILURE);
-  }
-  SNR_out  = fftw_malloc(sizeof(double) * 2048);
-  if (SNR_out == NULL) {
-    perror("GetVideo: Unable to allocate memory for FFT");
-    pclose(PcmInStream);
-    fftw_free(in);
-    fftw_free(out);
-    fftw_free(SNR_in);
-    free(PCM);
-    exit(EXIT_FAILURE);
-  }
-  SNRPlan = fftw_plan_r2r_1d(2048, SNR_in, SNR_out, FFTW_FORWARD, FFTW_ESTIMATE);
+  // FFTW plan for SNR estimation
+  SNRPlan = fftw_plan_r2r_1d(SNRSIZE, in, out, FFTW_FORWARD, FFTW_ESTIMATE);
 
   // Initialize Hann windows of different lengths
   for (j = 0; j < 7; j++)
@@ -193,44 +168,37 @@ int GetVideo(int Mode, double Rate, int Skip, int FShift, int Adaptive, int Redr
           SNR = 70;
         } else {
 
-          Pvideo_plus_noise  = 0;
-          Pnoise_only        = 0;
-          Pnoise             = 0;
-          Psignal            = 0;
-
-          VideoPlusNoiseBins = 0;
-          NoiseOnlyBins      = 0;
-          ReceiverBins       = 0;
-
-          // Apply Hann window to 2048 samples
-          for (i = 0; i < 2048; i++) SNR_in[i] = PCM[Sample + i] * Hann[6][i];
+          // Apply Hann window to SNRSIZE samples
+          for (i = 0; i < SNRSIZE; i++) in[i] = PCM[Sample + i] * Hann[6][i];
 
           // FFT
           fftw_execute(SNRPlan);
 
           // Calculate video-plus-noise power (1500-2300 Hz)
 
-          for (n = GetBin(1500+HedrShift, 2048, 44100); n <= GetBin(2300+HedrShift, 2048, 44100); n++) {
-            Pvideo_plus_noise += pow(SNR_out[n], 2) + pow(SNR_out[2048 - n], 2);
-            VideoPlusNoiseBins++;
-          }
+          Pvideo_plus_noise = 0;
+          for (n = GetBin(1500+HedrShift, SNRSIZE); n <= GetBin(2300+HedrShift, SNRSIZE); n++)
+            Pvideo_plus_noise += pow(out[n], 2) + pow(out[SNRSIZE - n], 2);
 
           // Calculate noise-only power (400-800 Hz + 2700-3400 Hz)
 
-          for (n = GetBin(400+HedrShift, 2048, 44100);  n <= GetBin(800+HedrShift, 2048, 44100);  n++) {
-            Pnoise_only += pow(SNR_out[n], 2) + pow(SNR_out[2048 - n], 2);
-            NoiseOnlyBins++;
-          }
-          for (n = GetBin(2700+HedrShift, 2048, 44100); n <= GetBin(3400+HedrShift, 2048, 44100); n++) {
-            Pnoise_only += pow(SNR_out[n], 2) + pow(SNR_out[2048 - n], 2);
-            NoiseOnlyBins++;
-          }
+          Pnoise_only = 0;
+          for (n = GetBin(400+HedrShift,  SNRSIZE); n <= GetBin(800+HedrShift, SNRSIZE);  n++)
+            Pnoise_only += pow(out[n], 2) + pow(out[SNRSIZE - n], 2);
 
-          ReceiverBins = GetBin(3400+HedrShift, 2048, 44100) - GetBin(400+HedrShift, 2048, 44100);
+          for (n = GetBin(2700+HedrShift, SNRSIZE); n <= GetBin(3400+HedrShift, SNRSIZE); n++)
+            Pnoise_only += pow(out[n], 2) + pow(out[SNRSIZE - n], 2);
+
+          // Bandwidths
+          VideoPlusNoiseBins = GetBin(2300, SNRSIZE) - GetBin(1500, SNRSIZE) + 1;
+
+          NoiseOnlyBins      = GetBin(800,  SNRSIZE) - GetBin(400,  SNRSIZE) + 1 +
+                               GetBin(3400, SNRSIZE) - GetBin(2700, SNRSIZE) + 1;
+
+          ReceiverBins       = GetBin(3400, SNRSIZE) - GetBin(400,  SNRSIZE);
 
           // Eq 15
-          Pnoise = Pnoise_only * (1.0 * ReceiverBins / NoiseOnlyBins);
-
+          Pnoise  = Pnoise_only * (1.0 * ReceiverBins / NoiseOnlyBins);
           Psignal = Pvideo_plus_noise - Pnoise_only * (1.0 * VideoPlusNoiseBins / NoiseOnlyBins);
 
           // Lower bound to -20 dB
@@ -266,13 +234,7 @@ int GetVideo(int Mode, double Rate, int Skip, int FShift, int Adaptive, int Redr
           WinIdx --;
         }
 
-        if (SNR > MaxSNR) MaxSNR = SNR;
-        if (SNR < MinSNR) MinSNR = SNR;
-
-        AvgSNR = ((AvgSNR * NumSNR) + SNR) / (NumSNR + 1);
-        NumSNR++;
-
-        memset(in, 0, sizeof(double)*1024);
+        memset(in, 0, sizeof(double)*2048);
 
         // Select window function based on SNR
 
@@ -295,7 +257,7 @@ int GetVideo(int Mode, double Rate, int Skip, int FShift, int Adaptive, int Redr
         MaxBin = 0;
           
         // Find the bin with most power
-        for (n = GetBin(1500 + FShift+HedrShift, FFTLen, 44100) - 1; n <= GetBin(2300 + FShift+HedrShift, FFTLen, 44100) + 1; n++) {
+        for (n = GetBin(1500 + HedrShift, FFTLen) - 1; n <= GetBin(2300 + HedrShift, FFTLen) + 1; n++) {
 
           Power[n] = pow(out[n],2) + pow(out[FFTLen - n], 2);
           if (MaxBin == 0 || Power[n] > Power[MaxBin]) MaxBin = n;
@@ -303,7 +265,7 @@ int GetVideo(int Mode, double Rate, int Skip, int FShift, int Adaptive, int Redr
         }
 
         // Find the exact frequency by Gaussian interpolation
-        if (MaxBin > GetBin(1500 + FShift+HedrShift, FFTLen, 44100) - 1 && MaxBin < GetBin(2300 + FShift+HedrShift, FFTLen, 44100) + 1) {
+        if (MaxBin > GetBin(1500 + HedrShift, FFTLen) - 1 && MaxBin < GetBin(2300 + HedrShift, FFTLen) + 1) {
           Freq = MaxBin +            (log( Power[MaxBin + 1] / Power[MaxBin - 1] )) /
                            (2 * log( pow(Power[MaxBin], 2) / (Power[MaxBin + 1] * Power[MaxBin - 1])));
           // In Hertz
@@ -438,7 +400,7 @@ int GetVideo(int Mode, double Rate, int Skip, int FShift, int Adaptive, int Redr
       }
 
       // Luminance from frequency
-      Lum = clip((Freq - (1500 + FShift+HedrShift)) / 3.1372549);
+      Lum = clip((Freq - (1500 + HedrShift)) / 3.1372549);
 
       // Store pixel 
       if (x >= 0 && y >= 0 && x < ModeSpec[Mode].ImgWidth) {
@@ -509,10 +471,6 @@ int GetVideo(int Mode, double Rate, int Skip, int FShift, int Adaptive, int Redr
 
   }
 
-  printf("    SNR Min/Avg/Max: ");
-  if (Redraw) printf("Precalculated\n");
-  else        printf("%+.2f / %+.2f / %+.2f dB\n", MinSNR, AvgSNR, MaxSNR);
-
   printf("    dim %d x %d\n", ModeSpec[Mode].ImgWidth, ModeSpec[Mode].ImgHeight);
 
   fftw_destroy_plan(Plan);
@@ -520,8 +478,6 @@ int GetVideo(int Mode, double Rate, int Skip, int FShift, int Adaptive, int Redr
   fftw_destroy_plan(SNRPlan);
   fftw_free(in);
   fftw_free(out);
-  fftw_free(SNR_in);
-  fftw_free(SNR_out);
 
   return 0;
 }

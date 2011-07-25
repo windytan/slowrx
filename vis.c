@@ -89,7 +89,7 @@ int GetVIS () {
     MaxBin = 0;
 
     // Save most powerful freq
-    for (i = GetBin(500, FFTLen, 44100); i <= GetBin(3300, FFTLen, 44100); i++) {
+    for (i = GetBin(500, FFTLen); i <= GetBin(3300, FFTLen); i++) {
 
       Power[i] = pow(out[i], 2) + pow(out[FFTLen - i], 2);
       if (Power[i] > Power[MaxBin] || MaxBin == 0) MaxBin = i;
@@ -97,7 +97,7 @@ int GetVIS () {
     }
 
     // Gaussian interpolation to get the exact peak frequency
-    if (MaxBin > GetBin(500, FFTLen, 44100) && MaxBin < GetBin(3300, FFTLen, 44100)) {
+    if (MaxBin > GetBin(500, FFTLen) && MaxBin < GetBin(3300, FFTLen)) {
       HedrBuf[HedrPtr] = MaxBin +            (log( Power[MaxBin + 1] / Power[MaxBin - 1] )) /
                           (2 * log( pow(Power[MaxBin], 2) / (Power[MaxBin + 1] * Power[MaxBin - 1])));
     } else {

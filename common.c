@@ -56,8 +56,8 @@ void ClearPixbuf(GdkPixbuf *pb, unsigned int width, unsigned int height) {
 }
 
 // Return the bin index matching the given frequency
-unsigned int GetBin (double Freq, int FFTLen, double Rate) {
-  return (Freq / Rate * FFTLen);
+unsigned int GetBin (double Freq, int FFTLen) {
+  return (Freq / 44100.0 * FFTLen);
 }
 
 // Clip to [0..255]
