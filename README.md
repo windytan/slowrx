@@ -21,6 +21,7 @@ References
 ----------
 
 The program is based on several articles:
+
 * Cordesses L, Cordesses R (F2DC) (May 2003). ["Some thoughts on 'Real-Time' SSTV Processing"](http://lionel.cordesses.free.fr/gpages/Cordesses.pdf). *QEX* May/June 2003: 3-20.
 * Barber, JL (N7CXI) (May 2000). ["Proposal for SSTV Mode Specifications"](http://www.barberdsp.com/files/Dayton%20Paper.pdf). Presented at the Dayton SSTV forum, 20 May 2000.
 * Jones, D (KB4YZ) (Feb 1998). ["List of SSTV Modes with VIS Codes"](http://www.tima.com/~djones/vis.txt).
