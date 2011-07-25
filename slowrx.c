@@ -13,6 +13,8 @@
 #include <pthread.h>
 #include <pnglite.h>
 
+#include <string.h>
+
 #include "common.h"
 
 void wavdemod () {
@@ -27,21 +29,27 @@ void populate_recent() {
 
 void *Cam() {
 
-  double     Rate = 44100;
-  int        Skip = 0, i=0;
-  int        Mode = 0;
-  time_t     timet;
-  char       dest[40];
-  char       pngfilename[40];
-  char       lumfilename[40];
-  struct tm *timeptr = NULL;
-  char       infostr[60];
-  char       rctime[8];
+  double         Rate = 44100;
+  int            Skip = 0, i=0;
+  int            Mode = 0;
+  time_t         timet;
+  char           dest[40];
+  char           pngfilename[40];
+  char           lumfilename[40];
+  struct tm     *timeptr = NULL;
+  char           infostr[60];
+  char           rctime[8];
+  unsigned char *Lum;
 
 
   while (1) {
  
     PcmInStream = popen( "sox -q -t alsa hw:0 -t .raw -b 16 -c 1 -e signed-integer -r 44100 -L - 2>/dev/null", "r");
+
+    if (PcmInStream == NULL) {
+      perror("Unable to open sox pipe");
+      exit(EXIT_FAILURE);
+    }
 
     // Wait for VIS
     HedrShift = 0;
@@ -129,35 +137,25 @@ void *Cam() {
       exit(EXIT_FAILURE);
     }
 
-    char Lum[1] = {0};
-
-    for (i=0; i<(ModeSpec[Mode].LineLen * ModeSpec[Mode].ImgHeight) * 44100; i++) {
-      Lum[0] = clip((StoredFreq[i] - (1500 + HedrShift)) / 3.1372549);
-      fwrite(Lum,1,1,LumFile);
+    Lum = malloc( (ModeSpec[Mode].LineLen * ModeSpec[Mode].ImgHeight) * 44100 );
+    if (Lum == NULL) {
+      perror("Unable to allocate memory for lum data");
+      exit(EXIT_FAILURE);
     }
+    for (i=0; i<(ModeSpec[Mode].LineLen * ModeSpec[Mode].ImgHeight) * 44100; i++)
+      Lum[0] = clip((StoredFreq[i] - (1500 + HedrShift)) / 3.1372549);
+
+    fwrite(Lum,1,(ModeSpec[Mode].LineLen * ModeSpec[Mode].ImgHeight) * 44100,LumFile);
     fclose(LumFile);
 
     png_t png;
-
     png_init(0,0);
 
-    unsigned char data[800 * 616 * 3] = {0};
-    int x=0,y=0;
-    int rowstride = gdk_pixbuf_get_rowstride (CamPixbuf);
-    guchar *pixels, *p;
+    guchar *pixels;
     pixels = gdk_pixbuf_get_pixels(CamPixbuf);
 
-    for (y = 0; y < ModeSpec[Mode].ImgHeight * ModeSpec[Mode].YScale; y++) {
-      for (x = 0; x < ModeSpec[Mode].ImgWidth; x++) {
-        p = pixels + y * rowstride + x * 3;
-        data[y*ModeSpec[Mode].ImgWidth*3 + x*3]     = p[0];
-        data[y*ModeSpec[Mode].ImgWidth*3 + x*3 + 1] = p[1];
-        data[y*ModeSpec[Mode].ImgWidth*3 + x*3 + 2] = p[2];
-      }
-    }
-    
     png_open_file_write(&png, pngfilename);
-    png_set_data(&png, ModeSpec[Mode].ImgWidth, ModeSpec[Mode].ImgHeight * ModeSpec[Mode].YScale, 8, PNG_TRUECOLOR, data);
+    png_set_data(&png, ModeSpec[Mode].ImgWidth, ModeSpec[Mode].ImgHeight * ModeSpec[Mode].YScale, 8, PNG_TRUECOLOR, pixels);
     png_close_file(&png);
     
     free(StoredFreq);
