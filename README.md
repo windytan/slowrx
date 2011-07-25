@@ -26,7 +26,7 @@ The program is based on several articles:
 * Barber, JL (N7CXI) (May 2000). ["Proposal for SSTV Mode Specifications"](http://www.barberdsp.com/files/Dayton%20Paper.pdf). Presented at the Dayton SSTV forum, 20 May 2000.
 * Jones, D (KB4YZ) (Feb 1998). ["List of SSTV Modes with VIS Codes"](http://www.tima.com/~djones/vis.txt).
 * Jones, D (KB4YZ) (May 1999). ["List of SSTV Modes with Line Timing"](http://www.tima.com/~djones/line.txt).
-* Gasior M, Gonzalez J L (May 2004). ["Improving FFT Frequency Measurement Resolution by Parabolic and Gaussian Spectrum Interpolation"](http://cdsweb.cern.ch/record/738182/files/ab-2004-023.pdf). '*AIP Conf. Proc.* (Geneva: CERN) **732** (2004): 276-285.
+* Gasior M, Gonzalez J L (May 2004). ["Improving FFT Frequency Measurement Resolution by Parabolic and Gaussian Spectrum Interpolation"](http://cdsweb.cern.ch/record/738182/files/ab-2004-023.pdf). *AIP Conf. Proc.* (Geneva: CERN) **732** (2004): 276-285.
 
 Licensing
 ---------

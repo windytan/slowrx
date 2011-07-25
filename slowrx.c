@@ -41,8 +41,7 @@ void *Cam() {
 
   while (1) {
  
-    //PcmInStream = popen( "sox -q -t alsa hw:0 -t .raw -b 16 -c 1 -e signed-integer -r 44100 -L - 2>/dev/null", "r");
-    PcmInStream = popen( "sox -q iss.ogg -t raw -b 16 -c 1 -e signed-integer -r 44100 -L - 2>/dev/null", "r");
+    PcmInStream = popen( "sox -q -t alsa hw:0 -t .raw -b 16 -c 1 -e signed-integer -r 44100 -L - 2>/dev/null", "r");
 
     // Wait for VIS
     HedrShift = 0;
