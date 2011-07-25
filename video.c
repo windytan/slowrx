@@ -32,7 +32,7 @@ int GetVideo(int Mode, double Rate, int Skip, int Adaptive, int Redraw) {
   double        Pvideo_plus_noise=0, Pnoise_only=0, Pnoise=0, Psignal=0;
   double        SNR = 0;
   double        CurLineTime = 0;
-  double        ChanStart[3] = {0}, ChanLen[3] = {0};
+  double        ChanStart[4] = {0}, ChanLen[4] = {0};
   unsigned char Lum=0, Image[800][616][3] = {{{0}}};
   unsigned char Channel = 0;
   fftw_plan     Plan, BigPlan, SNRPlan;
@@ -75,20 +75,9 @@ int GetVideo(int Mode, double Rate, int Skip, int Adaptive, int Redraw) {
         0.2673747, 0.2122111, 0.1631808, 0.1206692, 0.1569882 };
 
 
-  // Starting times of video channels on every line, counted from beginning of sync pulse
+  // Starting times of video channels on every line, counted from beginning of line
 
   switch (Mode) {
-
-    case R72:
-    case R24BW:
-    case R12BW:
-    case R8BW:
-      ChanLen[0]   = ModeSpec[Mode].PixelLen * ModeSpec[Mode].ImgWidth;
-      ChanLen[1]   = ChanLen[2] = ChanLen[0];
-      ChanStart[0] = ModeSpec[Mode].SyncLen + ModeSpec[Mode].PorchLen;
-      ChanStart[1] = ChanStart[0] + ChanLen[0] + ModeSpec[Mode].SeparatorLen;
-      ChanStart[2] = ChanStart[1] + ChanLen[1] + ModeSpec[Mode].SeparatorLen;
-      break;
 
     case R36:
     case R24:
@@ -97,6 +86,15 @@ int GetVideo(int Mode, double Rate, int Skip, int Adaptive, int Redraw) {
       ChanStart[0] = ModeSpec[Mode].SyncLen + ModeSpec[Mode].PorchLen;
       ChanStart[1] = ChanStart[0] + ChanLen[0] + ModeSpec[Mode].SeparatorLen;
       ChanStart[2] = ChanStart[1];
+      break;
+
+    case S1:
+    case S2:
+    case SDX:
+      ChanLen[0]   = ChanLen[1] = ChanLen[2] = ModeSpec[Mode].PixelLen * ModeSpec[Mode].ImgWidth;
+      ChanStart[0] = ModeSpec[Mode].SeparatorLen;
+      ChanStart[1] = ChanStart[0] + ChanLen[0] + ModeSpec[Mode].SeparatorLen;
+      ChanStart[2] = ChanStart[1] + ChanLen[1] + ModeSpec[Mode].SyncLen + ModeSpec[Mode].PorchLen;
       break;
 
     default:
@@ -141,7 +139,7 @@ int GetVideo(int Mode, double Rate, int Skip, int Adaptive, int Redraw) {
     } else {
 
       // Read 2048 samples
-      if (Sample >= PcmPointer - 2048) {
+      if (Sample == 0 || Sample >= PcmPointer - 2048) {
         if (!PcmInStream || feof (PcmInStream) || PcmPointer > Length-2048) break;
 
         samplesread = fread(PcmBuffer, 2, 2048, PcmInStream);
@@ -317,7 +315,7 @@ int GetVideo(int Mode, double Rate, int Skip, int Adaptive, int Redraw) {
         case PD180:
         case PD240:
         case PD290:
-          if (CurLineTime >= ChanStart[2] + ChanLen[2]) Channel = 4; // ch 0 of even line
+          if (CurLineTime >= ChanStart[2] + ChanLen[2]) Channel = 3; // ch 0 of even line
           else if (CurLineTime >= ChanStart[2])         Channel = 2;
           else if (CurLineTime >= ChanStart[1])         Channel = 1;
           else                                          Channel = 0;
@@ -332,71 +330,18 @@ int GetVideo(int Mode, double Rate, int Skip, int Adaptive, int Redraw) {
       }
 
       // X coordinate of this pixel
-      switch(Mode) {
-
-        case S1:
-        case S2:
-        case SDX:
-          x = fmod(CurLineTime - ModeSpec[Mode].SyncLen - ModeSpec[Mode].PorchLen, ChanLen[Channel] +
-              ModeSpec[Mode].SeparatorLen) / ChanLen[Channel] * ModeSpec[Mode].ImgWidth;
-          break;
-
-        default:
-          x = (CurLineTime - ChanStart[Channel]) / ChanLen[Channel] * ModeSpec[Mode].ImgWidth;
-          break;
-
-      }
+      x = (CurLineTime - ChanStart[Channel]) / ChanLen[Channel] * ModeSpec[Mode].ImgWidth;
 
       // Y coordinate of this pixel
-      switch(Mode) {
-
-        case S1:
-        case S2:
-        case SDX:
-          switch(Channel) {
-
-            case 0:
-              y = LineNum;
-              Channel = 2;
-              break;
-
-            case 1:
-              y = LineNum + 1;
-              Channel = 0;
-              break;
-
-            case 2:
-              y = LineNum + 1;
-              Channel = 1;
-              break;
-
-          }
-          break;
-
-        case PD50:
-        case PD90:
-        case PD120:
-        case PD160:
-        case PD180:
-        case PD240:
-        case PD290:
-          switch(Channel) {
-            case 4:
-              y = LineNum + 1;
-              Channel = 0;
-              break;
-
-            default:
-              y = LineNum;
-              break;
-
-          }
+      switch(Channel) {
+        case 3:
+          y = LineNum + 1;
+          Channel = 0;
           break;
 
         default:
           y = LineNum;
           break;
-
       }
 
       // Luminance from frequency
@@ -454,9 +399,9 @@ int GetVideo(int Mode, double Rate, int Skip, int Adaptive, int Redraw) {
         }
 
         if (!Redraw || LineNum % 5 == 0 || LineNum == ModeSpec[Mode].ImgHeight-1) {
-        gdk_threads_enter();
-        gtk_image_set_from_pixbuf(GTK_IMAGE(CamImage), CamPixbuf);
-        gdk_threads_leave();
+          gdk_threads_enter();
+          gtk_image_set_from_pixbuf(GTK_IMAGE(CamImage), CamPixbuf);
+          gdk_threads_leave();
         }
       }
       prevline = LineNum;

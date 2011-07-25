@@ -83,7 +83,7 @@ int GetVIS () {
     // Zero padding, if necessary
     for (i = 882; i < FFTLen; i++) in[i] = 0;
 
-    // FFT
+    // FFT of last 20 ms
     fftw_execute(VISPlan);
 
     MaxBin = 0;
@@ -101,14 +101,14 @@ int GetVIS () {
       HedrBuf[HedrPtr] = MaxBin +            (log( Power[MaxBin + 1] / Power[MaxBin - 1] )) /
                           (2 * log( pow(Power[MaxBin], 2) / (Power[MaxBin + 1] * Power[MaxBin - 1])));
     } else {
-      HedrBuf[HedrPtr] = HedrBuf[(HedrPtr-1)%100];
+      HedrBuf[HedrPtr] = HedrBuf[(HedrPtr-1)%50];
     }
 
-    // Header buffer holds 50 * 10 = 500 msec
+    // Header buffer holds 50 * 10 msec = 500 msec
     HedrPtr = (HedrPtr + 1) % 50;
 
     for (i = 0; i < 50; i++) {
-      tone[i] = HedrBuf[(i + HedrPtr) % 50];
+      tone[i] = HedrBuf[(HedrPtr + i) % 50];
       tone[i] = 1.0 * tone[i] / FFTLen * 44100;
     }
 
@@ -186,8 +186,12 @@ int GetVIS () {
 
   free(PCM);
 
-  // Skip 20 ms 
-  samplesread = fread(PcmBuffer, 2, 441*2, PcmInStream);
+  // Skip 10 ms
+  samplesread = fread(PcmBuffer, 2, 441, PcmInStream);
+
+  // In case of Scottie, skip another 9 ms
+  if (VISmap[VIS] == S1 || VISmap[VIS] == S2 || VISmap[VIS] == SDX)
+    samplesread = fread(PcmBuffer, 2, 397, PcmInStream);
 
   if      (feof(PcmInStream))      perror("unable to read from dsp");
   else if (VISmap[VIS] != UNKNOWN) return VISmap[VIS];

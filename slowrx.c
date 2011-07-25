@@ -44,7 +44,7 @@ void *Cam() {
   while (1) {
  
     //PcmInStream = popen( "sox -q -t alsa hw:0 -t .raw -b 16 -c 1 -e signed-integer -r 44100 -L - 2>/dev/null", "r");
-    PcmInStream = popen( "sox -q iss.ogg -t raw -b 16 -c 1 -e signed-integer -r 44100 -L - 2>/dev/null", "r");
+    PcmInStream = popen( "sox -q iss2.ogg -t raw -b 16 -c 1 -e signed-integer -r 44100 -L - 2>/dev/null", "r");
 
     if (PcmInStream == NULL) {
       perror("Unable to open sox pipe");
@@ -93,7 +93,7 @@ void *Cam() {
     gtk_statusbar_push( GTK_STATUSBAR(statusbar), 0, "Receiving video" );
     gtk_label_set_markup(GTK_LABEL(infolabel), infostr);
     gdk_threads_leave();
-    PcmPointer = 0;
+    PcmPointer = 2048;
     Sample     = 0;
     Rate       = 44100;
     Skip       = 0;
@@ -116,15 +116,13 @@ void *Cam() {
     free(PCM);
     PCM = NULL;
 
-    if (Rate != 44100) {
-      // Final image  
-      gdk_threads_enter();
-      gtk_statusbar_push( GTK_STATUSBAR(statusbar), 0, "Redrawing" );
-      gdk_threads_leave();
-      printf("  getvideo @ %.02f Hz, Skip %d, HedrShift %.0f Hz\n", Rate, Skip, HedrShift);
-      GetVideo(Mode, Rate, Skip, TRUE, TRUE);
-    }
-
+    // Final image  
+    gdk_threads_enter();
+    gtk_statusbar_push( GTK_STATUSBAR(statusbar), 0, "Redrawing" );
+    gdk_threads_leave();
+    printf("  getvideo @ %.02f Hz, Skip %d, HedrShift %.0f Hz\n", Rate, Skip, HedrShift);
+    GetVideo(Mode, Rate, Skip, TRUE, TRUE);
+    
     gdk_threads_enter();
     gtk_statusbar_push( GTK_STATUSBAR(statusbar), 0, "Saving" );
     gdk_threads_leave();
