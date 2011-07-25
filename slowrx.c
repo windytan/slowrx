@@ -58,8 +58,8 @@ void *Cam() {
     timet = time(NULL);
     timeptr = gmtime(&timet);
     strftime(dest, sizeof(dest)-1,"%Y%m%d-%H%M%Sz", timeptr);
-    snprintf(pngfilename, sizeof(dest)-1, "webcam/%s_%s.png", ModeSpec[Mode].ShortName, dest);
-    snprintf(lumfilename, sizeof(dest)-1, "webcam/%s_%s-lum", ModeSpec[Mode].ShortName, dest);
+    snprintf(pngfilename, sizeof(dest)-1, "rx/%s_%s.png", ModeSpec[Mode].ShortName, dest);
+    snprintf(lumfilename, sizeof(dest)-1, "rx/%s_%s-lum", ModeSpec[Mode].ShortName, dest);
     printf("  \"%s\"\n", pngfilename);
     
     // Allocate space for PCM
@@ -127,7 +127,6 @@ void *Cam() {
     LumFile = fopen(lumfilename,"w");
     if (LumFile == NULL) {
       perror("Unable to open luma file for writing");
-      while (1);
       exit(EXIT_FAILURE);
     }
 

@@ -69,7 +69,7 @@ double FindSync (unsigned int Length, int Mode, double Rate, int *Skip) {
   // Zero fill input array
   memset(in, 0, FFTLen * sizeof(in[0]));
     
-  int LopassBin = GetBin(3000, FFTLen, 44100);
+  unsigned int LopassBin = GetBin(3000, FFTLen, 44100);
 
   printf("power est.\n");
 

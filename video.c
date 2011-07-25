@@ -293,14 +293,12 @@ int GetVideo(int Mode, double Rate, int Skip, int FShift, int Adaptive, int Redr
         else                fftw_execute(Plan);
 
         MaxBin = 0;
-
+          
+        // Find the bin with most power
         for (n = GetBin(1500 + FShift+HedrShift, FFTLen, 44100) - 1; n <= GetBin(2300 + FShift+HedrShift, FFTLen, 44100) + 1; n++) {
 
-          // Power in this frequency bin
           Power[n] = pow(out[n],2) + pow(out[FFTLen - n], 2);
-
-          // Find the bin with most power
-          if (Power[n] > Power[MaxBin]) MaxBin = n;
+          if (MaxBin == 0 || Power[n] > Power[MaxBin]) MaxBin = n;
 
         }
 
