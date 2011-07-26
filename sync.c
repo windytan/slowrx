@@ -14,9 +14,7 @@
  */
 double FindSync (unsigned int Length, int Mode, double Rate, int *Skip) {
 
-   int       LineWidth = ModeSpec[Mode].LineLen / ModeSpec[Mode].SyncLen * 4;
-
-  printf("LineWidth %d\n",LineWidth);
+  int                LineWidth = ModeSpec[Mode].LineLen / ModeSpec[Mode].SyncLen * 4;
 
   unsigned int       i, s, TotPix;
   double             NextImgSample;

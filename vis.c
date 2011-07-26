@@ -34,6 +34,7 @@ int GetVIS () {
     pclose(PcmInStream);
     exit(EXIT_FAILURE);
   }
+
   out     = fftw_malloc(sizeof(double) * FFTLen);
   if (out == NULL) {
     perror("GetVIS: Unable to allocate memory for FFT");
@@ -50,6 +51,8 @@ int GetVIS () {
   int          HedrPtr = 0;
   short int    MaxPcm = 0;
   char         infostr[60] = {0}, visfail = FALSE;
+
+  for (i = 0; i < FFTLen; i++) in[i] = 0;
 
   // Create Hann window
   double Hann[882] = {0};
@@ -79,9 +82,6 @@ int GetVIS () {
 
     // Apply Hann window
     for (i = 0; i < 882; i++) in[i] = PCM[i] * Hann[i];
-
-    // Zero padding, if necessary
-    for (i = 882; i < FFTLen; i++) in[i] = 0;
 
     // FFT of last 20 ms
     fftw_execute(VISPlan);

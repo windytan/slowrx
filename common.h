@@ -3,7 +3,6 @@
 
 #define MINSLANT 30
 #define MAXSLANT 150
-#define SYNCW    400
 #define SNRSIZE  2048
 
 extern int VISmap[128];
