@@ -16,11 +16,14 @@ double FindSync (unsigned int Length, int Mode, double Rate, int *Skip) {
 
   int                LineWidth = ModeSpec[Mode].LineLen / ModeSpec[Mode].SyncLen * 4;
 
-  unsigned int       i, s, TotPix;
+//  LineWidth = 400;
+
+  unsigned int       i, s, TotPix, xmax;
   double             NextImgSample;
   double             t=0, slantAngle;
-  unsigned char      SyncImg[450][630];
-  int                x,y;
+  unsigned char      SyncImg[700][630];
+  int                x,y,xmid,x0;
+  unsigned short int xAcc[700] = {0};
 
   double  Praw, Psync;
   unsigned char    *HasSync;
@@ -117,6 +120,7 @@ double FindSync (unsigned int Length, int Mode, double Rate, int *Skip) {
     NextImgSample = 0;
     t             = 0;
     maxsy         = 0;
+    x = y = 0;
 
     memset(SyncImg, 0, sizeof(SyncImg[0][0]) * LineWidth * 500);
         
@@ -128,14 +132,16 @@ double FindSync (unsigned int Length, int Mode, double Rate, int *Skip) {
 
       if (t >= NextImgSample) {
 
-        x = TotPix % LineWidth;
-        y = TotPix / LineWidth;
-
         SyncImg[x][y] = HasSync[s];
 
         if (y > maxsy) maxsy = y;
 
         TotPix++;
+        x++;
+        if (x >= LineWidth) {
+          y++;
+          x=0;
+        }
 
         NextImgSample += ModeSpec[Mode].LineLen / (1.0 * LineWidth);
       }
@@ -159,7 +165,7 @@ double FindSync (unsigned int Length, int Mode, double Rate, int *Skip) {
 
     // zero arrays
     dMost = qMost = 0;
-    for (d=0; d<LineWidth+LineWidth/4; d++)
+    for (d=0; d<LineWidth; d++)
       for (q=MINSLANT*2; q < MAXSLANT * 2; q++)
         lines[d][q-MINSLANT*2] = 0;
 
@@ -173,7 +179,7 @@ double FindSync (unsigned int Length, int Mode, double Rate, int *Skip) {
 
             // Line accumulator
             d = LineWidth + round( -cx * sin(deg2rad(q/2.0)) + cy * cos(deg2rad(q/2.0)) );
-            if (d > 0 && d < LineWidth+LineWidth/4) {
+            if (d > 0 && d < LineWidth) {
               lines[d][q-MINSLANT*2] ++;
               if (lines[d][q-MINSLANT*2] > lines[dMost][qMost-MINSLANT*2]) {
                 dMost = d;
@@ -212,13 +218,50 @@ double FindSync (unsigned int Length, int Mode, double Rate, int *Skip) {
   }
 
   printf("    gray = %dx%d\n", LineWidth, maxsy);
-
-  //s = (LineWidth/2 - dMost) * (ModeSpec[Mode].LineLen / (1.0 * LineWidth)) * Rate;
-  //s -= ModeSpec[Mode].SyncLen / 2.0 * Rate;
-  //*Skip = s;
+    
+  // find abscissa at high granularity
+  t = 0;
+  x = 0;
+  xmax=0;
+  NextImgSample=0;
   
-  *Skip = 0;
+  memset(xAcc, 0, sizeof(xAcc[0]) * 700);
+  
+  for (s = 0; s < Length; s++) {
 
+    t += 1.0/Rate;
+
+    if (t >= NextImgSample) {
+
+      xAcc[x] += HasSync[s];
+      if (xAcc[x] > xAcc[xmax]) xmax = x;
+
+      if (++x >= 700) x = 0;
+
+      NextImgSample += ModeSpec[Mode].LineLen / 700.0;
+    }
+  }
+
+  // find center of sync pulse
+  x0 = -1;
+  xmid=-1;
+  for (x=0;x<700;x++) {
+    if (xAcc[x] >= xAcc[xmax]*0.5 && x0==-1) x0 = x;
+    if (x0 != -1 && xAcc[x] <  xAcc[xmax]*0.5) {
+      xmid = (x + x0) / 2;
+      break;
+    }
+  }
+
+  // skip until the start of the sync pulse
+  s = (xmid / 700.0 * ModeSpec[Mode].LineLen - ModeSpec[Mode].SyncLen/2) * Rate;
+
+  // Scottie modes don't start lines with the sync pulse
+  if (Mode == S1 || Mode == S2 || Mode == SDX)
+    s -= 2 * (ModeSpec[Mode].SeparatorLen + ModeSpec[Mode].PixelLen*ModeSpec[Mode].ImgWidth) * Rate;
+
+  *Skip = s;
+  
   free(HasSync);
   fftw_destroy_plan(Plan);
   fftw_free(in);

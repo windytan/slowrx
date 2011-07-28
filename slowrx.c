@@ -43,8 +43,7 @@ void *Cam() {
 
   while (1) {
  
-    //PcmInStream = popen( "sox -q -t alsa hw:0 -t .raw -b 16 -c 1 -e signed-integer -r 44100 -L - 2>/dev/null", "r");
-    PcmInStream = popen( "sox -q iss2.ogg -t raw -b 16 -c 1 -e signed-integer -r 44100 -L - 2>/dev/null", "r");
+    PcmInStream = popen( "sox -q -t alsa hw:0 -t .raw -b 16 -c 1 -e signed-integer -r 44100 -L - 2>/dev/null", "r");
 
     if (PcmInStream == NULL) {
       perror("Unable to open sox pipe");

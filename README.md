@@ -31,7 +31,7 @@ The program is based on several articles:
 Licensing
 ---------
 
-    Copyright (c) 2007-2011, Oona OH2-250
+    Copyright (c) 2007-2011, windytan (OH2-250)
     
     Permission to use, copy, modify, and/or distribute this software for any
     purpose with or without fee is hereby granted, provided that the above

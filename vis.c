@@ -187,7 +187,7 @@ int GetVIS () {
   free(PCM);
 
   // Skip 10 ms
-  samplesread = fread(PcmBuffer, 2, 441, PcmInStream);
+  //samplesread = fread(PcmBuffer, 2, 441, PcmInStream);
 
   // In case of Scottie, skip another 9 ms
   if (VISmap[VIS] == S1 || VISmap[VIS] == S2 || VISmap[VIS] == SDX)
