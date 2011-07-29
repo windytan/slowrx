@@ -13,6 +13,8 @@
 #include <pthread.h>
 #include <pnglite.h>
 
+#include <alsa/asoundlib.h>
+
 #include "common.h"
 
 void wavdemod () {
@@ -27,7 +29,7 @@ void populate_recent() {
 
 void *Cam() {
 
-  double         Rate = 44100;
+  double         Rate = SRATE;
   int            Skip = 0, i=0;
   int            Mode = 0;
   time_t         timet;
@@ -41,14 +43,8 @@ void *Cam() {
   FILE          *LumFile;
 
 
-  while (1) {
- 
-    PcmInStream = popen( "sox -q -t alsa hw:0 -t .raw -b 16 -c 1 -e signed-integer -r 44100 -L - 2>/dev/null", "r");
 
-    if (PcmInStream == NULL) {
-      perror("Unable to open sox pipe");
-      exit(EXIT_FAILURE);
-    }
+  while (1) {
 
     // Wait for VIS
     HedrShift = 0;
@@ -69,18 +65,18 @@ void *Cam() {
     printf("  \"%s\"\n", pngfilename);
     
     // Allocate space for PCM
-    PCM = calloc( (int)(ModeSpec[Mode].LineLen * ModeSpec[Mode].ImgHeight + 1) * 44100, sizeof(double));
+    PCM = calloc( (int)(ModeSpec[Mode].LineLen * ModeSpec[Mode].ImgHeight + 1) * SRATE, sizeof(double));
     if (PCM == NULL) {
       perror("Cam: Unable to allocate memory for PCM");
-      pclose(PcmInStream);
+      //pclose(PcmInStream);
       exit(EXIT_FAILURE);
     }
 
     // Allocate space for cached FFT
-    StoredFreq = calloc( (int)(ModeSpec[Mode].LineLen * ModeSpec[Mode].ImgHeight + 1) * 44100, sizeof(double));
+    StoredFreq = calloc( (int)(ModeSpec[Mode].LineLen * ModeSpec[Mode].ImgHeight + 1) * SRATE, sizeof(double));
     if (StoredFreq == NULL) {
       perror("Cam: Unable to allocate memory for demodulated signal");
-      pclose(PcmInStream);
+      //pclose(PcmInStream);
       free(PCM);
       exit(EXIT_FAILURE);
     }
@@ -94,15 +90,13 @@ void *Cam() {
     gdk_threads_leave();
     PcmPointer = 2048;
     Sample     = 0;
-    Rate       = 44100;
+    Rate       = SRATE;
     Skip       = 0;
     printf("  getvideo @ %.02f Hz, Skip %d, HedrShift %.0f Hz\n", Rate, Skip, HedrShift);
 
+    snd_pcm_start(pcm_handle);
     GetVideo(Mode, Rate, Skip, TRUE, FALSE);
-
-    // Done with the input stream
-    pclose(PcmInStream);
-    PcmInStream = 0;
+    snd_pcm_drop(pcm_handle);
 
     // Fix slant
     gdk_threads_enter();
@@ -127,12 +121,12 @@ void *Cam() {
     gdk_threads_leave();
 
     // Save the raw signal
-    Lum = malloc( (ModeSpec[Mode].LineLen * ModeSpec[Mode].ImgHeight) * 44100 );
+    Lum = malloc( (ModeSpec[Mode].LineLen * ModeSpec[Mode].ImgHeight) * SRATE );
     if (Lum == NULL) {
       perror("Unable to allocate memory for lum data");
       exit(EXIT_FAILURE);
     }
-    for (i=0; i<(ModeSpec[Mode].LineLen * ModeSpec[Mode].ImgHeight) * 44100; i++)
+    for (i=0; i<(ModeSpec[Mode].LineLen * ModeSpec[Mode].ImgHeight) * SRATE; i++)
       Lum[i] = clip((StoredFreq[i] - (1500 + HedrShift)) / 3.1372549);
 
     LumFile = fopen(lumfilename,"w");
@@ -140,7 +134,7 @@ void *Cam() {
       perror("Unable to open luma file for writing");
       exit(EXIT_FAILURE);
     }
-    fwrite(Lum,1,(ModeSpec[Mode].LineLen * ModeSpec[Mode].ImgHeight) * 44100,LumFile);
+    fwrite(Lum,1,(ModeSpec[Mode].LineLen * ModeSpec[Mode].ImgHeight) * SRATE,LumFile);
     fclose(LumFile);
 
     // Save the received image as PNG
@@ -160,6 +154,63 @@ void *Cam() {
   }
 }
 
+void initPcm() {
+
+    snd_pcm_stream_t     PcmInStream = SND_PCM_STREAM_CAPTURE;
+    snd_pcm_hw_params_t *hwparams;
+    char                *pcm_name;
+
+    pcm_name = strdup("default");
+
+    snd_pcm_hw_params_alloca(&hwparams);
+
+    if (snd_pcm_open(&pcm_handle, pcm_name, PcmInStream, 0) < 0) {
+      fprintf(stderr, "ALSA: Error opening PCM device %s\n", pcm_name);
+      exit(EXIT_FAILURE);
+    }
+
+    /* Init hwparams with full configuration space */
+    if (snd_pcm_hw_params_any(pcm_handle, hwparams) < 0) {
+      fprintf(stderr, "ALSA: Can not configure this PCM device.\n");
+      exit(EXIT_FAILURE);
+    }
+
+    unsigned int exact_rate;   /* Sample rate returned by */
+                      /* snd_pcm_hw_params_set_rate_near */ 
+
+    if (snd_pcm_hw_params_set_access(pcm_handle, hwparams, SND_PCM_ACCESS_RW_INTERLEAVED) < 0) {
+      fprintf(stderr, "ALSA: Error setting interleaved access.\n");
+      exit(EXIT_FAILURE);
+    }
+    /* Set sample format */
+    if (snd_pcm_hw_params_set_format(pcm_handle, hwparams, SND_PCM_FORMAT_S16_LE) < 0) {
+      fprintf(stderr, "ALSA: Error setting format S16_LE.\n");
+      exit(EXIT_FAILURE);
+    }
+
+    exact_rate = 44100;
+    if (snd_pcm_hw_params_set_rate_near(pcm_handle, hwparams, &exact_rate, 0) < 0) {
+      fprintf(stderr, "ALSA: Error setting sample rate.\n");
+      exit(EXIT_FAILURE);
+    }
+    SRate = exact_rate;
+    if (exact_rate != 44100) fprintf(stderr, "ALSA: Using %d Hz instead of 44100.\n", exact_rate);
+
+    /* Set number of channels */
+    if (snd_pcm_hw_params_set_channels(pcm_handle, hwparams, 1) < 0) {
+      fprintf(stderr, "ALSA: Can't set channels to mono.\n");
+      exit(EXIT_FAILURE);
+    }
+
+    /* Apply HW parameter settings to */
+    /* PCM device and prepare device  */
+    if (snd_pcm_hw_params(pcm_handle, hwparams) < 0) {
+      fprintf(stderr, "ALSA: Error setting HW params.\n");
+      exit(EXIT_FAILURE);
+    }
+
+}
+
 /*
  * main
  */
@@ -171,7 +222,7 @@ int main(int argc, char *argv[]) {
   pthread_t thread1;
 
   // Set stdout to be line buffered
-  setvbuf(stdout, NULL, _IOLBF, 0);
+  //setvbuf(stdout, NULL, _IOLBF, 0);
   
   for (i=0;i<128;i++) VISmap[i] = UNKNOWN;
 
@@ -207,6 +258,7 @@ int main(int argc, char *argv[]) {
   g_thread_init (NULL);
   gdk_threads_init ();
 
+  initPcm();
   createGUI();
 
   pthread_create (&thread1, NULL, Cam, NULL);

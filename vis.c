@@ -3,6 +3,7 @@
 #include <fftw3.h>
 #include <pthread.h>
 #include <gtk/gtk.h>
+#include <alsa/asoundlib.h>
 
 #include "common.h"
 
@@ -54,22 +55,22 @@ int GetVIS () {
 
   for (i = 0; i < FFTLen; i++) in[i] = 0;
 
-  // Create Hann window
-  double Hann[882] = {0};
-  for (i = 0; i < 882; i++) Hann[i] = 0.5 * (1 - cos( (2 * M_PI * (double)i) / 881) );
+  // Create 20ms Hann window
+  double Hann[SRATE/50] = {0};
+  for (i = 0; i < SRATE*20e-3; i++) Hann[i] = 0.5 * (1 - cos( (2 * M_PI * (double)i) / (SRATE*20e-3 -1) ) );
 
   // Allocate space for PCM (1 second)
-  PCM = calloc(44100, sizeof(double));
+  PCM = calloc(SRATE, sizeof(double));
   if (PCM == NULL) {
     perror("GetVIS: Unable to allocate memory for PCM");
     pclose(PcmInStream);
     exit(EXIT_FAILURE);
   }
 
-  while ( !feof(PcmInStream) ) {
+  while ( TRUE ) {
 
     // Read 10 ms from DSP
-    samplesread = fread(PcmBuffer, 2, 441, PcmInStream);
+    samplesread = snd_pcm_readi(pcm_handle, PcmBuffer, SRATE*10e-3);
 
     // Move buffer
     for (i = 0; i < samplesread; i++) {
@@ -81,7 +82,7 @@ int GetVIS () {
     }
 
     // Apply Hann window
-    for (i = 0; i < 882; i++) in[i] = PCM[i] * Hann[i];
+    for (i = 0; i < SRATE* 20e-3; i++) in[i] = PCM[i] * Hann[i];
 
     // FFT of last 20 ms
     fftw_execute(VISPlan);
@@ -109,7 +110,7 @@ int GetVIS () {
 
     for (i = 0; i < 50; i++) {
       tone[i] = HedrBuf[(HedrPtr + i) % 50];
-      tone[i] = 1.0 * tone[i] / FFTLen * 44100;
+      tone[i] = 1.0 * tone[i] / FFTLen * SRATE;
     }
 
     // Is there a pattern that looks like (the end of) a calibration header + VIS?
@@ -188,10 +189,9 @@ int GetVIS () {
 
   // In case of Scottie, skip 9 ms
   if (VISmap[VIS] == S1 || VISmap[VIS] == S2 || VISmap[VIS] == SDX)
-    samplesread = fread(PcmBuffer, 2, 397, PcmInStream);
+    samplesread = snd_pcm_readi(pcm_handle, PcmBuffer, SRATE*9e-3);
 
-  if      (feof(PcmInStream))      perror("unable to read from dsp");
-  else if (VISmap[VIS] != UNKNOWN) return VISmap[VIS];
-  else                             printf("  No VIS found\n");
+  if (VISmap[VIS] != UNKNOWN) return VISmap[VIS];
+  else                        printf("  No VIS found\n");
   return -1;
 }

@@ -4,6 +4,7 @@
 #include <string.h>
 #include <fftw3.h>
 #include <gtk/gtk.h>
+#include <alsa/asoundlib.h>
 
 #include "common.h"
 
@@ -121,7 +122,7 @@ int GetVideo(int Mode, double Rate, int Skip, int Adaptive, int Redraw) {
 
   if (!Redraw) StoredFreqRate = Rate;
 
-  Length = (ModeSpec[Mode].LineLen * ModeSpec[Mode].ImgHeight) * 44100;
+  Length = (ModeSpec[Mode].LineLen * ModeSpec[Mode].ImgHeight) * SRATE;
 
   // Loop through signal
   for (Sample = 0; Sample < Length; Sample++) {
@@ -142,7 +143,7 @@ int GetVideo(int Mode, double Rate, int Skip, int Adaptive, int Redraw) {
       if (Sample == 0 || Sample >= PcmPointer - 2048) {
         if (!PcmInStream || feof (PcmInStream) || PcmPointer > Length-2048) break;
 
-        samplesread = fread(PcmBuffer, 2, 2048, PcmInStream);
+        samplesread = snd_pcm_readi(pcm_handle, PcmBuffer, 2048);
         if (samplesread < 2048) break;
 
         for (i = 0; i < 2048; i++) {
@@ -267,7 +268,7 @@ int GetVideo(int Mode, double Rate, int Skip, int Adaptive, int Redraw) {
           Freq = MaxBin +            (log( Power[MaxBin + 1] / Power[MaxBin - 1] )) /
                            (2 * log( pow(Power[MaxBin], 2) / (Power[MaxBin + 1] * Power[MaxBin - 1])));
           // In Hertz
-          Freq = Freq / FFTLen * 44100;
+          Freq = Freq / FFTLen * SRATE;
         } else {
           // Use last usable freq
         }

@@ -3,6 +3,8 @@
 #include <string.h>
 #include <fftw3.h>
 #include <gtk/gtk.h>
+#include <alsa/asoundlib.h>
+
 #include "common.h"
 
 /* Find the horizontal sync signal and adjust sample rate to cancel out any slant.
@@ -40,8 +42,6 @@ double FindSync (unsigned int Length, int Mode, double Rate, int *Skip) {
   int                q, d, qMost, dMost;
   unsigned short int Retries = 0;
   int                maxsy = 0;
-  FILE               *GrayFile;
-  char               PixBuf[1] = {0};
   double             Pwr[2048];
     
   // FFT plan
@@ -147,27 +147,12 @@ double FindSync (unsigned int Length, int Mode, double Rate, int *Skip) {
       }
     }
 
-    // write sync.gray
-    GrayFile = fopen("sync.gray","w");
-    if (GrayFile == NULL) {
-      perror("Unable to open sync.gray for writing");
-      exit(EXIT_FAILURE);
-    }
-    for (y=0;y<maxsy;y++) {
-      for (x=0;x<LineWidth;x++) {
-        PixBuf[0] = (SyncImg[x][y] ? 255 : 0);
-        fwrite(PixBuf, 1, 1, GrayFile);
-      }
-    }
-    fclose(GrayFile);
 
     /** Linear Hough transform **/
 
     // zero arrays
     dMost = qMost = 0;
-    for (d=0; d<LineWidth; d++)
-      for (q=MINSLANT*2; q < MAXSLANT * 2; q++)
-        lines[d][q-MINSLANT*2] = 0;
+    memset(lines, 0, sizeof(lines[0][0]) * (MAXSLANT-MINSLANT)*2 * LineWidth);
 
     // Find white pixels
     for (cy = 0; cy < TotPix / LineWidth; cy++) {
@@ -208,8 +193,8 @@ double FindSync (unsigned int Length, int Mode, double Rate, int *Skip) {
       break;
     } else if (Retries == 3) {
       printf("            still slanted; giving up\n");
-      Rate = 44100;
-      printf("    -> 44100\n");
+      Rate = SRATE;
+      printf("    -> SRATE\n");
       break;
     } else {
       printf(" -> %.2f    recalculating\n", Rate);

@@ -3,6 +3,7 @@
 #include <math.h>
 #include <fftw3.h>
 #include <gtk/gtk.h>
+#include <alsa/asoundlib.h>
 
 #include "common.h"
 

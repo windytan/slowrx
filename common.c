@@ -1,8 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <gtk/gtk.h>
-
 #include <math.h>
+
+#include <gtk/gtk.h>
+#include <alsa/asoundlib.h>
 
 #include "common.h"
 
@@ -17,6 +18,7 @@ int       UseWav          = FALSE;
 guchar    *rgbbuf         = NULL;
 int       maxpwr          = 0;
 int       minpwr          = 0;
+unsigned int       SRate           = 44100;
 double    PowerAcc[2048]  = {0};
 double    MaxPower[2048]  = {0};
 double    *StoredFreq     = NULL;
@@ -40,6 +42,8 @@ GtkWidget *SNRimage[10]   = {NULL};
 GtkWidget *vutable        = NULL;
 GtkWidget *infolabel      = NULL;
 
+snd_pcm_t *pcm_handle     = NULL;
+
 void ClearPixbuf(GdkPixbuf *pb, unsigned int width, unsigned int height) {
 
   unsigned int x,y,rowstride;
@@ -58,7 +62,7 @@ void ClearPixbuf(GdkPixbuf *pb, unsigned int width, unsigned int height) {
 
 // Return the bin index matching the given frequency
 unsigned int GetBin (double Freq, int FFTLen) {
-  return (Freq / 44100.0 * FFTLen);
+  return (Freq / SRATE * FFTLen);
 }
 
 // Clip to [0..255]

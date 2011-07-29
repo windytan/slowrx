@@ -3,11 +3,6 @@ slowrx
 
 This program decodes analogue [SSTV](http://en.wikipedia.org/wiki/Slow-scan%20television) images received through the sound card.
 
-Prerequisites
--------------
-
-Needs linux and sox. Depends on libs gtk2, fftw3, and pnglite.
-
 Features
 --------
 
@@ -16,6 +11,14 @@ Features
 * Slant correction using Hough transform
 * Noise reduction using adaptive windowing
 * Saves received pictures as PNG along with the corresponding raw signals
+
+Libraries
+---------
+
+* ALSA
+* GTK+ 2.x
+* FFTW 3.x
+* pnglite
 
 References
 ----------

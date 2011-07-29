@@ -3,7 +3,8 @@
 
 #define MINSLANT 30
 #define MAXSLANT 150
-#define SNRSIZE  2048
+#define SNRSIZE  512
+#define SRATE    44100
 
 extern int VISmap[128];
 
@@ -16,6 +17,7 @@ extern int       UseWav;
 extern guchar    *rgbbuf;
 extern int       maxpwr;
 extern int       minpwr;
+extern unsigned int SRate;
 extern double    PowerAcc[2048];
 extern double    MaxPower[2048];
 extern double    *StoredFreq;
@@ -38,6 +40,8 @@ extern GtkWidget *VUimage[10];
 extern GtkWidget *SNRimage[10];
 extern GtkWidget *vutable;
 extern GtkWidget *infolabel;
+
+extern snd_pcm_t *pcm_handle;
 
 enum {
   M1,    M2,   M3,    M4,
