@@ -28,9 +28,10 @@ void createGUI() {
 
   camframe1 = gtk_frame_new             ("Last image");
   gtk_container_set_border_width        (GTK_CONTAINER (camframe1), 5);
-  CamPixbuf = gdk_pixbuf_new            (GDK_COLORSPACE_RGB, FALSE, 8, 320, 256);
-  ClearPixbuf                           (CamPixbuf, 320, 256);
-  CamImage  = gtk_image_new_from_pixbuf (CamPixbuf);
+  RxPixbuf = gdk_pixbuf_new            (GDK_COLORSPACE_RGB, FALSE, 8, 320, 256);
+  ClearPixbuf                           (RxPixbuf, 320, 256);
+  DispPixbuf = gdk_pixbuf_scale_simple  (RxPixbuf, 500, 400, GDK_INTERP_NEAREST);
+  CamImage  = gtk_image_new_from_pixbuf (DispPixbuf);
 
   camvbox3 = gtk_vbox_new               (FALSE, 1);
   gtk_box_pack_start                    (GTK_BOX (camvbox3), CamImage, FALSE, FALSE, 1);

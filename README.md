@@ -12,9 +12,9 @@ Features
 --------
 
 * Supports a multitude of modes (see `modespec.c` for a list)
-* Detects signals even when frequency-shifted
-* Slant correction by linear Hough transform
-* Noise reduction by adaptive windowing
+* Automatic frequency shifting
+* Slant correction using Hough transform
+* Noise reduction using adaptive windowing
 * Saves received pictures as PNG along with the corresponding raw signals
 
 References

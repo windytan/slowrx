@@ -148,7 +148,7 @@ void *Cam() {
     png_init(0,0);
 
     guchar *pixels;
-    pixels = gdk_pixbuf_get_pixels(CamPixbuf);
+    pixels = gdk_pixbuf_get_pixels(RxPixbuf);
 
     png_open_file_write(&png, pngfilename);
     png_set_data(&png, ModeSpec[Mode].ImgWidth, ModeSpec[Mode].ImgHeight * ModeSpec[Mode].YScale, 8, PNG_TRUECOLOR, pixels);
@@ -213,7 +213,7 @@ int main(int argc, char *argv[]) {
 
   gtk_main();
 
-  gdk_pixbuf_unref(CamPixbuf);
+  gdk_pixbuf_unref(RxPixbuf);
   free(PCM);
   free(StoredFreq);
   gtk_widget_destroy(notebook);

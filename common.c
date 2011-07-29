@@ -25,7 +25,8 @@ double    HedrShift       = 0;
 
 GtkWidget *window         = NULL;
 GtkWidget *notebook       = NULL;
-GdkPixbuf *CamPixbuf      = NULL;
+GdkPixbuf *RxPixbuf      = NULL;
+GdkPixbuf *DispPixbuf     = NULL;
 GtkWidget *CamImage       = NULL;
 GtkWidget *statusbar      = NULL;
 GtkWidget *snrbar         = NULL;

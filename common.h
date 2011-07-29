@@ -24,7 +24,8 @@ extern double    HedrShift;
 
 extern GtkWidget *window;
 extern GtkWidget *notebook;
-extern GdkPixbuf *CamPixbuf;
+extern GdkPixbuf *RxPixbuf;
+extern GdkPixbuf *DispPixbuf;
 extern GtkWidget *CamImage;
 extern GtkWidget *statusbar;
 extern GtkWidget *snrbar;

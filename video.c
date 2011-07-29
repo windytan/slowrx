@@ -109,15 +109,15 @@ int GetVideo(int Mode, double Rate, int Skip, int Adaptive, int Redraw) {
   // Initialize pixbuffer for gtk
   if (!Redraw) {
 
-    gdk_pixbuf_unref(CamPixbuf);
-    CamPixbuf = gdk_pixbuf_new (GDK_COLORSPACE_RGB, FALSE, 8, ModeSpec[Mode].ImgWidth, ModeSpec[Mode].ImgHeight *
+    gdk_pixbuf_unref(RxPixbuf);
+    RxPixbuf = gdk_pixbuf_new (GDK_COLORSPACE_RGB, FALSE, 8, ModeSpec[Mode].ImgWidth, ModeSpec[Mode].ImgHeight *
                 ModeSpec[Mode].YScale);
-    ClearPixbuf(CamPixbuf, ModeSpec[Mode].ImgWidth, ModeSpec[Mode].ImgHeight * ModeSpec[Mode].YScale);
+    ClearPixbuf(RxPixbuf, ModeSpec[Mode].ImgWidth, ModeSpec[Mode].ImgHeight * ModeSpec[Mode].YScale);
   }
 
-  int rowstride = gdk_pixbuf_get_rowstride (CamPixbuf);
+  int rowstride = gdk_pixbuf_get_rowstride (RxPixbuf);
   guchar *pixels, *p;
-  pixels = gdk_pixbuf_get_pixels(CamPixbuf);
+  pixels = gdk_pixbuf_get_pixels(RxPixbuf);
 
   if (!Redraw) StoredFreqRate = Rate;
 
@@ -399,8 +399,12 @@ int GetVideo(int Mode, double Rate, int Skip, int Adaptive, int Redraw) {
         }
 
         if (!Redraw || LineNum % 5 == 0 || LineNum == ModeSpec[Mode].ImgHeight-1) {
+          // Scale and update image
+          gdk_pixbuf_unref(DispPixbuf);
+          DispPixbuf = gdk_pixbuf_scale_simple(RxPixbuf,500,500.0/ModeSpec[Mode].ImgWidth * ModeSpec[Mode].ImgHeight * ModeSpec[Mode].YScale,GDK_INTERP_NEAREST);
+
           gdk_threads_enter();
-          gtk_image_set_from_pixbuf(GTK_IMAGE(CamImage), CamPixbuf);
+          gtk_image_set_from_pixbuf(GTK_IMAGE(CamImage), DispPixbuf);
           gdk_threads_leave();
         }
       }
@@ -414,6 +418,16 @@ int GetVideo(int Mode, double Rate, int Skip, int Adaptive, int Redraw) {
       MaxPcm = 0;
     }
 
+  }
+
+  // High-quality scaling when finished
+  if (Redraw) {
+    gdk_pixbuf_unref(DispPixbuf);
+    DispPixbuf = gdk_pixbuf_scale_simple(RxPixbuf,500,500.0/ModeSpec[Mode].ImgWidth * ModeSpec[Mode].ImgHeight * ModeSpec[Mode].YScale,GDK_INTERP_BILINEAR);
+
+    gdk_threads_enter();
+    gtk_image_set_from_pixbuf(GTK_IMAGE(CamImage), DispPixbuf);
+    gdk_threads_leave();
   }
 
   printf("    dim %d x %d\n", ModeSpec[Mode].ImgWidth, ModeSpec[Mode].ImgHeight);
