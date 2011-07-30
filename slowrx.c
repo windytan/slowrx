@@ -160,79 +160,87 @@ void initPcm() {
   
   GtkWidget *sdialog;
   GtkWidget *cardcombo;
+  GtkWidget *contentarea;
   int card;
   char *cardname;
 
   sdialog = gtk_dialog_new_with_buttons("Select sound card",NULL,GTK_DIALOG_MODAL,GTK_STOCK_OK,GTK_RESPONSE_ACCEPT,GTK_STOCK_CANCEL,GTK_RESPONSE_REJECT,NULL);
 
-  cardcombo = gtk_combo_box_text_new();
-  gtk_dialog_add_action_widget(sdialog, cardcombo, 0);
+  cardcombo   = gtk_combo_box_text_new();
+  contentarea = gtk_dialog_get_content_area(GTK_DIALOG(sdialog));
+  gtk_box_pack_start(GTK_BOX(contentarea), cardcombo, FALSE, TRUE, 0);
+  gtk_widget_show_all (cardcombo);
 
   card=-1;
   do {
     snd_card_next(&card);
     if (card != -1) {
       snd_card_get_name(card,&cardname);
-      gtk_combo_box_text_append_text(cardcombo, &cardname);
+      gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(cardcombo), cardname);
     }
   } while (card != -1);
 
+  gtk_combo_box_set_active(GTK_COMBO_BOX(cardcombo), 0);
+
   gint result = gtk_dialog_run(GTK_DIALOG(sdialog));
+  if (result == -2) {
+    exit(EXIT_SUCCESS);
+  }
 
+  snd_pcm_stream_t     PcmInStream = SND_PCM_STREAM_CAPTURE;
+  snd_pcm_hw_params_t *hwparams;
 
+  int cardnum = gtk_combo_box_get_active (GTK_COMBO_BOX(cardcombo));
+  gtk_widget_destroy(sdialog);
 
-    snd_pcm_stream_t     PcmInStream = SND_PCM_STREAM_CAPTURE;
-    snd_pcm_hw_params_t *hwparams;
-    char                *pcm_name;
+  char pcm_name[60];
+  sprintf(pcm_name,"plug:default:%d",cardnum);
 
-    pcm_name = strdup("default");
+  snd_pcm_hw_params_alloca(&hwparams);
 
-    snd_pcm_hw_params_alloca(&hwparams);
+  if (snd_pcm_open(&pcm_handle, pcm_name, PcmInStream, 0) < 0) {
+    fprintf(stderr, "ALSA: Error opening PCM device %s\n", pcm_name);
+    exit(EXIT_FAILURE);
+  }
 
-    if (snd_pcm_open(&pcm_handle, pcm_name, PcmInStream, 0) < 0) {
-      fprintf(stderr, "ALSA: Error opening PCM device %s\n", pcm_name);
-      exit(EXIT_FAILURE);
-    }
+  /* Init hwparams with full configuration space */
+  if (snd_pcm_hw_params_any(pcm_handle, hwparams) < 0) {
+    fprintf(stderr, "ALSA: Can not configure this PCM device.\n");
+    exit(EXIT_FAILURE);
+  }
 
-    /* Init hwparams with full configuration space */
-    if (snd_pcm_hw_params_any(pcm_handle, hwparams) < 0) {
-      fprintf(stderr, "ALSA: Can not configure this PCM device.\n");
-      exit(EXIT_FAILURE);
-    }
+  unsigned int exact_rate;
 
-    unsigned int exact_rate;   /* Sample rate returned by */
-                      /* snd_pcm_hw_params_set_rate_near */ 
+  if (snd_pcm_hw_params_set_access(pcm_handle, hwparams, SND_PCM_ACCESS_RW_INTERLEAVED) < 0) {
+    fprintf(stderr, "ALSA: Error setting interleaved access.\n");
+    exit(EXIT_FAILURE);
+  }
+  /* Set sample format */
+  if (snd_pcm_hw_params_set_format(pcm_handle, hwparams, SND_PCM_FORMAT_S16_LE) < 0) {
+    fprintf(stderr, "ALSA: Error setting format S16_LE.\n");
+    exit(EXIT_FAILURE);
+  }
 
-    if (snd_pcm_hw_params_set_access(pcm_handle, hwparams, SND_PCM_ACCESS_RW_INTERLEAVED) < 0) {
-      fprintf(stderr, "ALSA: Error setting interleaved access.\n");
-      exit(EXIT_FAILURE);
-    }
-    /* Set sample format */
-    if (snd_pcm_hw_params_set_format(pcm_handle, hwparams, SND_PCM_FORMAT_S16_LE) < 0) {
-      fprintf(stderr, "ALSA: Error setting format S16_LE.\n");
-      exit(EXIT_FAILURE);
-    }
+  exact_rate = 44100;
+  if (snd_pcm_hw_params_set_rate_near(pcm_handle, hwparams, &exact_rate, 0) < 0) {
+    fprintf(stderr, "ALSA: Error setting sample rate.\n");
+    exit(EXIT_FAILURE);
+  }
+  SRate = exact_rate;
+  if (exact_rate != 44100) fprintf(stderr, "ALSA: Using %d Hz instead of 44100.\n", exact_rate);
 
-    exact_rate = 44100;
-    if (snd_pcm_hw_params_set_rate_near(pcm_handle, hwparams, &exact_rate, 0) < 0) {
-      fprintf(stderr, "ALSA: Error setting sample rate.\n");
-      exit(EXIT_FAILURE);
-    }
-    SRate = exact_rate;
-    if (exact_rate != 44100) fprintf(stderr, "ALSA: Using %d Hz instead of 44100.\n", exact_rate);
+  /* Set number of channels */
+  if (snd_pcm_hw_params_set_channels(pcm_handle, hwparams, 1) < 0) {
+    fprintf(stderr, "ALSA: Can't set channels to mono.\n");
+    exit(EXIT_FAILURE);
+  }
 
-    /* Set number of channels */
-    if (snd_pcm_hw_params_set_channels(pcm_handle, hwparams, 1) < 0) {
-      fprintf(stderr, "ALSA: Can't set channels to mono.\n");
-      exit(EXIT_FAILURE);
-    }
-
-    /* Apply HW parameter settings to */
-    /* PCM device and prepare device  */
-    if (snd_pcm_hw_params(pcm_handle, hwparams) < 0) {
-      fprintf(stderr, "ALSA: Error setting HW params.\n");
-      exit(EXIT_FAILURE);
-    }
+  /* Apply HW parameter settings to */
+  /* PCM device and prepare device  */
+  if (snd_pcm_hw_params(pcm_handle, hwparams) < 0) {
+    fprintf(stderr, "ALSA: Error setting HW params.\n");
+    exit(EXIT_FAILURE);
+  }
 
 }
 
