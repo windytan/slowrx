@@ -1,7 +1,7 @@
 slowrx
 ========
 
-This program decodes analogue [SSTV](http://en.wikipedia.org/wiki/Slow-scan%20television) images received through the sound card.
+A shortwave listener's linux tool for decoding analogue [SSTV](http://en.wikipedia.org/wiki/Slow-scan%20television) images received through the sound card.
 
 Features
 --------
