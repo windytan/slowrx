@@ -156,6 +156,31 @@ void *Cam() {
 
 void initPcm() {
 
+  // Select sound card
+  
+  GtkWidget *sdialog;
+  GtkWidget *cardcombo;
+  int card;
+  char *cardname;
+
+  sdialog = gtk_dialog_new_with_buttons("Select sound card",NULL,GTK_DIALOG_MODAL,GTK_STOCK_OK,GTK_RESPONSE_ACCEPT,GTK_STOCK_CANCEL,GTK_RESPONSE_REJECT,NULL);
+
+  cardcombo = gtk_combo_box_text_new();
+  gtk_dialog_add_action_widget(sdialog, cardcombo, 0);
+
+  card=-1;
+  do {
+    snd_card_next(&card);
+    if (card != -1) {
+      snd_card_get_name(card,&cardname);
+      gtk_combo_box_text_append_text(cardcombo, &cardname);
+    }
+  } while (card != -1);
+
+  gint result = gtk_dialog_run(GTK_DIALOG(sdialog));
+
+
+
     snd_pcm_stream_t     PcmInStream = SND_PCM_STREAM_CAPTURE;
     snd_pcm_hw_params_t *hwparams;
     char                *pcm_name;

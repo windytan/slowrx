@@ -16,7 +16,7 @@ Libraries
 ---------
 
 * ALSA
-* GTK+ 2.x
+* GTK+ 3.x
 * FFTW 3.x
 * pnglite
 
