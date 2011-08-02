@@ -27,7 +27,7 @@ void populate_recent() {
 
 }*/
 
-void *Cam() {
+void *DSPlisten() {
 
   double         Rate = SRATE;
   int            Skip = 0, i=0;
@@ -67,16 +67,14 @@ void *Cam() {
     // Allocate space for PCM
     PCM = calloc( (int)(ModeSpec[Mode].LineLen * ModeSpec[Mode].ImgHeight + 1) * SRATE, sizeof(double));
     if (PCM == NULL) {
-      perror("Cam: Unable to allocate memory for PCM");
-      //pclose(PcmInStream);
+      perror("DSPlisten: Unable to allocate memory for PCM");
       exit(EXIT_FAILURE);
     }
 
     // Allocate space for cached FFT
     StoredFreq = calloc( (int)(ModeSpec[Mode].LineLen * ModeSpec[Mode].ImgHeight + 1) * SRATE, sizeof(double));
     if (StoredFreq == NULL) {
-      perror("Cam: Unable to allocate memory for demodulated signal");
-      //pclose(PcmInStream);
+      perror("DSPlisten: Unable to allocate memory for demodulated signal");
       free(PCM);
       exit(EXIT_FAILURE);
     }
@@ -169,31 +167,42 @@ void initPcm() {
   cardcombo   = gtk_combo_box_text_new();
   contentarea = gtk_dialog_get_content_area(GTK_DIALOG(sdialog));
   gtk_box_pack_start(GTK_BOX(contentarea), cardcombo, FALSE, TRUE, 0);
-  gtk_widget_show_all (cardcombo);
 
-  card=-1;
+  int cardnum,numcards;
+
+  numcards=0;
+  card = -1;
   do {
     snd_card_next(&card);
     if (card != -1) {
       snd_card_get_name(card,&cardname);
       gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(cardcombo), cardname);
+      numcards++;
     }
   } while (card != -1);
 
-  gtk_combo_box_set_active(GTK_COMBO_BOX(cardcombo), 0);
 
-  gint result = gtk_dialog_run(GTK_DIALOG(sdialog));
-  if (result == -2) {
+  if (numcards == 0) {
+    printf("No sound cards found!\n");
     exit(EXIT_SUCCESS);
+  } else if (numcards == 1) {
+    cardnum = 0;
+  } else {
+
+    gtk_combo_box_set_active(GTK_COMBO_BOX(cardcombo), 0);
+    gtk_widget_show_all (cardcombo);
+
+    gint result = gtk_dialog_run(GTK_DIALOG(sdialog));
+    if (result == GTK_RESPONSE_REJECT) exit(EXIT_SUCCESS);
+    cardnum = gtk_combo_box_get_active (GTK_COMBO_BOX(cardcombo));
   }
 
   snd_pcm_stream_t     PcmInStream = SND_PCM_STREAM_CAPTURE;
   snd_pcm_hw_params_t *hwparams;
 
-  int cardnum = gtk_combo_box_get_active (GTK_COMBO_BOX(cardcombo));
   gtk_widget_destroy(sdialog);
 
-  char pcm_name[60];
+  char pcm_name[30];
   sprintf(pcm_name,"plug:default:%d",cardnum);
 
   snd_pcm_hw_params_alloca(&hwparams);
@@ -294,7 +303,7 @@ int main(int argc, char *argv[]) {
   initPcm();
   createGUI();
 
-  pthread_create (&thread1, NULL, Cam, NULL);
+  pthread_create (&thread1, NULL, DSPlisten, NULL);
 
   gtk_main();
 

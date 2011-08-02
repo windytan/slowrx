@@ -7,6 +7,15 @@ void delete_event() {
   gtk_main_quit ();
 }
 
+void aboutdialog() {
+  gtk_show_about_dialog(NULL, "program-name", "slowrx",
+                              "copyright",    "2007-2011 windytan OH2-250",
+                              "comments",     "A shortwave listener's tool for receiving SSTV images.",
+                              "website",      "https://github.com/windytan/slowrx",
+                        NULL);
+
+}
+
 void createGUI() {
 
   int i;
@@ -21,21 +30,20 @@ void createGUI() {
   GtkWidget *label;
   GtkWidget *vuframe1;
   GtkWidget *vualign1;
+  GtkWidget *menubar;
 
   window = gtk_window_new               (GTK_WINDOW_TOPLEVEL);
   g_signal_connect                      (window, "delete-event", G_CALLBACK (delete_event), NULL);
-
-  /* Cam tab */
 
   camframe1 = gtk_frame_new             ("Last image");
   gtk_container_set_border_width        (GTK_CONTAINER (camframe1), 5);
   RxPixbuf = gdk_pixbuf_new            (GDK_COLORSPACE_RGB, FALSE, 8, 320, 256);
   ClearPixbuf                           (RxPixbuf, 320, 256);
   DispPixbuf = gdk_pixbuf_scale_simple  (RxPixbuf, 500, 400, GDK_INTERP_NEAREST);
-  CamImage  = gtk_image_new_from_pixbuf (DispPixbuf);
+  RxImage  = gtk_image_new_from_pixbuf (DispPixbuf);
 
   camvbox3 = gtk_vbox_new               (FALSE, 1);
-  gtk_box_pack_start                    (GTK_BOX (camvbox3), CamImage, FALSE, FALSE, 1);
+  gtk_box_pack_start                    (GTK_BOX (camvbox3), RxImage, FALSE, FALSE, 1);
   infolabel  = gtk_label_new            (" ");
 
   camalign1   = gtk_alignment_new       (0.5, 0.5, 1.0, 1.0);
@@ -168,16 +176,37 @@ void createGUI() {
   gtk_table_set_row_spacings(GTK_TABLE(vutable), 0);
   gtk_table_set_col_spacings(GTK_TABLE(vutable), 0);
 
-  /* Tabbed notebook */
-  notebook = gtk_notebook_new   ();
-  gtk_notebook_set_tab_border   (GTK_NOTEBOOK (notebook), 4);
-  gtk_notebook_append_page      (GTK_NOTEBOOK (notebook), camhbox1, gtk_label_new ("Rx") );
+  /* Menubar */
+
+  menubar = gtk_menu_bar_new();
+  GtkWidget *filemenu;
+  GtkWidget *filesubmenu;
+  GtkWidget *helpmenu;
+  GtkWidget *helpsubmenu;
+  GtkWidget *quititem;
+  GtkWidget *aboutitem;
+  filemenu = gtk_menu_item_new_with_mnemonic("F_ile");
+  filesubmenu = gtk_menu_new();
+  gtk_menu_item_set_submenu(GTK_MENU_ITEM(filemenu), filesubmenu);
+  helpmenu = gtk_menu_item_new_with_mnemonic("H_elp");
+  gtk_menu_item_set_right_justified (GTK_MENU_ITEM(helpmenu), TRUE);
+  helpsubmenu = gtk_menu_new();
+  gtk_menu_item_set_submenu(GTK_MENU_ITEM(helpmenu), helpsubmenu);
+  quititem = gtk_menu_item_new_with_mnemonic("Q_uit");
+  aboutitem = gtk_menu_item_new_with_mnemonic("A_bout");
+  gtk_menu_append(GTK_MENU_SHELL(menubar),filemenu);
+  gtk_menu_append(GTK_MENU_SHELL(menubar),helpmenu);
+  gtk_menu_append(GTK_MENU_SHELL(filesubmenu),quititem);
+  gtk_menu_append(GTK_MENU_SHELL(helpsubmenu),aboutitem);
+  g_signal_connect (quititem,  "activate", G_CALLBACK (delete_event), NULL);
+  g_signal_connect (aboutitem, "activate", G_CALLBACK (aboutdialog), NULL);
 
   /* Statusbar */
   statusbar = gtk_statusbar_new ();
 
   vbox1 = gtk_vbox_new (FALSE, 1);
-  gtk_box_pack_start   (GTK_BOX (vbox1), notebook,  TRUE, TRUE, 0);
+  gtk_box_pack_start   (GTK_BOX (vbox1), menubar,  TRUE, TRUE, 0);
+  gtk_box_pack_start   (GTK_BOX (vbox1), camhbox1,  TRUE, TRUE, 0);
   gtk_box_pack_start   (GTK_BOX (vbox1), statusbar, TRUE, TRUE, 0);
 
   gtk_container_add    (GTK_CONTAINER (window), vbox1);

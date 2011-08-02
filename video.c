@@ -405,7 +405,7 @@ int GetVideo(int Mode, double Rate, int Skip, int Adaptive, int Redraw) {
           DispPixbuf = gdk_pixbuf_scale_simple(RxPixbuf,500,500.0/ModeSpec[Mode].ImgWidth * ModeSpec[Mode].ImgHeight * ModeSpec[Mode].YScale,GDK_INTERP_NEAREST);
 
           gdk_threads_enter();
-          gtk_image_set_from_pixbuf(GTK_IMAGE(CamImage), DispPixbuf);
+          gtk_image_set_from_pixbuf(GTK_IMAGE(RxImage), DispPixbuf);
           gdk_threads_leave();
         }
       }
@@ -427,7 +427,7 @@ int GetVideo(int Mode, double Rate, int Skip, int Adaptive, int Redraw) {
     DispPixbuf = gdk_pixbuf_scale_simple(RxPixbuf,500,500.0/ModeSpec[Mode].ImgWidth * ModeSpec[Mode].ImgHeight * ModeSpec[Mode].YScale,GDK_INTERP_BILINEAR);
 
     gdk_threads_enter();
-    gtk_image_set_from_pixbuf(GTK_IMAGE(CamImage), DispPixbuf);
+    gtk_image_set_from_pixbuf(GTK_IMAGE(RxImage), DispPixbuf);
     gdk_threads_leave();
   }
 
