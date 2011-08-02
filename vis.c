@@ -45,7 +45,8 @@ int GetVIS () {
   }
   VISPlan = fftw_plan_r2r_1d(FFTLen, in, out, FFTW_FORWARD, FFTW_ESTIMATE);
 
-  unsigned int i=0, j=0, k=0, MaxBin = 0, samplesread = 0;
+  unsigned int i=0, j=0, k=0, MaxBin = 0;
+  int          samplesread = 0;
   int          Pointer = 0, VIS = 0, Parity = 0, ParityBit = 0, Bit[8] = {0};
   double       Power[2048] = {0};
   double       HedrBuf[100] = {0}, tone[100] = {0};
@@ -71,6 +72,15 @@ int GetVIS () {
 
     // Read 10 ms from DSP
     samplesread = snd_pcm_readi(pcm_handle, PcmBuffer, SRATE*10e-3);
+
+    if (samplesread == -EPIPE) {
+      printf("ALSA buffer overrun :(\n");
+      continue;
+    }
+
+    if (samplesread > SRATE*10e-3) {
+      printf("samplesread = %d !\n",samplesread);
+    }
 
     // Move buffer
     for (i = 0; i < samplesread; i++) {
@@ -195,3 +205,5 @@ int GetVIS () {
   else                        printf("  No VIS found\n");
   return -1;
 }
+
+
