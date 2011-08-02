@@ -75,11 +75,10 @@ int GetVIS () {
 
     if (samplesread == -EPIPE) {
       printf("ALSA buffer overrun :(\n");
-      continue;
-    }
-
-    if (samplesread > SRATE*10e-3) {
-      printf("samplesread = %d !\n",samplesread);
+      exit(EXIT_FAILURE);
+    } else if (samplesread < 0) {
+      printf("ALSA error\n");
+      exit(EXIT_FAILURE);
     }
 
     // Move buffer

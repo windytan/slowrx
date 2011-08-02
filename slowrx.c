@@ -42,14 +42,12 @@ void *DSPlisten() {
   unsigned char *Lum;
   FILE          *LumFile;
 
-
-
   while (1) {
 
     // Wait for VIS
     HedrShift = 0;
     gdk_threads_enter();
-    gtk_widget_set_sensitive(vutable, TRUE);
+    gtk_widget_set_sensitive(vugrid, TRUE);
     gdk_threads_leave();
 
     Mode = GetVIS();
@@ -99,7 +97,7 @@ void *DSPlisten() {
     // Fix slant
     gdk_threads_enter();
     gtk_statusbar_push( GTK_STATUSBAR(statusbar), 0, "Calculating slant" );
-    gtk_widget_set_sensitive(vutable, FALSE);
+    gtk_widget_set_sensitive(vugrid, FALSE);
     gdk_threads_leave();
     printf("  FindSync @ %.02f Hz\n",Rate);
     Rate = FindSync(PcmPointer, Mode, Rate, &Skip);

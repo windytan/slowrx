@@ -1,118 +1,79 @@
 #include <stdlib.h>
 #include <gtk/gtk.h>
 #include <alsa/asoundlib.h>
+
 #include "common.h"
 
-void delete_event() {
-  gtk_main_quit ();
-}
-
-void aboutdialog() {
-  gtk_show_about_dialog(NULL, "program-name", "slowrx",
-                              "copyright",    "2007-2011 windytan OH2-250",
-                              "comments",     "A shortwave listener's tool for receiving SSTV images.",
-                              "website",      "https://github.com/windytan/slowrx",
-                        NULL);
+void showaboutdialog() {
+  gtk_widget_show_all  (aboutdialog);
 
 }
 
 void createGUI() {
 
+  GtkBuilder *builder;
+  GtkWidget  *label;
+  GtkWidget  *quititem;
+  GtkWidget  *aboutitem;
+
+  builder = gtk_builder_new();
+  int a;
+  gtk_builder_add_from_file(builder, "slowrx.ui",      NULL);
+  gtk_builder_add_from_file(builder, "aboutdialog.ui", NULL);
+
+  vugrid      = GTK_WIDGET(gtk_builder_get_object(builder,"vugrid"));
+  mainwindow  = GTK_WIDGET(gtk_builder_get_object(builder,"mainwindow"));
+  RxImage     = GTK_WIDGET(gtk_builder_get_object(builder,"RxImage"));
+  statusbar   = GTK_WIDGET(gtk_builder_get_object(builder,"statusbar"));
+  infolabel   = GTK_WIDGET(gtk_builder_get_object(builder,"infolabel"));
+  quititem    = GTK_WIDGET(gtk_builder_get_object(builder,"quititem"));
+  aboutitem   = GTK_WIDGET(gtk_builder_get_object(builder,"aboutitem"));
+  aboutdialog = GTK_WIDGET(gtk_builder_get_object(builder,"aboutdialog"));
+
+  g_signal_connect(quititem,  "activate", G_CALLBACK(delete_event),    NULL);
+  g_signal_connect(aboutitem, "activate", G_CALLBACK(showaboutdialog), NULL);
+
+  RxPixbuf   = gdk_pixbuf_new (GDK_COLORSPACE_RGB, FALSE, 8, 320, 256);
+  ClearPixbuf (RxPixbuf, 320, 256);
+  DispPixbuf = gdk_pixbuf_scale_simple (RxPixbuf, 500, 400, GDK_INTERP_NEAREST);
+  gtk_image_set_from_pixbuf(GTK_IMAGE(RxImage), DispPixbuf);
+
+  /* PWR & SNR indicators */
+
   int i;
 
-  GtkWidget *vbox1;
-  GtkWidget *camvbox1;
-  GtkWidget *camvbox2;
-  GtkWidget *camvbox3;
-  GtkWidget *camhbox1;
-  GtkWidget *camframe1;
-  GtkWidget *camalign1;
-  GtkWidget *label;
-  GtkWidget *vuframe1;
-  GtkWidget *vualign1;
-  GtkWidget *menubar;
-
-  window = gtk_window_new               (GTK_WINDOW_TOPLEVEL);
-  g_signal_connect                      (window, "delete-event", G_CALLBACK (delete_event), NULL);
-
-  camframe1 = gtk_frame_new             ("Last image");
-  gtk_container_set_border_width        (GTK_CONTAINER (camframe1), 5);
-  RxPixbuf = gdk_pixbuf_new            (GDK_COLORSPACE_RGB, FALSE, 8, 320, 256);
-  ClearPixbuf                           (RxPixbuf, 320, 256);
-  DispPixbuf = gdk_pixbuf_scale_simple  (RxPixbuf, 500, 400, GDK_INTERP_NEAREST);
-  RxImage  = gtk_image_new_from_pixbuf (DispPixbuf);
-
-  camvbox3 = gtk_vbox_new               (FALSE, 1);
-  gtk_box_pack_start                    (GTK_BOX (camvbox3), RxImage, FALSE, FALSE, 1);
-  infolabel  = gtk_label_new            (" ");
-
-  camalign1   = gtk_alignment_new       (0.5, 0.5, 1.0, 1.0);
-  gtk_alignment_set_padding             (GTK_ALIGNMENT (camalign1), 10,10,10,10);
-  gtk_container_add                     (GTK_CONTAINER (camalign1), camvbox3);
-  gtk_container_add                     (GTK_CONTAINER (camframe1), camalign1);
-
-  camhbox1 = gtk_hbox_new               (FALSE, 1);
-  camvbox1 = gtk_vbox_new               (FALSE, 1);
-  gtk_box_pack_start                    (GTK_BOX (camhbox1), camvbox1, FALSE, FALSE, 1);
-  gtk_box_pack_start                    (GTK_BOX (camvbox1), camframe1, FALSE, FALSE, 1);
-  gtk_box_pack_start                    (GTK_BOX (camvbox3), infolabel, FALSE, FALSE, 1);
-
-  /* Recent signals list */
-  /*GtkTreeStore      *RecentStore;
-  GtkWidget         *RecentTree;
-  GtkTreeViewColumn *RecentColumn;
-  GtkCellRenderer   *RecentRenderer;
-
-  RecentStore    = gtk_list_store_new                       (1, GDK_TYPE_PIXBUF);
-  populate_recent                                           ();
-  RecentTree     = gtk_tree_view_new_with_model             (GTK_TREE_MODEL (RecentStore));
-  g_object_unref                                            (G_OBJECT (RecentStore));
-  RecentRenderer = gtk_cell_renderer_pixbuf_new             ();
-  RecentColumn   = gtk_tree_view_column_new_with_attributes ("Recent", RecentRenderer, NULL);
-  gtk_tree_view_append_column                               (GTK_TREE_VIEW (RecentTree), RecentColumn);
-  gtk_box_pack_start                                        (GTK_BOX (camhbox1), RecentTree, FALSE, FALSE, 1);*/
-
-  /* VU meter */
-
-  camvbox2 = gtk_vbox_new              (FALSE, 1);
-  gtk_box_pack_start                   (GTK_BOX (camhbox1), camvbox2, FALSE, FALSE, 1);
-
-  vuframe1 = gtk_frame_new             ("Signal dB");
-  gtk_container_set_border_width       (GTK_CONTAINER (vuframe1), 5);
-
-  vutable = gtk_table_new              (5, 2, FALSE);
-
-  vualign1   = gtk_alignment_new       (0.5, 0.5, 1.0, 1.0);
-  gtk_alignment_set_padding            (GTK_ALIGNMENT (vualign1), 10,10,10,10);
-  gtk_container_add                    (GTK_CONTAINER (vualign1), vutable);
-  gtk_container_add                    (GTK_CONTAINER (vuframe1), vualign1);
-  gtk_box_pack_start                   (GTK_BOX (camvbox2), vuframe1, FALSE, FALSE, 1);
-
-  int dBthresh[10]    = {0, -1, -2, -3, -5, -7, -10, -15, -20, -25};
+  int PWRdBthresh[10] = {0, -1, -2, -3, -5, -7, -10, -15, -20, -25};
+  int SNRdBthresh[10] = {30, 15, 10, 5, 3, 0, -3, -5, -10, -15};
   char dbstr[40];
+
+  /* dB labels */
 
   for (i=0; i<10; i++) {
     label = gtk_label_new("");
-    if (dBthresh[i] < 0) snprintf(dbstr, sizeof(dbstr)-1, "<span font='9px'>−%d</span>", abs(dBthresh[i]));
-    else                 snprintf(dbstr, sizeof(dbstr)-1, "<span font='9px'>%d</span>", dBthresh[i]);
+    if (PWRdBthresh[i] < 0) snprintf(dbstr, sizeof(dbstr)-1, "<span font='9px'>−%d</span>", abs(PWRdBthresh[i]));
+    else                    snprintf(dbstr, sizeof(dbstr)-1, "<span font='9px'>%d</span>", PWRdBthresh[i]);
     gtk_label_set_markup   (GTK_LABEL(label), dbstr);
     gtk_misc_set_alignment (GTK_MISC(label),1,0);
-    gtk_table_attach       (GTK_TABLE(vutable), label, 0, 1, i, i+1, GTK_FILL, GTK_FILL, 0, 0);
+    gtk_grid_attach        (GTK_GRID(vugrid), label, 0, i, 1, 1);
+  }
+  
+  for (i=0; i<10; i++) {
+    label = gtk_label_new("");
+    if (SNRdBthresh[i] < 0) snprintf(dbstr, sizeof(dbstr)-1, "<span font='9px'>−%d</span>", abs(SNRdBthresh[i]));
+    else                    snprintf(dbstr, sizeof(dbstr)-1, "<span font='9px'>%+d</span>", SNRdBthresh[i]);
+    gtk_label_set_markup   (GTK_LABEL(label), dbstr);
+    gtk_misc_set_alignment (GTK_MISC(label), 0, 0);
+    gtk_grid_attach        (GTK_GRID(vugrid), label, 3, i, 1, 1);
   }
 
-  label  = gtk_label_new ("PWR");
-  gtk_misc_set_alignment (GTK_MISC(label),.5,0);
-  gtk_table_attach       (GTK_TABLE(vutable), label, 0, 2, 10, 11, GTK_FILL, GTK_FILL, 0, 4);
-  label  = gtk_label_new ("SNR");
-  gtk_misc_set_alignment (GTK_MISC(label),.5,0);
-  gtk_table_attach       (GTK_TABLE(vutable), label, 2, 4, 10, 11, GTK_FILL, GTK_FILL, 0, 4);
+  /* Indicator pictures */
 
   guchar *pixels, *p;
   unsigned int x,y,rowstride;
 
-  VUpixbufActive = gdk_pixbuf_new (GDK_COLORSPACE_RGB, FALSE, 8, 20, 14);
-  VUpixbufDim    = gdk_pixbuf_new (GDK_COLORSPACE_RGB, FALSE, 8, 20, 14);
-  VUpixbufSNR    = gdk_pixbuf_new (GDK_COLORSPACE_RGB, FALSE, 8, 20, 14);
+  VUpixbufPWR = gdk_pixbuf_new (GDK_COLORSPACE_RGB, FALSE, 8, 20, 14);
+  VUpixbufSNR = gdk_pixbuf_new (GDK_COLORSPACE_RGB, FALSE, 8, 20, 14);
+  VUpixbufDim = gdk_pixbuf_new (GDK_COLORSPACE_RGB, FALSE, 8, 20, 14);
 
   rowstride = gdk_pixbuf_get_rowstride (VUpixbufDim);
   pixels    = gdk_pixbuf_get_pixels    (VUpixbufDim);
@@ -120,12 +81,12 @@ void createGUI() {
   for (y = 0; y < 14; y++) {
     for (x = 0; x < 20; x++) {
       p = pixels + y * rowstride + x * 3;
-      p[0] = p[1] = p[2] = 192;
+      p[0] = p[1] = p[2] = (y % 2 ? 192 : 160);
     }
   }
 
-  rowstride = gdk_pixbuf_get_rowstride (VUpixbufActive);
-  pixels    = gdk_pixbuf_get_pixels    (VUpixbufActive);
+  rowstride = gdk_pixbuf_get_rowstride (VUpixbufPWR);
+  pixels    = gdk_pixbuf_get_pixels    (VUpixbufPWR);
 
   for (y = 0; y < 14; y++) {
     for (x = 0; x < 20; x++) {
@@ -157,60 +118,12 @@ void createGUI() {
   }
 
   for (i=0;i<10;i++) {
-    VUimage[i]  = gtk_image_new_from_pixbuf (VUpixbufDim);
+    PWRimage[i] = gtk_image_new_from_pixbuf (VUpixbufDim);
     SNRimage[i] = gtk_image_new_from_pixbuf (VUpixbufDim);
-    gtk_table_attach(GTK_TABLE(vutable), VUimage[i],  1, 2, i, i+1, GTK_FILL, GTK_FILL, 2, 0);
-    gtk_table_attach(GTK_TABLE(vutable), SNRimage[i], 2, 3, i, i+1, GTK_FILL, GTK_FILL, 2, 0);
+    gtk_grid_attach(GTK_GRID(vugrid), PWRimage[i], 1, i, 1, 1);
+    gtk_grid_attach(GTK_GRID(vugrid), SNRimage[i], 2, i, 1, 1);
   }
 
-  int SNRdBthresh[10] = {30, 15, 10, 5, 3, 0, -3, -5, -10, -15};
-  for (i=0; i<10; i++) {
-    label = gtk_label_new("");
-    if (SNRdBthresh[i] < 0) snprintf(dbstr, sizeof(dbstr)-1, "<span font='9px'>−%d</span>", abs(SNRdBthresh[i]));
-    else                    snprintf(dbstr, sizeof(dbstr)-1, "<span font='9px'>%+d</span>", SNRdBthresh[i]);
-    gtk_label_set_markup   (GTK_LABEL(label), dbstr);
-    gtk_misc_set_alignment (GTK_MISC(label),0,0);
-    gtk_table_attach       (GTK_TABLE(vutable), label, 3, 4, i, i+1, GTK_FILL, GTK_FILL, 0, 0);
-  }
-
-  gtk_table_set_row_spacings(GTK_TABLE(vutable), 0);
-  gtk_table_set_col_spacings(GTK_TABLE(vutable), 0);
-
-  /* Menubar */
-
-  menubar = gtk_menu_bar_new();
-  GtkWidget *filemenu;
-  GtkWidget *filesubmenu;
-  GtkWidget *helpmenu;
-  GtkWidget *helpsubmenu;
-  GtkWidget *quititem;
-  GtkWidget *aboutitem;
-  filemenu = gtk_menu_item_new_with_mnemonic("F_ile");
-  filesubmenu = gtk_menu_new();
-  gtk_menu_item_set_submenu(GTK_MENU_ITEM(filemenu), filesubmenu);
-  helpmenu = gtk_menu_item_new_with_mnemonic("H_elp");
-  gtk_menu_item_set_right_justified (GTK_MENU_ITEM(helpmenu), TRUE);
-  helpsubmenu = gtk_menu_new();
-  gtk_menu_item_set_submenu(GTK_MENU_ITEM(helpmenu), helpsubmenu);
-  quititem = gtk_menu_item_new_with_mnemonic("Q_uit");
-  aboutitem = gtk_menu_item_new_with_mnemonic("A_bout");
-  gtk_menu_append(GTK_MENU_SHELL(menubar),filemenu);
-  gtk_menu_append(GTK_MENU_SHELL(menubar),helpmenu);
-  gtk_menu_append(GTK_MENU_SHELL(filesubmenu),quititem);
-  gtk_menu_append(GTK_MENU_SHELL(helpsubmenu),aboutitem);
-  g_signal_connect (quititem,  "activate", G_CALLBACK (delete_event), NULL);
-  g_signal_connect (aboutitem, "activate", G_CALLBACK (aboutdialog), NULL);
-
-  /* Statusbar */
-  statusbar = gtk_statusbar_new ();
-
-  vbox1 = gtk_vbox_new (FALSE, 1);
-  gtk_box_pack_start   (GTK_BOX (vbox1), menubar,  TRUE, TRUE, 0);
-  gtk_box_pack_start   (GTK_BOX (vbox1), camhbox1,  TRUE, TRUE, 0);
-  gtk_box_pack_start   (GTK_BOX (vbox1), statusbar, TRUE, TRUE, 0);
-
-  gtk_container_add    (GTK_CONTAINER (window), vbox1);
-
-  gtk_widget_show_all  (window);
+  gtk_widget_show_all  (mainwindow);
 
 }

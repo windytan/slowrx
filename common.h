@@ -24,7 +24,7 @@ extern double    *StoredFreq;
 extern double    StoredFreqRate;
 extern double    HedrShift;
 
-extern GtkWidget *window;
+extern GtkWidget *mainwindow;
 extern GtkWidget *notebook;
 extern GdkPixbuf *RxPixbuf;
 extern GdkPixbuf *DispPixbuf;
@@ -32,13 +32,14 @@ extern GtkWidget *RxImage;
 extern GtkWidget *statusbar;
 extern GtkWidget *snrbar;
 extern GtkWidget *pwrbar;
-extern GdkPixbuf *VUpixbufActive;
-extern GdkPixbuf *VUpixbufDim;
+extern GtkWidget *vugrid;
+extern GdkPixbuf *VUpixbufPWR;
 extern GdkPixbuf *VUpixbufSNR;
-extern GtkWidget *VUimage[10];
+extern GdkPixbuf *VUpixbufDim;
+extern GtkWidget *PWRimage[10];
 extern GtkWidget *SNRimage[10];
-extern GtkWidget *vutable;
 extern GtkWidget *infolabel;
+extern GtkWidget *aboutdialog;
 
 extern snd_pcm_t *pcm_handle;
 
@@ -84,5 +85,7 @@ void               setVU      (short int, double);
 int                GetVIS     ();
 double             FindSync   (unsigned int, int, double, int*);
 double             deg2rad    (double);
+
+void               delete_event ();
 
 #endif

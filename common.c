@@ -25,21 +25,22 @@ double    *StoredFreq     = NULL;
 double    StoredFreqRate  = 0;
 double    HedrShift       = 0;
 
-GtkWidget *window         = NULL;
+GtkWidget *mainwindow     = NULL;
 GtkWidget *notebook       = NULL;
-GdkPixbuf *RxPixbuf      = NULL;
+GdkPixbuf *RxPixbuf       = NULL;
 GdkPixbuf *DispPixbuf     = NULL;
-GtkWidget *RxImage       = NULL;
+GtkWidget *RxImage        = NULL;
 GtkWidget *statusbar      = NULL;
 GtkWidget *snrbar         = NULL;
 GtkWidget *pwrbar         = NULL;
-GdkPixbuf *VUpixbufActive = NULL;
+GtkWidget *vugrid         = NULL;
+GdkPixbuf *VUpixbufPWR    = NULL;
 GdkPixbuf *VUpixbufDim    = NULL;
 GdkPixbuf *VUpixbufSNR    = NULL;
-GtkWidget *VUimage[10]    = {NULL};
+GtkWidget *PWRimage[10]   = {NULL};
 GtkWidget *SNRimage[10]   = {NULL};
-GtkWidget *vutable        = NULL;
 GtkWidget *infolabel      = NULL;
+GtkWidget *aboutdialog    = NULL;
 
 snd_pcm_t *pcm_handle     = NULL;
 
@@ -73,14 +74,14 @@ unsigned char clip (double a) {
 
 void setVU(short int PcmValue, double SNRdB) {
   int i;
-  int dBthresh[10]    = {0, -1, -2, -3, -5, -7, -10, -15, -20, -25};
+  int PWRdBthresh[10] = {0, -1, -2, -3, -5, -7, -10, -15, -20, -25};
   int SNRdBthresh[10] = {30, 15, 10, 5, 3, 0, -3, -5, -10, -15};
-  int dB = (int)round(10 * log10(PcmValue/32767.0));
+  int PWRdB = (int)round(10 * log10(PcmValue/32767.0));
 
   gdk_threads_enter();
   for (i=0; i<10; i++) {
-    if (dB >= dBthresh[i]) gtk_image_set_from_pixbuf(GTK_IMAGE(VUimage[i]), VUpixbufActive);
-    else                   gtk_image_set_from_pixbuf(GTK_IMAGE(VUimage[i]), VUpixbufDim);
+    if (PWRdB >= PWRdBthresh[i]) gtk_image_set_from_pixbuf(GTK_IMAGE(PWRimage[i]), VUpixbufPWR);
+    else                         gtk_image_set_from_pixbuf(GTK_IMAGE(PWRimage[i]), VUpixbufDim);
 
     if (SNRdB >= SNRdBthresh[i]) gtk_image_set_from_pixbuf(GTK_IMAGE(SNRimage[i]), VUpixbufSNR);
     else                         gtk_image_set_from_pixbuf(GTK_IMAGE(SNRimage[i]), VUpixbufDim);
@@ -91,4 +92,8 @@ void setVU(short int PcmValue, double SNRdB) {
 
 double deg2rad (double Deg) {
     return (Deg / 180) * M_PI;
+}
+
+void delete_event() {
+  gtk_main_quit ();
 }

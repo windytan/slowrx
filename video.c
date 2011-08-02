@@ -141,7 +141,7 @@ int GetVideo(int Mode, double Rate, int Skip, int Adaptive, int Redraw) {
 
       // Read 2048 samples
       if (Sample == 0 || Sample >= PcmPointer - 2048) {
-        if (!PcmInStream || feof (PcmInStream) || PcmPointer > Length-2048) break;
+        if (PcmPointer > Length-2048) break;
 
         samplesread = snd_pcm_readi(pcm_handle, PcmBuffer, 2048);
         if (samplesread < 2048) break;
