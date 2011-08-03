@@ -362,3 +362,24 @@ ModeSpecDef ModeSpec[] = {
     .ColorEnc     = RGB }
  
 };
+
+/*
+ * Mapping of 7-bit VIS codes to modes
+ *
+ * Reference: Dave Jones KB4YZ (1998): "List of SSTV Modes with VIS Codes".
+ *            http://www.tima.com/~djones/vis.txt
+ *
+ */
+
+//               0     1     2     3    4     5     6     7     8     9     A     B    C    D    E     F
+
+int VISmap[] = { 0,    0,    R8BW, 0,   R24,  0,    R12BW,0,    R36,  0,    R24BW,0,   R72, 0,   0,    0,     // 0
+                 0,    0,    0,    0,   0,    0,    0,    0,    0,    0,    0,    0,   0,   0,   0,    0,     // 1
+                 M4,   0,    0,    0,   M3,   0,    0,    0,    M2,   0,    0,    0,   M1,  0,   0,    0,     // 2
+                 0,    0,    0,    0,   0,    0,    0,    W2180,S2,   0,    0,    0,   S1,  0,   0,    W2120, // 3
+                 0,    0,    0,    0,   0,    0,    0,    0,    0,    0,    0,    0,   SDX, 0,   0,    0,     // 4
+                 0,    0,    0,    0,   0,    0,    0,    0,    0,    0,    0,    0,   0,   PD50,PD290,PD120, // 5
+                 PD180,PD240,PD160,PD90,0,    0,    0,    0,    0,    0,    0,    0,   0,   0,   0,    0,     // 6
+                 0,    P3,   P5,   P7,  0,    0,    0,    0,    0,    0,    0,    0,   0,   0,   0,    0 };   // 7
+
+//               0     1     2     3    4     5     6     7     8     9     A     B    C    D    E     F

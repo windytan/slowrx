@@ -42,7 +42,8 @@ GtkWidget *SNRimage[10]   = {NULL};
 GtkWidget *infolabel      = NULL;
 GtkWidget *aboutdialog    = NULL;
 
-snd_pcm_t *pcm_handle     = NULL;
+
+  snd_pcm_t *pcm_handle     = NULL;
 
 void ClearPixbuf(GdkPixbuf *pb, unsigned int width, unsigned int height) {
 

@@ -150,7 +150,7 @@ void *DSPlisten() {
   }
 }
 
-void initPcm() {
+void initDSP() {
 
   // Select sound card
   
@@ -222,7 +222,6 @@ void initPcm() {
     fprintf(stderr, "ALSA: Error setting interleaved access.\n");
     exit(EXIT_FAILURE);
   }
-  /* Set sample format */
   if (snd_pcm_hw_params_set_format(pcm_handle, hwparams, SND_PCM_FORMAT_S16_LE) < 0) {
     fprintf(stderr, "ALSA: Error setting format S16_LE.\n");
     exit(EXIT_FAILURE);
@@ -236,14 +235,10 @@ void initPcm() {
   SRate = exact_rate;
   if (exact_rate != 44100) fprintf(stderr, "ALSA: Using %d Hz instead of 44100.\n", exact_rate);
 
-  /* Set number of channels */
   if (snd_pcm_hw_params_set_channels(pcm_handle, hwparams, 1) < 0) {
     fprintf(stderr, "ALSA: Can't set channels to mono.\n");
     exit(EXIT_FAILURE);
   }
-
-  /* Apply HW parameter settings to */
-  /* PCM device and prepare device  */
   if (snd_pcm_hw_params(pcm_handle, hwparams) < 0) {
     fprintf(stderr, "ALSA: Error setting HW params.\n");
     exit(EXIT_FAILURE);
@@ -257,48 +252,14 @@ void initPcm() {
 
 int main(int argc, char *argv[]) {
 
-  int i;
-
   pthread_t thread1;
-
-  // Set stdout to be line buffered
-  //setvbuf(stdout, NULL, _IOLBF, 0);
-  
-  for (i=0;i<128;i++) VISmap[i] = UNKNOWN;
-
-  // Map VIS codes to modes
-  VISmap[0x02] = R8BW;
-  VISmap[0x04] = R24;
-  VISmap[0x06] = R12BW;
-  VISmap[0x08] = R36;
-  VISmap[0x0A] = R24BW;
-  VISmap[0x0C] = R72;
-  VISmap[0x20] = M4;
-  VISmap[0x24] = M3;
-  VISmap[0x28] = M2;
-  VISmap[0x2C] = M1;
-  VISmap[0x37] = W2180;
-  VISmap[0x38] = S2;
-  VISmap[0x3C] = S1;
-  VISmap[0x3F] = W2120;
-  VISmap[0x4C] = SDX;
-  VISmap[0x5D] = PD50;
-  VISmap[0x5E] = PD290;
-  VISmap[0x5F] = PD120;
-  VISmap[0x60] = PD180;
-  VISmap[0x61] = PD240;
-  VISmap[0x62] = PD160;
-  VISmap[0x63] = PD90;
-  VISmap[0x71] = P3;
-  VISmap[0x72] = P5;
-  VISmap[0x73] = P7;
 
   gtk_init (&argc, &argv);
 
   g_thread_init (NULL);
   gdk_threads_init ();
 
-  initPcm();
+  initDSP();
   createGUI();
 
   pthread_create (&thread1, NULL, DSPlisten, NULL);

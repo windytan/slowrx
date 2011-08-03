@@ -6,7 +6,6 @@
 
 void showaboutdialog() {
   gtk_widget_show_all  (aboutdialog);
-
 }
 
 void createGUI() {
@@ -17,7 +16,6 @@ void createGUI() {
   GtkWidget  *aboutitem;
 
   builder = gtk_builder_new();
-  int a;
   gtk_builder_add_from_file(builder, "slowrx.ui",      NULL);
   gtk_builder_add_from_file(builder, "aboutdialog.ui", NULL);
 
@@ -42,8 +40,8 @@ void createGUI() {
 
   int i;
 
-  int PWRdBthresh[10] = {0, -1, -2, -3, -5, -7, -10, -15, -20, -25};
-  int SNRdBthresh[10] = {30, 15, 10, 5, 3, 0, -3, -5, -10, -15};
+  int  PWRdBthresh[10] = {0, -1, -2, -3, -5, -7, -10, -15, -20, -25};
+  int  SNRdBthresh[10] = {30, 15, 10, 5, 3, 0, -3, -5, -10, -15};
   char dbstr[40];
 
   /* dB labels */
