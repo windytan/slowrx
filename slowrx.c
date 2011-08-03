@@ -17,15 +17,6 @@
 
 #include "common.h"
 
-void wavdemod () {
-  return;
-}
-
-/*
-void populate_recent() {
-
-
-}*/
 
 void *DSPlisten() {
 
@@ -269,7 +260,6 @@ int main(int argc, char *argv[]) {
   gdk_pixbuf_unref(RxPixbuf);
   free(PCM);
   free(StoredFreq);
-  gtk_widget_destroy(notebook);
 
   printf("Clean exit\n");
 

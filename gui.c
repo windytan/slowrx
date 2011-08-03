@@ -4,10 +4,6 @@
 
 #include "common.h"
 
-void showaboutdialog() {
-  gtk_widget_show_all  (aboutdialog);
-}
-
 void createGUI() {
 
   GtkBuilder *builder;
@@ -28,8 +24,11 @@ void createGUI() {
   aboutitem   = GTK_WIDGET(gtk_builder_get_object(builder,"aboutitem"));
   aboutdialog = GTK_WIDGET(gtk_builder_get_object(builder,"aboutdialog"));
 
-  g_signal_connect(quititem,  "activate", G_CALLBACK(delete_event),    NULL);
-  g_signal_connect(aboutitem, "activate", G_CALLBACK(showaboutdialog), NULL);
+  g_signal_connect        (quititem,    "activate",     G_CALLBACK(delete_event),        NULL);
+  g_signal_connect        (mainwindow,  "delete-event", G_CALLBACK(delete_event),        NULL);
+  g_signal_connect_swapped(aboutitem,   "activate",     G_CALLBACK(gtk_widget_show_all), aboutdialog);
+  g_signal_connect_swapped(aboutitem,   "activate",     G_CALLBACK(gtk_widget_show_all), aboutdialog);
+  g_signal_connect_swapped(aboutdialog, "close",        G_CALLBACK(gtk_widget_hide),     aboutdialog);
 
   RxPixbuf   = gdk_pixbuf_new (GDK_COLORSPACE_RGB, FALSE, 8, 320, 256);
   ClearPixbuf (RxPixbuf, 320, 256);
