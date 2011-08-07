@@ -14,6 +14,7 @@ void createGUI() {
   builder = gtk_builder_new();
   gtk_builder_add_from_file(builder, "slowrx.ui",      NULL);
   gtk_builder_add_from_file(builder, "aboutdialog.ui", NULL);
+  gtk_builder_add_from_file(builder, "cardselect.ui",  NULL);
 
   vugrid      = GTK_WIDGET(gtk_builder_get_object(builder,"vugrid"));
   mainwindow  = GTK_WIDGET(gtk_builder_get_object(builder,"mainwindow"));
@@ -23,6 +24,8 @@ void createGUI() {
   quititem    = GTK_WIDGET(gtk_builder_get_object(builder,"quititem"));
   aboutitem   = GTK_WIDGET(gtk_builder_get_object(builder,"aboutitem"));
   aboutdialog = GTK_WIDGET(gtk_builder_get_object(builder,"aboutdialog"));
+  sdialog     = GTK_WIDGET(gtk_builder_get_object(builder,"sdialog"));
+  cardcombo   = GTK_WIDGET(gtk_builder_get_object(builder,"cardcombo"));
 
   g_signal_connect        (quititem,    "activate",     G_CALLBACK(delete_event),        NULL);
   g_signal_connect        (mainwindow,  "delete-event", G_CALLBACK(delete_event),        NULL);

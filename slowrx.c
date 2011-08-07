@@ -18,7 +18,7 @@
 #include "common.h"
 
 
-void *DSPlisten() {
+void *Listen() {
 
   double         Rate = SRATE;
   int            Skip = 0, i=0;
@@ -56,14 +56,14 @@ void *DSPlisten() {
     // Allocate space for PCM
     PCM = calloc( (int)(ModeSpec[Mode].LineLen * ModeSpec[Mode].ImgHeight + 1) * SRATE, sizeof(double));
     if (PCM == NULL) {
-      perror("DSPlisten: Unable to allocate memory for PCM");
+      perror("Listen: Unable to allocate memory for PCM");
       exit(EXIT_FAILURE);
     }
 
     // Allocate space for cached FFT
     StoredFreq = calloc( (int)(ModeSpec[Mode].LineLen * ModeSpec[Mode].ImgHeight + 1) * SRATE, sizeof(double));
     if (StoredFreq == NULL) {
-      perror("DSPlisten: Unable to allocate memory for demodulated signal");
+      perror("Listen: Unable to allocate memory for demodulated signal");
       free(PCM);
       exit(EXIT_FAILURE);
     }
@@ -141,101 +141,6 @@ void *DSPlisten() {
   }
 }
 
-void initDSP() {
-
-  // Select sound card
-  
-  GtkWidget *sdialog;
-  GtkWidget *cardcombo;
-  GtkWidget *contentarea;
-  int card;
-  char *cardname;
-
-  sdialog = gtk_dialog_new_with_buttons("Select sound card",NULL,GTK_DIALOG_MODAL,GTK_STOCK_OK,GTK_RESPONSE_ACCEPT,GTK_STOCK_CANCEL,GTK_RESPONSE_REJECT,NULL);
-
-  cardcombo   = gtk_combo_box_text_new();
-  contentarea = gtk_dialog_get_content_area(GTK_DIALOG(sdialog));
-  gtk_box_pack_start(GTK_BOX(contentarea), cardcombo, FALSE, TRUE, 0);
-
-  int cardnum,numcards;
-
-  numcards=0;
-  card = -1;
-  do {
-    snd_card_next(&card);
-    if (card != -1) {
-      snd_card_get_name(card,&cardname);
-      gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(cardcombo), cardname);
-      numcards++;
-    }
-  } while (card != -1);
-
-
-  if (numcards == 0) {
-    printf("No sound cards found!\n");
-    exit(EXIT_SUCCESS);
-  } else if (numcards == 1) {
-    cardnum = 0;
-  } else {
-
-    gtk_combo_box_set_active(GTK_COMBO_BOX(cardcombo), 0);
-    gtk_widget_show_all (cardcombo);
-
-    gint result = gtk_dialog_run(GTK_DIALOG(sdialog));
-    if (result == GTK_RESPONSE_REJECT) exit(EXIT_SUCCESS);
-    cardnum = gtk_combo_box_get_active (GTK_COMBO_BOX(cardcombo));
-  }
-
-  snd_pcm_stream_t     PcmInStream = SND_PCM_STREAM_CAPTURE;
-  snd_pcm_hw_params_t *hwparams;
-
-  gtk_widget_destroy(sdialog);
-
-  char pcm_name[30];
-  sprintf(pcm_name,"plug:default:%d",cardnum);
-
-  snd_pcm_hw_params_alloca(&hwparams);
-
-  if (snd_pcm_open(&pcm_handle, pcm_name, PcmInStream, 0) < 0) {
-    fprintf(stderr, "ALSA: Error opening PCM device %s\n", pcm_name);
-    exit(EXIT_FAILURE);
-  }
-
-  /* Init hwparams with full configuration space */
-  if (snd_pcm_hw_params_any(pcm_handle, hwparams) < 0) {
-    fprintf(stderr, "ALSA: Can not configure this PCM device.\n");
-    exit(EXIT_FAILURE);
-  }
-
-  unsigned int exact_rate;
-
-  if (snd_pcm_hw_params_set_access(pcm_handle, hwparams, SND_PCM_ACCESS_RW_INTERLEAVED) < 0) {
-    fprintf(stderr, "ALSA: Error setting interleaved access.\n");
-    exit(EXIT_FAILURE);
-  }
-  if (snd_pcm_hw_params_set_format(pcm_handle, hwparams, SND_PCM_FORMAT_S16_LE) < 0) {
-    fprintf(stderr, "ALSA: Error setting format S16_LE.\n");
-    exit(EXIT_FAILURE);
-  }
-
-  exact_rate = 44100;
-  if (snd_pcm_hw_params_set_rate_near(pcm_handle, hwparams, &exact_rate, 0) < 0) {
-    fprintf(stderr, "ALSA: Error setting sample rate.\n");
-    exit(EXIT_FAILURE);
-  }
-  SRate = exact_rate;
-  if (exact_rate != 44100) fprintf(stderr, "ALSA: Using %d Hz instead of 44100.\n", exact_rate);
-
-  if (snd_pcm_hw_params_set_channels(pcm_handle, hwparams, 1) < 0) {
-    fprintf(stderr, "ALSA: Can't set channels to mono.\n");
-    exit(EXIT_FAILURE);
-  }
-  if (snd_pcm_hw_params(pcm_handle, hwparams) < 0) {
-    fprintf(stderr, "ALSA: Error setting HW params.\n");
-    exit(EXIT_FAILURE);
-  }
-
-}
 
 /*
  * main
@@ -250,10 +155,10 @@ int main(int argc, char *argv[]) {
   g_thread_init (NULL);
   gdk_threads_init ();
 
-  initDSP();
   createGUI();
+  initPcmDevice();
 
-  pthread_create (&thread1, NULL, DSPlisten, NULL);
+  pthread_create (&thread1, NULL, Listen, NULL);
 
   gtk_main();
 

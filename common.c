@@ -41,6 +41,8 @@ GtkWidget *PWRimage[10]   = {NULL};
 GtkWidget *SNRimage[10]   = {NULL};
 GtkWidget *infolabel      = NULL;
 GtkWidget *aboutdialog    = NULL;
+GtkWidget *sdialog        = NULL;
+GtkWidget *cardcombo      = NULL;
 
 snd_pcm_t *pcm_handle     = NULL;
 

@@ -40,17 +40,19 @@ extern GtkWidget *PWRimage[10];
 extern GtkWidget *SNRimage[10];
 extern GtkWidget *infolabel;
 extern GtkWidget *aboutdialog;
+extern GtkWidget *sdialog;
+extern GtkWidget *cardcombo;
 
 extern snd_pcm_t *pcm_handle;
 
 enum {
+  UNKNOWN=0,
   M1,    M2,   M3,    M4,
   S1,    S2,   SDX,
   R72,   R36,  R24,   R24BW, R12BW, R8BW,
   PD50,  PD90, PD120, PD160, PD180, PD240, PD290,
   P3,    P5,   P7,
-  W2120, W2180,
-  UNKNOWN, AUTO_VIS
+  W2120, W2180
 };
 
 enum {
@@ -85,6 +87,8 @@ void               setVU      (short int, double);
 int                GetVIS     ();
 double             FindSync   (unsigned int, int, double, int*);
 double             deg2rad    (double);
+
+void               initPcmDevice();
 
 void               delete_event ();
 
