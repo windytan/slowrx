@@ -42,14 +42,12 @@ int GetVideo(int Mode, double Rate, int Skip, int Adaptive, int Redraw) {
   in      = fftw_malloc(sizeof(double) * 2048);
   if (in == NULL) {
     perror("GetVideo: Unable to allocate memory for FFT");
-    pclose(PcmInStream);
     free(PCM);
     exit(EXIT_FAILURE);
   }
   out     = fftw_malloc(sizeof(double) * 2048);
   if (out == NULL) {
     perror("GetVideo: Unable to allocate memory for FFT");
-    pclose(PcmInStream);
     fftw_free(in);
     free(PCM);
     exit(EXIT_FAILURE);

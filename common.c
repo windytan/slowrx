@@ -7,44 +7,38 @@
 
 #include "common.h"
 
-int       VISmap[128];
+int          VISmap[128];
+short int    PcmBuffer[2048] = {0};
+double      *PCM             = NULL;
+int          PcmPointer      = 0;
+int          Sample          = 0;
+unsigned int SRate           = 44100;
+double      *StoredFreq      = NULL;
+double       StoredFreqRate  = 0;
+double       HedrShift       = 0;
+int          PWRdBthresh[10] = {0,  -3, -5, -10, -15, -20, -25, -30, -35, -40};
+int          SNRdBthresh[10] = {30, 15, 10,   5,   3,   0,  -3,  -5, -10, -15};
 
-FILE      *PcmInStream    = NULL;
-short int PcmBuffer[2048] = {0};
-double    *PCM            = NULL;
-int       PcmPointer      = 0;
-int       Sample          = 0;
-int       UseWav          = FALSE;
-guchar    *rgbbuf         = NULL;
-int       maxpwr          = 0;
-int       minpwr          = 0;
-unsigned int       SRate           = 44100;
-double    PowerAcc[2048]  = {0};
-double    MaxPower[2048]  = {0};
-double    *StoredFreq     = NULL;
-double    StoredFreqRate  = 0;
-double    HedrShift       = 0;
+GtkWidget   *mainwindow      = NULL;
+GtkWidget   *notebook        = NULL;
+GdkPixbuf   *RxPixbuf        = NULL;
+GdkPixbuf   *DispPixbuf      = NULL;
+GtkWidget   *RxImage         = NULL;
+GtkWidget   *statusbar       = NULL;
+GtkWidget   *snrbar          = NULL;
+GtkWidget   *pwrbar          = NULL;
+GtkWidget   *vugrid          = NULL;
+GdkPixbuf   *VUpixbufPWR     = NULL;
+GdkPixbuf   *VUpixbufDim     = NULL;
+GdkPixbuf   *VUpixbufSNR     = NULL;
+GtkWidget   *PWRimage[10]    = {NULL};
+GtkWidget   *SNRimage[10]    = {NULL};
+GtkWidget   *infolabel       = NULL;
+GtkWidget   *aboutdialog     = NULL;
+GtkWidget   *sdialog         = NULL;
+GtkWidget   *cardcombo       = NULL;
 
-GtkWidget *mainwindow     = NULL;
-GtkWidget *notebook       = NULL;
-GdkPixbuf *RxPixbuf       = NULL;
-GdkPixbuf *DispPixbuf     = NULL;
-GtkWidget *RxImage        = NULL;
-GtkWidget *statusbar      = NULL;
-GtkWidget *snrbar         = NULL;
-GtkWidget *pwrbar         = NULL;
-GtkWidget *vugrid         = NULL;
-GdkPixbuf *VUpixbufPWR    = NULL;
-GdkPixbuf *VUpixbufDim    = NULL;
-GdkPixbuf *VUpixbufSNR    = NULL;
-GtkWidget *PWRimage[10]   = {NULL};
-GtkWidget *SNRimage[10]   = {NULL};
-GtkWidget *infolabel      = NULL;
-GtkWidget *aboutdialog    = NULL;
-GtkWidget *sdialog        = NULL;
-GtkWidget *cardcombo      = NULL;
-
-snd_pcm_t *pcm_handle     = NULL;
+snd_pcm_t   *pcm_handle      = NULL;
 
 void ClearPixbuf(GdkPixbuf *pb, unsigned int width, unsigned int height) {
 
@@ -76,9 +70,7 @@ unsigned char clip (double a) {
 
 void setVU(short int PcmValue, double SNRdB) {
   int i;
-  int PWRdBthresh[10] = {0, -1, -2, -3, -5, -7, -10, -15, -20, -25};
-  int SNRdBthresh[10] = {30, 15, 10, 5, 3, 0, -3, -5, -10, -15};
-  int PWRdB = (int)round(10 * log10(PcmValue/32767.0));
+  int PWRdB = (int)round(10 * log10(pow(PcmValue/32767.0,2)));
 
   gdk_threads_enter();
   for (i=0; i<10; i++) {

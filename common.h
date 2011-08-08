@@ -6,44 +6,38 @@
 #define SNRSIZE  512
 #define SRATE    44100
 
-extern int VISmap[128];
-
-extern FILE      *PcmInStream;
-extern short int PcmBuffer[2048];
-extern double    *PCM;
-extern int       PcmPointer;
-extern int       Sample;
-extern int       UseWav;
-extern guchar    *rgbbuf;
-extern int       maxpwr;
-extern int       minpwr;
+extern int          VISmap[128];
+extern short int    PcmBuffer[2048];
+extern double      *PCM;
+extern int          PcmPointer;
+extern int          Sample;
 extern unsigned int SRate;
-extern double    PowerAcc[2048];
-extern double    MaxPower[2048];
-extern double    *StoredFreq;
-extern double    StoredFreqRate;
-extern double    HedrShift;
+extern double      *StoredFreq;
+extern double       StoredFreqRate;
+extern double       HedrShift;
+extern int          PWRdBthresh[10];
+extern int          SNRdBthresh[10];
 
-extern GtkWidget *mainwindow;
-extern GtkWidget *notebook;
-extern GdkPixbuf *RxPixbuf;
-extern GdkPixbuf *DispPixbuf;
-extern GtkWidget *RxImage;
-extern GtkWidget *statusbar;
-extern GtkWidget *snrbar;
-extern GtkWidget *pwrbar;
-extern GtkWidget *vugrid;
-extern GdkPixbuf *VUpixbufPWR;
-extern GdkPixbuf *VUpixbufSNR;
-extern GdkPixbuf *VUpixbufDim;
-extern GtkWidget *PWRimage[10];
-extern GtkWidget *SNRimage[10];
-extern GtkWidget *infolabel;
-extern GtkWidget *aboutdialog;
-extern GtkWidget *sdialog;
-extern GtkWidget *cardcombo;
+extern GtkWidget   *mainwindow;
+extern GtkWidget   *notebook;
+extern GdkPixbuf   *RxPixbuf;
+extern GdkPixbuf   *DispPixbuf;
+extern GtkWidget   *RxImage;
+extern GtkWidget   *statusbar;
+extern GtkWidget   *snrbar;
+extern GtkWidget   *pwrbar;
+extern GtkWidget   *vugrid;
+extern GdkPixbuf   *VUpixbufPWR;
+extern GdkPixbuf   *VUpixbufSNR;
+extern GdkPixbuf   *VUpixbufDim;
+extern GtkWidget   *PWRimage[10];
+extern GtkWidget   *SNRimage[10];
+extern GtkWidget   *infolabel;
+extern GtkWidget   *aboutdialog;
+extern GtkWidget   *sdialog;
+extern GtkWidget   *cardcombo;
 
-extern snd_pcm_t *pcm_handle;
+extern snd_pcm_t   *pcm_handle;
 
 enum {
   UNKNOWN=0,
@@ -60,8 +54,8 @@ enum {
 };
 
 typedef struct ModeSpecDef {
-  char    *Name;
-  char    *ShortName;
+  char   *Name;
+  char   *ShortName;
   double  SyncLen;
   double  PorchLen;
   double  SeparatorLen;
@@ -75,21 +69,16 @@ typedef struct ModeSpecDef {
 
 extern ModeSpecDef ModeSpec[];
 
-void               ClearPixbuf(GdkPixbuf *, unsigned int, unsigned int);
-void               createGUI  ();
-
-int                GetVideo   (int, double, int, int, int);
-
-unsigned int       GetBin     (double, int);
-unsigned char      clip       (double);
-void               setVU      (short int, double);
-
-int                GetVIS     ();
-double             FindSync   (unsigned int, int, double, int*);
-double             deg2rad    (double);
-
-void               initPcmDevice();
-
-void               delete_event ();
+void               ClearPixbuf   (GdkPixbuf *, unsigned int, unsigned int);
+void               createGUI     ();
+int                GetVideo      (int, double, int, int, int);
+unsigned int       GetBin        (double, int);
+unsigned char      clip          (double);
+void               setVU         (short int, double);
+int                GetVIS        ();
+double             FindSync      (unsigned int, int, double, int*);
+double             deg2rad       (double);
+void               initPcmDevice ();
+void               delete_event  ();
 
 #endif

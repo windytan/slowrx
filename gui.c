@@ -41,9 +41,6 @@ void createGUI() {
   /* PWR & SNR indicators */
 
   int i;
-
-  int  PWRdBthresh[10] = {0, -1, -2, -3, -5, -7, -10, -15, -20, -25};
-  int  SNRdBthresh[10] = {30, 15, 10, 5, 3, 0, -3, -5, -10, -15};
   char dbstr[40];
 
   /* dB labels */
@@ -81,7 +78,7 @@ void createGUI() {
   for (y = 0; y < 14; y++) {
     for (x = 0; x < 20; x++) {
       p = pixels + y * rowstride + x * 3;
-      p[0] = p[1] = p[2] = (y % 2 ? 192 : 160);
+      p[0] = p[1] = p[2] = 3*(10-abs(x-10)) +  (y % 2 ? 192 : 160);
     }
   }
 
@@ -92,8 +89,8 @@ void createGUI() {
     for (x = 0; x < 20; x++) {
       p = pixels + y * rowstride + x * 3;
       if (y % 2 == 0) {
-        p[0] = 42;
-        p[1] = 127;
+        p[0] = 42  + 15*(10-abs(x-10));
+        p[1] = 96  + 12*(10-abs(x-10));
         p[2] = 255;
       } else {
         p[0] = p[1] = p[2] = 192;
@@ -109,8 +106,8 @@ void createGUI() {
       p = pixels + y * rowstride + x * 3;
       if (y % 2 == 0) {
         p[0] = 255;
-        p[1] = 127;
-        p[2] = 45;
+        p[1] = 96 + 12*(10-abs(x-10));
+        p[2] = 45 + 15*(10-abs(x-10));
       } else {
         p[0] = p[1] = p[2] = 192;
       }

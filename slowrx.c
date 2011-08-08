@@ -33,7 +33,7 @@ void *Listen() {
   unsigned char *Lum;
   FILE          *LumFile;
 
-  while (1) {
+  while (TRUE) {
 
     // Wait for VIS
     HedrShift = 0;
@@ -41,6 +41,8 @@ void *Listen() {
     gtk_widget_set_sensitive(vugrid, TRUE);
     gdk_threads_leave();
 
+    snd_pcm_prepare(pcm_handle);
+    snd_pcm_start  (pcm_handle);
     Mode = GetVIS();
     if (Mode == -1) exit(0);
 
@@ -81,7 +83,6 @@ void *Listen() {
     Skip       = 0;
     printf("  getvideo @ %.02f Hz, Skip %d, HedrShift %.0f Hz\n", Rate, Skip, HedrShift);
 
-    snd_pcm_start(pcm_handle);
     GetVideo(Mode, Rate, Skip, TRUE, FALSE);
     snd_pcm_drop(pcm_handle);
 

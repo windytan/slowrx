@@ -32,14 +32,12 @@ int GetVIS () {
   in      = fftw_malloc(sizeof(double) * FFTLen);
   if (in == NULL) {
     perror("GetVIS: Unable to allocate memory for FFT");
-    pclose(PcmInStream);
     exit(EXIT_FAILURE);
   }
 
   out     = fftw_malloc(sizeof(double) * FFTLen);
   if (out == NULL) {
     perror("GetVIS: Unable to allocate memory for FFT");
-    pclose(PcmInStream);
     fftw_free(in);
     exit(EXIT_FAILURE);
   }
@@ -64,7 +62,6 @@ int GetVIS () {
   PCM = calloc(SRATE, sizeof(double));
   if (PCM == NULL) {
     perror("GetVIS: Unable to allocate memory for PCM");
-    pclose(PcmInStream);
     exit(EXIT_FAILURE);
   }
 
@@ -76,6 +73,12 @@ int GetVIS () {
     if (samplesread == -EPIPE) {
       printf("ALSA buffer overrun :(\n");
       exit(EXIT_FAILURE);
+    } else if (samplesread == -EBADFD) {
+      printf("ALSA: PCM is not in the right state\n");
+      exit(EXIT_FAILURE);
+    } else if (samplesread == -ESTRPIPE) {
+      printf("ALSA: a suspend event occurred\n");
+      exit(EXIT_FAILURE);
     } else if (samplesread < 0) {
       printf("ALSA error\n");
       exit(EXIT_FAILURE);
@@ -86,7 +89,7 @@ int GetVIS () {
       PCM[i] = PCM[i + samplesread];
       PCM[i+samplesread] = PcmBuffer[i];
 
-      // Keep track of max amplitude for VU meter
+      // Keep track of max power for VU meter
       if (abs(PcmBuffer[i]) > MaxPcm) MaxPcm = abs(PcmBuffer[i]);
     }
 
@@ -144,8 +147,8 @@ int GetVIS () {
 
           visfail = FALSE;
           for (k = 0; k < 8; k++) {
-            if      (tone[18+i+3*k] > tone[0+j] - 625 && tone[18+i+3*k] < tone[0+j] - 575) Bit[k] = 0; // logic zero
-            else if (tone[18+i+3*k] > tone[0+j] - 825 && tone[18+i+3*k] < tone[0+j] - 775) Bit[k] = 1; // logic one
+            if      (tone[18+i+3*k] > tone[0+j] - 625 && tone[18+i+3*k] < tone[0+j] - 575) Bit[k] = 0;
+            else if (tone[18+i+3*k] > tone[0+j] - 825 && tone[18+i+3*k] < tone[0+j] - 775) Bit[k] = 1;
             else { // erroneous bit
               visfail = TRUE;
               break;

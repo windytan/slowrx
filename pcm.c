@@ -10,12 +10,13 @@
 
 void initPcmDevice() {
 
-  // Select sound card
-  
-  int card;
-  char *cardname;
-
-  int cardnum,numcards;
+  int                  card;
+  char                *cardname;
+  int                  cardnum, numcards;
+  snd_pcm_stream_t     PcmInStream = SND_PCM_STREAM_CAPTURE;
+  snd_pcm_hw_params_t *hwparams;
+  char                 pcm_name[30];
+  unsigned int         exact_rate = 44100;
 
   gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(cardcombo), "default");
   numcards = 0;
@@ -29,6 +30,7 @@ void initPcmDevice() {
     }
   } while (card != -1);
 
+  // Select sound card
 
   if (numcards == 0) {
     printf("No sound cards found!\n");
@@ -45,12 +47,8 @@ void initPcmDevice() {
     cardnum = gtk_combo_box_get_active (GTK_COMBO_BOX(cardcombo));
   }
 
-  snd_pcm_stream_t     PcmInStream = SND_PCM_STREAM_CAPTURE;
-  snd_pcm_hw_params_t *hwparams;
-
   gtk_widget_destroy(sdialog);
 
-  char pcm_name[30];
   if (cardnum == 0) {
     sprintf(pcm_name,"default");
   } else {
@@ -70,8 +68,6 @@ void initPcmDevice() {
     exit(EXIT_FAILURE);
   }
 
-  unsigned int exact_rate;
-
   if (snd_pcm_hw_params_set_access(pcm_handle, hwparams, SND_PCM_ACCESS_RW_INTERLEAVED) < 0) {
     fprintf(stderr, "ALSA: Error setting interleaved access.\n");
     exit(EXIT_FAILURE);
@@ -80,8 +76,6 @@ void initPcmDevice() {
     fprintf(stderr, "ALSA: Error setting format S16_LE.\n");
     exit(EXIT_FAILURE);
   }
-
-  exact_rate = 44100;
   if (snd_pcm_hw_params_set_rate_near(pcm_handle, hwparams, &exact_rate, 0) < 0) {
     fprintf(stderr, "ALSA: Error setting sample rate.\n");
     exit(EXIT_FAILURE);
