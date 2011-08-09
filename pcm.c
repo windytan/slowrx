@@ -35,19 +35,11 @@ void initPcmDevice() {
   if (numcards == 0) {
     printf("No sound cards found!\n");
     exit(EXIT_SUCCESS);
-  } else if (numcards == 1) {
-    cardnum = 0;
   } else {
-
-    gtk_combo_box_set_active(GTK_COMBO_BOX(cardcombo), 0);
-    gtk_widget_show_all (sdialog);
-
-    gint result = gtk_dialog_run(GTK_DIALOG(sdialog));
-    if (result == GTK_RESPONSE_CLOSE) exit(EXIT_SUCCESS);
-    cardnum = gtk_combo_box_get_active (GTK_COMBO_BOX(cardcombo));
+    cardnum = 0;
   }
 
-  gtk_widget_destroy(sdialog);
+  gtk_combo_box_set_active(GTK_COMBO_BOX(cardcombo), 0);
 
   if (cardnum == 0) {
     sprintf(pcm_name,"default");
