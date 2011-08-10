@@ -38,7 +38,8 @@ void *Listen() {
     // Wait for VIS
     HedrShift = 0;
     gdk_threads_enter();
-    gtk_widget_set_sensitive(vugrid, TRUE);
+    gtk_widget_set_sensitive(vugrid,   TRUE);
+    gtk_widget_set_sensitive(btnabort, FALSE);
     gdk_threads_leave();
 
     snd_pcm_prepare(pcm_handle);
@@ -71,9 +72,11 @@ void *Listen() {
     }
   
     // Get video
-    strftime(rctime, sizeof(rctime)-1, "%H:%Mz", timeptr);
-    snprintf(infostr, sizeof(infostr)-1, "%s @ %+.0f Hz, received at %s", ModeSpec[Mode].Name, HedrShift, rctime);
+    strftime(rctime, sizeof(rctime)-1, "%H:%M", timeptr);
+    snprintf(infostr, sizeof(infostr)-1, "%s, %s UTC", ModeSpec[Mode].Name, rctime);
     gdk_threads_enter();
+    gtk_widget_set_sensitive( manualframe, FALSE);
+    gtk_widget_set_sensitive( btnabort,    TRUE);
     gtk_statusbar_push( GTK_STATUSBAR(statusbar), 0, "Receiving video" );
     gtk_label_set_markup(GTK_LABEL(infolabel), infostr);
     gdk_threads_leave();
@@ -83,58 +86,75 @@ void *Listen() {
     Skip       = 0;
     printf("  getvideo @ %.02f Hz, Skip %d, HedrShift %.0f Hz\n", Rate, Skip, HedrShift);
 
-    GetVideo(Mode, Rate, Skip, TRUE, FALSE);
+    GetVideo(Mode, Rate, Skip, FALSE);
     snd_pcm_drop(pcm_handle);
-
-    // Fix slant
     gdk_threads_enter();
-    gtk_statusbar_push( GTK_STATUSBAR(statusbar), 0, "Calculating slant" );
-    gtk_widget_set_sensitive(vugrid, FALSE);
+    gtk_widget_set_sensitive( btnabort,    FALSE);
+    gtk_widget_set_sensitive( manualframe, TRUE);
     gdk_threads_leave();
-    printf("  FindSync @ %.02f Hz\n",Rate);
-    Rate = FindSync(PcmPointer, Mode, Rate, &Skip);
+
+    if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(togslant))) {
+
+      // Fix slant
+      setVU(0,-100);
+      gdk_threads_enter();
+      gtk_statusbar_push( GTK_STATUSBAR(statusbar), 0, "Calculating slant" );
+      gtk_widget_set_sensitive(vugrid, FALSE);
+      gdk_threads_leave();
+      printf("  FindSync @ %.02f Hz\n",Rate);
+      Rate = FindSync(PcmPointer, Mode, Rate, &Skip);
    
+      // Final image  
+      gdk_threads_enter();
+      gtk_statusbar_push( GTK_STATUSBAR(statusbar), 0, "Redrawing" );
+      gdk_threads_leave();
+      printf("  getvideo @ %.02f Hz, Skip %d, HedrShift %.0f Hz\n", Rate, Skip, HedrShift);
+      GetVideo(Mode, Rate, Skip, TRUE);
+    }
+      
     free(PCM);
     PCM = NULL;
-
-    // Final image  
-    gdk_threads_enter();
-    gtk_statusbar_push( GTK_STATUSBAR(statusbar), 0, "Redrawing" );
-    gdk_threads_leave();
-    printf("  getvideo @ %.02f Hz, Skip %d, HedrShift %.0f Hz\n", Rate, Skip, HedrShift);
-    GetVideo(Mode, Rate, Skip, TRUE, TRUE);
     
-    gdk_threads_enter();
-    gtk_statusbar_push( GTK_STATUSBAR(statusbar), 0, "Saving" );
-    gdk_threads_leave();
+    if (gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON(togsave))) {
 
-    // Save the raw signal
-    Lum = malloc( (ModeSpec[Mode].LineLen * ModeSpec[Mode].ImgHeight) * SRATE );
-    if (Lum == NULL) {
-      perror("Unable to allocate memory for lum data");
-      exit(EXIT_FAILURE);
+      // Save the raw signal
+      setVU(0,-100);
+      gdk_threads_enter();
+      gtk_statusbar_push( GTK_STATUSBAR(statusbar), 0, "Saving" );
+      gdk_threads_leave();
+
+      Lum = malloc( (ModeSpec[Mode].LineLen * ModeSpec[Mode].ImgHeight) * SRATE );
+      if (Lum == NULL) {
+        perror("Unable to allocate memory for lum data");
+        exit(EXIT_FAILURE);
+      }
+      for (i=0; i<(ModeSpec[Mode].LineLen * ModeSpec[Mode].ImgHeight) * SRATE; i++)
+        Lum[i] = clip((StoredFreq[i] - (1500 + HedrShift)) / 3.1372549);
+
+      LumFile = fopen(lumfilename,"w");
+      if (LumFile == NULL) {
+        perror("Unable to open luma file for writing");
+        exit(EXIT_FAILURE);
+      }
+      fwrite(Lum,1,(ModeSpec[Mode].LineLen * ModeSpec[Mode].ImgHeight) * SRATE,LumFile);
+      fclose(LumFile);
+
+      printf("save png\n");
+      // Save the received image as PNG
+      png_t png;
+      png_init(0,0);
+
+      guchar *pixels;
+      pixels = gdk_pixbuf_get_pixels(RxPixbuf);
+
+      printf("write\n");
+      png_open_file_write(&png, pngfilename);
+      printf("set data\n");
+      printf("%d x %d\n",ModeSpec[Mode].ImgWidth, ModeSpec[Mode].ImgHeight);
+      png_set_data(&png, ModeSpec[Mode].ImgWidth, ModeSpec[Mode].ImgHeight, 8, PNG_TRUECOLOR, pixels);
+      png_close_file(&png);
+      printf("ok\n");
     }
-    for (i=0; i<(ModeSpec[Mode].LineLen * ModeSpec[Mode].ImgHeight) * SRATE; i++)
-      Lum[i] = clip((StoredFreq[i] - (1500 + HedrShift)) / 3.1372549);
-
-    LumFile = fopen(lumfilename,"w");
-    if (LumFile == NULL) {
-      perror("Unable to open luma file for writing");
-      exit(EXIT_FAILURE);
-    }
-    fwrite(Lum,1,(ModeSpec[Mode].LineLen * ModeSpec[Mode].ImgHeight) * SRATE,LumFile);
-    fclose(LumFile);
-
-    // Save the received image as PNG
-    png_t png;
-    png_init(0,0);
-
-    guchar *pixels;
-    pixels = gdk_pixbuf_get_pixels(RxPixbuf);
-
-    png_open_file_write(&png, pngfilename);
-    png_set_data(&png, ModeSpec[Mode].ImgWidth, ModeSpec[Mode].ImgHeight * ModeSpec[Mode].YScale, 8, PNG_TRUECOLOR, pixels);
-    png_close_file(&png);
     
     free(StoredFreq);
     StoredFreq = NULL;

@@ -12,10 +12,9 @@
  *  Mode:      M1, M2, S1, S2, R72, R36...
  *  Rate:      exact sampling rate used
  *  Skip:      number of PCM samples to skip at the beginning (for sync phase adjustment)
- *  Adaptive:  false = Static window size, true = Adapt window to noise
  *  Redraw:    false = Apply windowing and FFT to the signal, true = Redraw from cached FFT data
  */
-int GetVideo(int Mode, double Rate, int Skip, int Adaptive, int Redraw) {
+int GetVideo(int Mode, double Rate, int Skip, int Redraw) {
 
   unsigned int  MaxBin = 0;
   unsigned int  VideoPlusNoiseBins=0, ReceiverBins=0, NoiseOnlyBins=0;
@@ -24,7 +23,7 @@ int GetVideo(int Mode, double Rate, int Skip, int Adaptive, int Redraw) {
   int           Length=0, Sample=0;
   int           FFTLen=0, WinLength=0;
   int           samplesread = 0, WinIdx = 0, LineNum = 0;
-  int           x = 0, y = 0, prevline=0, tx=0, ty=0, MaxPcm=0;
+  int           x = 0, y = 0, prevline=0, tx=0, MaxPcm=0;
   int           HannLens[7]   = { 64, 96, 128, 256, 512, 1024, 2048 };
   double        Hann[7][2048] = {{0}};
   double        t=0, Freq = 0, NextPixel = 0, NextSNR = 0, NextFFT = 0;
@@ -105,13 +104,12 @@ int GetVideo(int Mode, double Rate, int Skip, int Adaptive, int Redraw) {
 
   }
 
-  // Initialize pixbuffer for gtk
+  // Initialize pixbuffer
   if (!Redraw) {
 
     gdk_pixbuf_unref(RxPixbuf);
-    RxPixbuf = gdk_pixbuf_new (GDK_COLORSPACE_RGB, FALSE, 8, ModeSpec[Mode].ImgWidth, ModeSpec[Mode].ImgHeight *
-                ModeSpec[Mode].YScale);
-    ClearPixbuf(RxPixbuf, ModeSpec[Mode].ImgWidth, ModeSpec[Mode].ImgHeight * ModeSpec[Mode].YScale);
+    RxPixbuf = gdk_pixbuf_new (GDK_COLORSPACE_RGB, FALSE, 8, ModeSpec[Mode].ImgWidth, ModeSpec[Mode].ImgHeight);
+    ClearPixbuf(RxPixbuf, ModeSpec[Mode].ImgWidth, ModeSpec[Mode].ImgHeight);
   }
 
   int rowstride = gdk_pixbuf_get_rowstride (RxPixbuf);
@@ -160,59 +158,53 @@ int GetVideo(int Mode, double Rate, int Skip, int Adaptive, int Redraw) {
 
       if (t >= NextSNR) {
 
-        if (Adaptive == 0) {
-          // SNR estimation can be turned off
-          SNR = 70;
-        } else {
+        // Apply Hann window to SNRSIZE samples
+        for (i = 0; i < SNRSIZE; i++) in[i] = PCM[Sample + i] * Hann[6][i];
 
-          // Apply Hann window to SNRSIZE samples
-          for (i = 0; i < SNRSIZE; i++) in[i] = PCM[Sample + i] * Hann[6][i];
+        // FFT
+        fftw_execute(SNRPlan);
 
-          // FFT
-          fftw_execute(SNRPlan);
+        // Calculate video-plus-noise power (1500-2300 Hz)
 
-          // Calculate video-plus-noise power (1500-2300 Hz)
+        Pvideo_plus_noise = 0;
+        for (n = GetBin(1500+HedrShift, SNRSIZE); n <= GetBin(2300+HedrShift, SNRSIZE); n++)
+          Pvideo_plus_noise += pow(out[n], 2) + pow(out[SNRSIZE - n], 2);
 
-          Pvideo_plus_noise = 0;
-          for (n = GetBin(1500+HedrShift, SNRSIZE); n <= GetBin(2300+HedrShift, SNRSIZE); n++)
-            Pvideo_plus_noise += pow(out[n], 2) + pow(out[SNRSIZE - n], 2);
+        // Calculate noise-only power (400-800 Hz + 2700-3400 Hz)
 
-          // Calculate noise-only power (400-800 Hz + 2700-3400 Hz)
+        Pnoise_only = 0;
+        for (n = GetBin(400+HedrShift,  SNRSIZE); n <= GetBin(800+HedrShift, SNRSIZE);  n++)
+          Pnoise_only += pow(out[n], 2) + pow(out[SNRSIZE - n], 2);
 
-          Pnoise_only = 0;
-          for (n = GetBin(400+HedrShift,  SNRSIZE); n <= GetBin(800+HedrShift, SNRSIZE);  n++)
-            Pnoise_only += pow(out[n], 2) + pow(out[SNRSIZE - n], 2);
+        for (n = GetBin(2700+HedrShift, SNRSIZE); n <= GetBin(3400+HedrShift, SNRSIZE); n++)
+          Pnoise_only += pow(out[n], 2) + pow(out[SNRSIZE - n], 2);
 
-          for (n = GetBin(2700+HedrShift, SNRSIZE); n <= GetBin(3400+HedrShift, SNRSIZE); n++)
-            Pnoise_only += pow(out[n], 2) + pow(out[SNRSIZE - n], 2);
+        // Bandwidths
+        VideoPlusNoiseBins = GetBin(2300, SNRSIZE) - GetBin(1500, SNRSIZE) + 1;
 
-          // Bandwidths
-          VideoPlusNoiseBins = GetBin(2300, SNRSIZE) - GetBin(1500, SNRSIZE) + 1;
+        NoiseOnlyBins      = GetBin(800,  SNRSIZE) - GetBin(400,  SNRSIZE) + 1 +
+                             GetBin(3400, SNRSIZE) - GetBin(2700, SNRSIZE) + 1;
 
-          NoiseOnlyBins      = GetBin(800,  SNRSIZE) - GetBin(400,  SNRSIZE) + 1 +
-                               GetBin(3400, SNRSIZE) - GetBin(2700, SNRSIZE) + 1;
+        ReceiverBins       = GetBin(3400, SNRSIZE) - GetBin(400,  SNRSIZE);
 
-          ReceiverBins       = GetBin(3400, SNRSIZE) - GetBin(400,  SNRSIZE);
+        // Eq 15
+        Pnoise  = Pnoise_only * (1.0 * ReceiverBins / NoiseOnlyBins);
+        Psignal = Pvideo_plus_noise - Pnoise_only * (1.0 * VideoPlusNoiseBins / NoiseOnlyBins);
 
-          // Eq 15
-          Pnoise  = Pnoise_only * (1.0 * ReceiverBins / NoiseOnlyBins);
-          Psignal = Pvideo_plus_noise - Pnoise_only * (1.0 * VideoPlusNoiseBins / NoiseOnlyBins);
+        // Lower bound to -20 dB
+        SNR = ((Psignal / Pnoise < .01) ? -20 : 10 * log10(Psignal / Pnoise));
 
-          // Lower bound to -20 dB
-          SNR = ((Psignal / Pnoise < .01) ? -20 : 10 * log10(Psignal / Pnoise));
-
-          NextSNR += ModeSpec[Mode].LineLen / 60;
-
-        }
+        NextSNR += ModeSpec[Mode].LineLen / 60;
       }
 
       if (t >= NextFFT) {
 
-        // Set window size based on SNR
+        // Adapt window size to SNR
 
         FFTLen = 512;
 
-        if        (SNR >= 30)   WinLength = 37;
+        if        (!Adaptive)   WinLength = 37;
+        else if   (SNR >= 30)   WinLength = 37;
         else {
           if      (SNR < -10) { WinIdx = 5; FFTLen = 1024; }
           else if (SNR < -5)    WinIdx = 4;
@@ -235,7 +227,7 @@ int GetVideo(int Mode, double Rate, int Skip, int Adaptive, int Redraw) {
 
         // Select window function based on SNR
 
-        if (SNR < 30) {
+        if (Adaptive && SNR < 30) {
 
           // Apply Hann window
           for (i = 0; i < WinLength; i++)
@@ -365,35 +357,33 @@ int GetVideo(int Mode, double Rate, int Skip, int Adaptive, int Redraw) {
       // Calculate and draw pixels on line change 
       if (LineNum != prevline) {
         for (tx = 0; tx < ModeSpec[Mode].ImgWidth; tx++) {
-          for (ty = prevline * ModeSpec[Mode].YScale; ty < prevline * ModeSpec[Mode].YScale + ModeSpec[Mode].YScale; ty++) {
-            p = pixels + ty * rowstride + tx * 3;
+          p = pixels + prevline * rowstride + tx * 3;
 
-            switch(ModeSpec[Mode].ColorEnc) {
+          switch(ModeSpec[Mode].ColorEnc) {
 
-              case RGB:
-                p[0] = Image[tx][prevline][0];
-                p[1] = Image[tx][prevline][1];
-                p[2] = Image[tx][prevline][2];
-                break;
+            case RGB:
+              p[0] = Image[tx][prevline][0];
+              p[1] = Image[tx][prevline][1];
+              p[2] = Image[tx][prevline][2];
+              break;
 
-              case GBR:
-                p[0] = Image[tx][prevline][2];
-                p[1] = Image[tx][prevline][0];
-                p[2] = Image[tx][prevline][1];
-                break;
+            case GBR:
+              p[0] = Image[tx][prevline][2];
+              p[1] = Image[tx][prevline][0];
+              p[2] = Image[tx][prevline][1];
+              break;
 
-              case YUV:
-                p[0] = clip((100 * Image[tx][prevline][0] + 140 * Image[tx][prevline][1] - 17850) / 100.0);
-                p[1] = clip((100 * Image[tx][prevline][0] -  71 * Image[tx][prevline][1] - 33 *
-                    Image[tx][prevline][2] + 13260) / 100.0);
-                p[2] = clip((100 * Image[tx][prevline][0] + 178 * Image[tx][prevline][2] - 22695) / 100.0);
-                break;
+            case YUV:
+              p[0] = clip((100 * Image[tx][prevline][0] + 140 * Image[tx][prevline][1] - 17850) / 100.0);
+              p[1] = clip((100 * Image[tx][prevline][0] -  71 * Image[tx][prevline][1] - 33 *
+                  Image[tx][prevline][2] + 13260) / 100.0);
+              p[2] = clip((100 * Image[tx][prevline][0] + 178 * Image[tx][prevline][2] - 22695) / 100.0);
+              break;
 
-              case BW:
-                p[0] = p[1] = p[2] = Image[tx][prevline][0];
-                break;
+            case BW:
+              p[0] = p[1] = p[2] = Image[tx][prevline][0];
+              break;
 
-            }
           }
         }
 
@@ -420,9 +410,9 @@ int GetVideo(int Mode, double Rate, int Skip, int Adaptive, int Redraw) {
   }
 
   // High-quality scaling when finished
-  if (Redraw) {
+  if (Redraw || !(gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON(togslant)))) {
     gdk_pixbuf_unref(DispPixbuf);
-    DispPixbuf = gdk_pixbuf_scale_simple(RxPixbuf,500,500.0/ModeSpec[Mode].ImgWidth * ModeSpec[Mode].ImgHeight * ModeSpec[Mode].YScale,GDK_INTERP_BILINEAR);
+    DispPixbuf = gdk_pixbuf_scale_simple(RxPixbuf,500,500.0/ModeSpec[Mode].ImgWidth * ModeSpec[Mode].ImgHeight * ModeSpec[Mode].YScale,GDK_INTERP_HYPER);
 
     gdk_threads_enter();
     gtk_image_set_from_pixbuf(GTK_IMAGE(RxImage), DispPixbuf);

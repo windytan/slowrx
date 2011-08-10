@@ -27,6 +27,7 @@ int GetVIS () {
   double *in;
   double *out;
   unsigned int FFTLen = 2048;
+  int selmode;
 
   // Plan for frequency estimation
   in      = fftw_malloc(sizeof(double) * FFTLen);
@@ -50,7 +51,7 @@ int GetVIS () {
   double       HedrBuf[100] = {0}, tone[100] = {0};
   int          HedrPtr = 0;
   short int    MaxPcm = 0;
-  char         infostr[60] = {0}, visfail = FALSE;
+  char         infostr[60] = {0}, gotvis = FALSE;
 
   for (i = 0; i < FFTLen; i++) in[i] = 0;
 
@@ -64,6 +65,8 @@ int GetVIS () {
     perror("GetVIS: Unable to allocate memory for PCM");
     exit(EXIT_FAILURE);
   }
+
+  ManualActivated = FALSE;
 
   while ( TRUE ) {
 
@@ -128,7 +131,7 @@ int GetVIS () {
     // Is there a pattern that looks like (the end of) a calibration header + VIS?
     // Tolerance ±25 Hz
     HedrShift = 0;
-    visfail   = TRUE;
+    gotvis    = FALSE;
     for (i = 0; i < 3; i++) {
       if (HedrShift != 0) break;
       for (j = 0; j < 3; j++) {
@@ -145,16 +148,16 @@ int GetVIS () {
 
           // Read VIS
 
-          visfail = FALSE;
+          gotvis = TRUE;
           for (k = 0; k < 8; k++) {
             if      (tone[18+i+3*k] > tone[0+j] - 625 && tone[18+i+3*k] < tone[0+j] - 575) Bit[k] = 0;
             else if (tone[18+i+3*k] > tone[0+j] - 825 && tone[18+i+3*k] < tone[0+j] - 775) Bit[k] = 1;
             else { // erroneous bit
-              visfail = TRUE;
+              gotvis = FALSE;
               break;
             }
           }
-          if (!visfail) {
+          if (gotvis) {
             HedrShift = tone[0+j] - 1900;
 
             VIS = Bit[0] + (Bit[1] << 1) + (Bit[2] << 2) + (Bit[3] << 3) + (Bit[4] << 4) +
@@ -167,11 +170,11 @@ int GetVIS () {
 
             if (Parity != ParityBit && VIS != 0x06) {
               printf("  Parity fail\n");
-              visfail = TRUE;
+              gotvis = FALSE;
             } else if (VISmap[VIS] == UNKNOWN) {
               printf("  Unknown VIS\n");
               snprintf(infostr, sizeof(infostr)-1, "How to decode image with VIS %d (%02Xh)?", VIS, VIS);
-              visfail = TRUE;
+              gotvis = FALSE;
               gdk_threads_enter();
               gtk_label_set_markup(GTK_LABEL(infolabel), infostr);
               gdk_threads_leave();
@@ -183,7 +186,31 @@ int GetVIS () {
       }
     }
 
-    if (!visfail) break;
+    if (gotvis) {
+      if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(togrx))) {
+        break;
+      }
+    }
+
+    // Manual start
+    if (ManualActivated) {
+
+      gdk_threads_enter();
+      gtk_widget_set_sensitive( manualframe, FALSE );
+      gdk_threads_leave();
+
+      selmode   = gtk_combo_box_get_active (GTK_COMBO_BOX(modecombo)) + 1;
+      HedrShift = gtk_spin_button_get_value_as_int (GTK_SPIN_BUTTON(shiftspin));
+      VIS = 0;
+      for (i=0; i<0x80; i++) {
+        if (VISmap[i] == selmode) {
+          VIS = i;
+          break;
+        }
+      }
+
+      break;
+    }
 
     if (++Pointer >= 50) Pointer = 0;
 

@@ -17,7 +17,7 @@
  * LineLen       Time in seconds from the beginning of a sync pulse to the beginning of the next one
  * ImgWidth      Pixels per scanline
  * ImgHeight     Number of scanlines
- * YScale        Integer factor by which the final image needs to be scaled y-axis-wise (1 or 2)
+ * YScale        Vertical size of a pixel (1 or 2)
  * ColorEnc      Color format (GBR, RGB, YUV, BW)
  *
  *
@@ -165,7 +165,7 @@ ModeSpecDef ModeSpec[] = {
     .ColorEnc     = YUV },
 
   [R24BW] = {  // N7CXI, 2000
-    .Name         = "Robot 24 B&W",
+    .Name         = "Robot 24 B/W",
     .ShortName    = "R24BW",
     .SyncLen      = 7e-3,
     .PorchLen     = 0e-3,
@@ -178,7 +178,7 @@ ModeSpecDef ModeSpec[] = {
     .ColorEnc     = BW },
 
   [R12BW] = {  // N7CXI, 2000
-    .Name         = "Robot 12 B&W",
+    .Name         = "Robot 12 B/W",
     .ShortName    = "R12BW",
     .SyncLen      = 7e-3,
     .PorchLen     = 0e-3,
@@ -191,12 +191,12 @@ ModeSpecDef ModeSpec[] = {
     .ColorEnc     = BW },
 
   [R8BW] = {  // N7CXI, 2000
-    .Name         = "Robot 8 B&W",
+    .Name         = "Robot 8 B/W",
     .ShortName    = "R8BW",
     .SyncLen      = 7e-3,
     .PorchLen     = 0e-3,
     .SeparatorLen = 0e-3,
-    .PixelLen     = 0.188e-3,
+    .PixelLen     = .188e-3,
     .LineLen      = 67e-3,
     .ImgWidth     = 320,
     .ImgHeight    = 120,

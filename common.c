@@ -16,8 +16,10 @@ unsigned int SRate           = 44100;
 double      *StoredFreq      = NULL;
 double       StoredFreqRate  = 0;
 double       HedrShift       = 0;
-int          PWRdBthresh[10] = {0,  -3, -5, -10, -15, -20, -25, -30, -35, -40};
+int          PWRdBthresh[10] = {0,  -3, -5, -10, -15, -20, -25, -30, -40, -50};
 int          SNRdBthresh[10] = {30, 15, 10,   5,   3,   0,  -3,  -5, -10, -15};
+int          Adaptive        = TRUE;
+int          ManualActivated = FALSE;
 
 GtkWidget   *mainwindow      = NULL;
 GtkWidget   *notebook        = NULL;
@@ -28,15 +30,24 @@ GtkWidget   *statusbar       = NULL;
 GtkWidget   *snrbar          = NULL;
 GtkWidget   *pwrbar          = NULL;
 GtkWidget   *vugrid          = NULL;
-GdkPixbuf   *VUpixbufPWR     = NULL;
-GdkPixbuf   *VUpixbufDim     = NULL;
-GdkPixbuf   *VUpixbufSNR     = NULL;
-GtkWidget   *PWRimage[10]    = {NULL};
-GtkWidget   *SNRimage[10]    = {NULL};
+GdkPixbuf   *pixbufPWR       = NULL;
+GdkPixbuf   *pixbufSNR       = NULL;
 GtkWidget   *infolabel       = NULL;
 GtkWidget   *aboutdialog     = NULL;
+GtkWidget   *prefdialog      = NULL;
 GtkWidget   *sdialog         = NULL;
 GtkWidget   *cardcombo       = NULL;
+GtkWidget   *modecombo       = NULL;
+GtkWidget   *togslant        = NULL;
+GtkWidget   *togsave         = NULL;
+GtkWidget   *togadapt        = NULL;
+GtkWidget   *togrx           = NULL;
+GtkWidget   *btnabort        = NULL;
+GtkWidget   *btnstart        = NULL;
+GtkWidget   *manualframe     = NULL;
+GtkWidget   *shiftspin       = NULL;
+GtkWidget   *pwrimage        = NULL;
+GtkWidget   *snrimage        = NULL;
 
 snd_pcm_t   *pcm_handle      = NULL;
 
@@ -50,7 +61,7 @@ void ClearPixbuf(GdkPixbuf *pb, unsigned int width, unsigned int height) {
   for (y = 0; y < height; y++) {
     for (x = 0; x < width; x++) {
       p = pixels + y * rowstride + x * 3;
-      p[0] = p[1] = p[2] = 192;
+      p[0] = p[2] = p[1] = 96 + (1.0*y/height) * 32;
     }
   }
 
@@ -68,26 +79,63 @@ unsigned char clip (double a) {
   return  (unsigned char)round(a);
 }
 
-void setVU(short int PcmValue, double SNRdB) {
-  int i;
+void setVU (short int PcmValue, double SNRdB) {
+  int x,y;
   int PWRdB = (int)round(10 * log10(pow(PcmValue/32767.0,2)));
+  guchar *pixelsPWR, *pixelsSNR, *p;
+  unsigned int rowstridePWR,rowstrideSNR;
+
+  rowstridePWR = gdk_pixbuf_get_rowstride (pixbufPWR);
+  pixelsPWR    = gdk_pixbuf_get_pixels    (pixbufPWR);
+  
+  rowstrideSNR = gdk_pixbuf_get_rowstride (pixbufSNR);
+  pixelsSNR    = gdk_pixbuf_get_pixels    (pixbufSNR);
+
+  for (y=0; y<20; y++) {
+    for (x=0; x<100; x++) {
+
+      p = pixelsPWR + y * rowstridePWR + (99-x) * 3;
+
+      if (PWRdB >= PWRdBthresh[x/10]) {
+        p[0] = 42  + 10*(10-abs(y-10));
+        p[1] = 96  + 7*(10-abs(y-10));
+        p[2] = 255;
+      } else {
+        p[0] = p[1] = p[2] = 192;
+      }
+
+      p = pixelsSNR + y * rowstrideSNR + (99-x) * 3;
+
+      if (SNRdB >= SNRdBthresh[x/10]) {
+        p[0] = 255;
+        p[1] = 96 + 9*(10-abs(y-10));
+        p[2] = 45 + 12*(10-abs(y-10));
+      } else {
+        p[0] = p[1] = p[2] = 192;
+      }
+    }
+  }
 
   gdk_threads_enter();
-  for (i=0; i<10; i++) {
-    if (PWRdB >= PWRdBthresh[i]) gtk_image_set_from_pixbuf(GTK_IMAGE(PWRimage[i]), VUpixbufPWR);
-    else                         gtk_image_set_from_pixbuf(GTK_IMAGE(PWRimage[i]), VUpixbufDim);
-
-    if (SNRdB >= SNRdBthresh[i]) gtk_image_set_from_pixbuf(GTK_IMAGE(SNRimage[i]), VUpixbufSNR);
-    else                         gtk_image_set_from_pixbuf(GTK_IMAGE(SNRimage[i]), VUpixbufDim);
-  }
+  gtk_image_set_from_pixbuf(GTK_IMAGE(pwrimage), pixbufPWR);
+  gtk_image_set_from_pixbuf(GTK_IMAGE(snrimage), pixbufSNR);
   gdk_threads_leave();
 
 }
 
 double deg2rad (double Deg) {
-    return (Deg / 180) * M_PI;
+  return (Deg / 180) * M_PI;
 }
 
 void delete_event() {
   gtk_main_quit ();
+}
+
+void GetAdaptive() {
+  Adaptive = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON(togadapt));
+}
+
+void ManualStart() {
+  ManualActivated = TRUE;
+  printf("start\n");
 }

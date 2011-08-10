@@ -17,6 +17,8 @@ extern double       StoredFreqRate;
 extern double       HedrShift;
 extern int          PWRdBthresh[10];
 extern int          SNRdBthresh[10];
+extern int          Adaptive;
+extern int          ManualActivated;
 
 extern GtkWidget   *mainwindow;
 extern GtkWidget   *notebook;
@@ -27,15 +29,24 @@ extern GtkWidget   *statusbar;
 extern GtkWidget   *snrbar;
 extern GtkWidget   *pwrbar;
 extern GtkWidget   *vugrid;
-extern GdkPixbuf   *VUpixbufPWR;
-extern GdkPixbuf   *VUpixbufSNR;
-extern GdkPixbuf   *VUpixbufDim;
-extern GtkWidget   *PWRimage[10];
-extern GtkWidget   *SNRimage[10];
+extern GdkPixbuf   *pixbufPWR;
+extern GdkPixbuf   *pixbufSNR;
 extern GtkWidget   *infolabel;
 extern GtkWidget   *aboutdialog;
+extern GtkWidget   *prefdialog;
 extern GtkWidget   *sdialog;
 extern GtkWidget   *cardcombo;
+extern GtkWidget   *modecombo;
+extern GtkWidget   *togslant;
+extern GtkWidget   *togsave;
+extern GtkWidget   *togadapt;
+extern GtkWidget   *togrx;
+extern GtkWidget   *btnabort;
+extern GtkWidget   *btnstart;
+extern GtkWidget   *manualframe;
+extern GtkWidget   *shiftspin;
+extern GtkWidget   *pwrimage;
+extern GtkWidget   *snrimage;
 
 extern snd_pcm_t   *pcm_handle;
 
@@ -71,7 +82,7 @@ extern ModeSpecDef ModeSpec[];
 
 void               ClearPixbuf   (GdkPixbuf *, unsigned int, unsigned int);
 void               createGUI     ();
-int                GetVideo      (int, double, int, int, int);
+int                GetVideo      (int, double, int, int);
 unsigned int       GetBin        (double, int);
 unsigned char      clip          (double);
 void               setVU         (short int, double);
@@ -80,5 +91,7 @@ double             FindSync      (unsigned int, int, double, int*);
 double             deg2rad       (double);
 void               initPcmDevice ();
 void               delete_event  ();
+void               GetAdaptive   ();
+void               ManualStart   ();
 
 #endif
