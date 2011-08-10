@@ -6,11 +6,11 @@ A shortwave listener's linux tool for decoding analogue [SSTV](http://en.wikiped
 Features
 --------
 
-* Supports a multitude of modes (see `modespec.c` for a list)
-* Automatic frequency shifting
-* Slant correction using Hough transform
+* Support for a multitude of modes (see `modespec.c` for a list)
+* Automatic frequency shifting – no need to fine-tune the radio
+* Automatic slant correction (compensation for sound card clock error) using Hough transform
 * Noise reduction using adaptive windowing
-* Saves received pictures as PNG along with the corresponding raw signals
+* Save received pictures as PNG
 
 Libraries
 ---------
@@ -25,11 +25,11 @@ References
 
 The program is based on several articles:
 
-* Cordesses L, Cordesses R (F2DC) (May 2003). ["Some thoughts on 'Real-Time' SSTV Processing"](http://lionel.cordesses.free.fr/gpages/Cordesses.pdf). *QEX* May/June 2003: 3-20.
+* Cordesses L, Cordesses R (F2DC) (May 2003). ["Some thoughts on 'Real-Time' SSTV Processing"](http://lionel.cordesses.free.fr/gpages/Cordesses.pdf). *QEX* May/June 2003: 3–20.
 * Barber, JL (N7CXI) (May 2000). ["Proposal for SSTV Mode Specifications"](http://www.barberdsp.com/files/Dayton%20Paper.pdf). Presented at the Dayton SSTV forum, 20 May 2000.
 * Jones, D (KB4YZ) (Feb 1998). ["List of SSTV Modes with VIS Codes"](http://www.tima.com/~djones/vis.txt).
 * Jones, D (KB4YZ) (May 1999). ["List of SSTV Modes with Line Timing"](http://www.tima.com/~djones/line.txt).
-* Gasior M, Gonzalez J L (May 2004). ["Improving FFT Frequency Measurement Resolution by Parabolic and Gaussian Spectrum Interpolation"](http://cdsweb.cern.ch/record/738182/files/ab-2004-023.pdf). *AIP Conf. Proc.* (Geneva: CERN) **732** (2004): 276-285.
+* Gasior M, Gonzalez J L (May 2004). ["Improving FFT Frequency Measurement Resolution by Parabolic and Gaussian Spectrum Interpolation"](http://cdsweb.cern.ch/record/738182/files/ab-2004-023.pdf). *AIP Conf. Proc.* (Geneva: CERN) **732** (2004): 276–285.
 
 Licensing
 ---------
