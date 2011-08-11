@@ -7,19 +7,20 @@
 
 #include "common.h"
 
-int          VISmap[128];
-short int    PcmBuffer[2048] = {0};
+guchar       VISmap[128];
+gint16       PcmBuffer[2048] = {0};
 double      *PCM             = NULL;
 int          PcmPointer      = 0;
 int          Sample          = 0;
 unsigned int SRate           = 44100;
 double      *StoredFreq      = NULL;
-double       StoredFreqRate  = 0;
-double       HedrShift       = 0;
+guint        StoredFreqRate  = 0;
+gshort       HedrShift       = 0;
 int          PWRdBthresh[10] = {0,  -3, -5, -10, -15, -20, -25, -30, -40, -50};
 int          SNRdBthresh[10] = {30, 15, 10,   5,   3,   0,  -3,  -5, -10, -15};
-int          Adaptive        = TRUE;
-int          ManualActivated = FALSE;
+gboolean     Adaptive        = TRUE;
+gboolean     ManualActivated = FALSE;
+gboolean     Abort           = FALSE;
 
 GtkWidget   *mainwindow      = NULL;
 GtkWidget   *notebook        = NULL;
@@ -51,9 +52,9 @@ GtkWidget   *snrimage        = NULL;
 
 snd_pcm_t   *pcm_handle      = NULL;
 
-void ClearPixbuf(GdkPixbuf *pb, unsigned int width, unsigned int height) {
+void ClearPixbuf(GdkPixbuf *pb, gushort width, gushort height) {
 
-  unsigned int x,y,rowstride;
+  guint   x,y,rowstride;
   guchar *pixels, *p;
   rowstride = gdk_pixbuf_get_rowstride (pb);
   pixels    = gdk_pixbuf_get_pixels(pb);
@@ -68,12 +69,12 @@ void ClearPixbuf(GdkPixbuf *pb, unsigned int width, unsigned int height) {
 }
 
 // Return the bin index matching the given frequency
-unsigned int GetBin (double Freq, int FFTLen) {
+guint GetBin (double Freq, int FFTLen) {
   return (Freq / SRATE * FFTLen);
 }
 
 // Clip to [0..255]
-unsigned char clip (double a) {
+guchar clip (double a) {
   if      (a < 0)   return 0;
   else if (a > 255) return 255;
   return  (unsigned char)round(a);
@@ -101,7 +102,7 @@ void setVU (short int PcmValue, double SNRdB) {
         p[1] = 96  + 7*(10-abs(y-10));
         p[2] = 255;
       } else {
-        p[0] = p[1] = p[2] = 192;
+        p[0] = p[1] = p[2] = 128 + 7*(10-abs(y-10));
       }
 
       p = pixelsSNR + y * rowstrideSNR + (99-x) * 3;
@@ -111,7 +112,7 @@ void setVU (short int PcmValue, double SNRdB) {
         p[1] = 96 + 9*(10-abs(y-10));
         p[2] = 45 + 12*(10-abs(y-10));
       } else {
-        p[0] = p[1] = p[2] = 192;
+        p[0] = p[1] = p[2] = 128 + 7*(10-abs(y-10));
       }
     }
   }
@@ -137,5 +138,8 @@ void GetAdaptive() {
 
 void ManualStart() {
   ManualActivated = TRUE;
-  printf("start\n");
+}
+
+void AbortRx() {
+  Abort = TRUE;
 }

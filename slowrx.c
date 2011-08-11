@@ -20,18 +20,13 @@
 
 void *Listen() {
 
-  double         Rate = SRATE;
-  int            Skip = 0, i=0;
-  int            Mode = 0;
-  time_t         timet;
-  char           dest[40];
-  char           pngfilename[40];
-  char           lumfilename[40];
-  struct tm     *timeptr = NULL;
-  char           infostr[60];
-  char           rctime[8];
-  unsigned char *Lum;
-  FILE          *LumFile;
+  int        Skip = 0, i=0;
+  char       dest[40], pngfilename[40], lumfilename[40], infostr[60], rctime[8];
+  guchar    *Lum, *pixels, Mode=0;
+  guint      Rate = SRATE;
+  struct tm *timeptr = NULL;
+  time_t     timet;
+  FILE      *LumFile;
 
   while (TRUE) {
 
@@ -45,7 +40,7 @@ void *Listen() {
     snd_pcm_prepare(pcm_handle);
     snd_pcm_start  (pcm_handle);
     Mode = GetVIS();
-    if (Mode == -1) exit(0);
+    if (Mode == 0) exit(EXIT_FAILURE);
 
     printf("  ==== %s ====\n", ModeSpec[Mode].Name);
 
@@ -84,7 +79,7 @@ void *Listen() {
     Sample     = 0;
     Rate       = SRATE;
     Skip       = 0;
-    printf("  getvideo @ %.02f Hz, Skip %d, HedrShift %.0f Hz\n", Rate, Skip, HedrShift);
+    printf("  getvideo @ %d Hz, Skip %d, HedrShift %d Hz\n", Rate, Skip, HedrShift);
 
     GetVideo(Mode, Rate, Skip, FALSE);
     snd_pcm_drop(pcm_handle);
@@ -101,14 +96,14 @@ void *Listen() {
       gtk_statusbar_push( GTK_STATUSBAR(statusbar), 0, "Calculating slant" );
       gtk_widget_set_sensitive(vugrid, FALSE);
       gdk_threads_leave();
-      printf("  FindSync @ %.02f Hz\n",Rate);
+      printf("  FindSync @ %d Hz\n",Rate);
       Rate = FindSync(PcmPointer, Mode, Rate, &Skip);
    
       // Final image  
       gdk_threads_enter();
       gtk_statusbar_push( GTK_STATUSBAR(statusbar), 0, "Redrawing" );
       gdk_threads_leave();
-      printf("  getvideo @ %.02f Hz, Skip %d, HedrShift %.0f Hz\n", Rate, Skip, HedrShift);
+      printf("  getvideo @ %d Hz, Skip %d, HedrShift %d Hz\n", Rate, Skip, HedrShift);
       GetVideo(Mode, Rate, Skip, TRUE);
     }
       
@@ -139,21 +134,15 @@ void *Listen() {
       fwrite(Lum,1,(ModeSpec[Mode].LineLen * ModeSpec[Mode].ImgHeight) * SRATE,LumFile);
       fclose(LumFile);
 
-      printf("save png\n");
       // Save the received image as PNG
       png_t png;
       png_init(0,0);
 
-      guchar *pixels;
       pixels = gdk_pixbuf_get_pixels(RxPixbuf);
 
-      printf("write\n");
       png_open_file_write(&png, pngfilename);
-      printf("set data\n");
-      printf("%d x %d\n",ModeSpec[Mode].ImgWidth, ModeSpec[Mode].ImgHeight);
       png_set_data(&png, ModeSpec[Mode].ImgWidth, ModeSpec[Mode].ImgHeight, 8, PNG_TRUECOLOR, pixels);
       png_close_file(&png);
-      printf("ok\n");
     }
     
     free(StoredFreq);
@@ -183,7 +172,7 @@ int main(int argc, char *argv[]) {
 
   gtk_main();
 
-  gdk_pixbuf_unref(RxPixbuf);
+  g_object_unref(RxPixbuf);
   free(PCM);
   free(StoredFreq);
 

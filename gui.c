@@ -46,6 +46,7 @@ void createGUI() {
   g_signal_connect_swapped(aboutdialog, "close",        G_CALLBACK(gtk_widget_hide),     aboutdialog);
   g_signal_connect_swapped(togadapt,    "toggled",      G_CALLBACK(GetAdaptive),         NULL);
   g_signal_connect        (btnstart,    "clicked",      G_CALLBACK(ManualStart),         NULL);
+  g_signal_connect        (btnabort,    "clicked",      G_CALLBACK(AbortRx),             NULL);
 
   gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(togslant), TRUE);
   gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(togsave),  TRUE);

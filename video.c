@@ -13,29 +13,30 @@
  *  Rate:      exact sampling rate used
  *  Skip:      number of PCM samples to skip at the beginning (for sync phase adjustment)
  *  Redraw:    false = Apply windowing and FFT to the signal, true = Redraw from cached FFT data
+ *  returns:   TRUE when finished, FALSE when aborted
  */
-int GetVideo(int Mode, double Rate, int Skip, int Redraw) {
+gboolean GetVideo(guchar Mode, guint Rate, int Skip, gboolean Redraw) {
 
-  unsigned int  MaxBin = 0;
-  unsigned int  VideoPlusNoiseBins=0, ReceiverBins=0, NoiseOnlyBins=0;
-  int           i=0, j=0;
-  unsigned int  n=0;
-  int           Length=0, Sample=0;
-  int           FFTLen=0, WinLength=0;
-  int           samplesread = 0, WinIdx = 0, LineNum = 0;
-  int           x = 0, y = 0, prevline=0, tx=0, MaxPcm=0;
-  int           HannLens[7]   = { 64, 96, 128, 256, 512, 1024, 2048 };
-  double        Hann[7][2048] = {{0}};
-  double        t=0, Freq = 0, NextPixel = 0, NextSNR = 0, NextFFT = 0;
-  double        *in,  *out;
-  double        Power[2048] = {0};
-  double        Pvideo_plus_noise=0, Pnoise_only=0, Pnoise=0, Psignal=0;
-  double        SNR = 0;
-  double        CurLineTime = 0;
-  double        ChanStart[4] = {0}, ChanLen[4] = {0};
-  unsigned char Lum=0, Image[800][616][3] = {{{0}}};
-  unsigned char Channel = 0;
-  fftw_plan     Plan, BigPlan, SNRPlan;
+  guint      MaxBin = 0;
+  guint      VideoPlusNoiseBins=0, ReceiverBins=0, NoiseOnlyBins=0;
+  guint      n=0;
+  int        i=0, j=0;
+  int        Length=0, Sample=0;
+  int        FFTLen=0, WinLength=0;
+  int        samplesread = 0, WinIdx = 0, LineNum = 0;
+  int        x = 0, y = 0, prevline=0, tx=0, MaxPcm=0;
+  gushort    HannLens[7]   = { 64, 96, 128, 256, 512, 1024, 2048 };
+  double     Hann[7][2048] = {{0}};
+  double     t=0, Freq = 0, NextPixel = 0, NextSNR = 0, NextFFT = 0;
+  double     *in,  *out;
+  double     Power[2048] = {0};
+  double     Pvideo_plus_noise=0, Pnoise_only=0, Pnoise=0, Psignal=0;
+  double     SNR = 0;
+  double     CurLineTime = 0;
+  double     ChanStart[4] = {0}, ChanLen[4] = {0};
+  guchar     Lum=0, Image[800][616][3] = {{{0}}};
+  guchar     Channel = 0;
+  fftw_plan  Plan, BigPlan, SNRPlan;
 
   // Prepare FFT
   in      = fftw_malloc(sizeof(double) * 2048);
@@ -107,7 +108,7 @@ int GetVideo(int Mode, double Rate, int Skip, int Redraw) {
   // Initialize pixbuffer
   if (!Redraw) {
 
-    gdk_pixbuf_unref(RxPixbuf);
+    g_object_unref(RxPixbuf);
     RxPixbuf = gdk_pixbuf_new (GDK_COLORSPACE_RGB, FALSE, 8, ModeSpec[Mode].ImgWidth, ModeSpec[Mode].ImgHeight);
     ClearPixbuf(RxPixbuf, ModeSpec[Mode].ImgWidth, ModeSpec[Mode].ImgHeight);
   }
@@ -119,6 +120,8 @@ int GetVideo(int Mode, double Rate, int Skip, int Redraw) {
   if (!Redraw) StoredFreqRate = Rate;
 
   Length = (ModeSpec[Mode].LineLen * ModeSpec[Mode].ImgHeight) * SRATE;
+
+  Abort = FALSE;
 
   // Loop through signal
   for (Sample = 0; Sample < Length; Sample++) {
@@ -280,7 +283,7 @@ int GetVideo(int Mode, double Rate, int Skip, int Redraw) {
         && t >= NextPixel
        ) {
 
-      LineNum = (int)(t / ModeSpec[Mode].LineLen);
+      LineNum = t / ModeSpec[Mode].LineLen;
 
       // Which channel is this?
       switch(Mode) {
@@ -389,8 +392,9 @@ int GetVideo(int Mode, double Rate, int Skip, int Redraw) {
 
         if (!Redraw || LineNum % 5 == 0 || LineNum == ModeSpec[Mode].ImgHeight-1) {
           // Scale and update image
-          gdk_pixbuf_unref(DispPixbuf);
-          DispPixbuf = gdk_pixbuf_scale_simple(RxPixbuf,500,500.0/ModeSpec[Mode].ImgWidth * ModeSpec[Mode].ImgHeight * ModeSpec[Mode].YScale,GDK_INTERP_NEAREST);
+          g_object_unref(DispPixbuf);
+          DispPixbuf = gdk_pixbuf_scale_simple(RxPixbuf, 500,
+              500.0/ModeSpec[Mode].ImgWidth * ModeSpec[Mode].ImgHeight * ModeSpec[Mode].YScale, GDK_INTERP_NEAREST);
 
           gdk_threads_enter();
           gtk_image_set_from_pixbuf(GTK_IMAGE(RxImage), DispPixbuf);
@@ -407,19 +411,22 @@ int GetVideo(int Mode, double Rate, int Skip, int Redraw) {
       MaxPcm = 0;
     }
 
+    if (Abort) {
+      break;
+    }
+
   }
 
   // High-quality scaling when finished
   if (Redraw || !(gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON(togslant)))) {
-    gdk_pixbuf_unref(DispPixbuf);
-    DispPixbuf = gdk_pixbuf_scale_simple(RxPixbuf,500,500.0/ModeSpec[Mode].ImgWidth * ModeSpec[Mode].ImgHeight * ModeSpec[Mode].YScale,GDK_INTERP_HYPER);
+    g_object_unref(DispPixbuf);
+    DispPixbuf = gdk_pixbuf_scale_simple(RxPixbuf, 500,
+        500.0/ModeSpec[Mode].ImgWidth * ModeSpec[Mode].ImgHeight * ModeSpec[Mode].YScale, GDK_INTERP_HYPER);
 
     gdk_threads_enter();
     gtk_image_set_from_pixbuf(GTK_IMAGE(RxImage), DispPixbuf);
     gdk_threads_leave();
   }
-
-  printf("    dim %d x %d\n", ModeSpec[Mode].ImgWidth, ModeSpec[Mode].ImgHeight);
 
   fftw_destroy_plan(Plan);
   fftw_destroy_plan(BigPlan);
@@ -427,5 +434,7 @@ int GetVideo(int Mode, double Rate, int Skip, int Redraw) {
   fftw_free(in);
   fftw_free(out);
 
-  return 0;
+  if (Abort) return FALSE;
+  else       return TRUE;
+
 }

@@ -15,28 +15,26 @@
  *
  */
 
-int GetVIS () {
+guchar GetVIS () {
 
-  printf("Waiting for header\n");
-
-  gdk_threads_enter();
-  gtk_statusbar_push( GTK_STATUSBAR(statusbar), 0, "Waiting for header" );
-  gdk_threads_leave();
-
-  fftw_plan VISPlan;
-  double *in;
-  double *out;
-  unsigned int FFTLen = 2048;
-  int selmode;
+  int        selmode, samplesread = 0;
+  int        Pointer = 0, VIS = 0, Parity = 0, ParityBit = 0, Bit[8] = {0}, HedrPtr = 0;
+  gushort    MaxPcm = 0;
+  guint      FFTLen = 2048, i=0, j=0, k=0, MaxBin = 0;
+  double    *in, *out;
+  double     Power[2048] = {0}, HedrBuf[100] = {0}, tone[100] = {0}, Hann[SRATE/50] = {0};
+  char       infostr[60] = {0};
+  gboolean   gotvis = FALSE;
+  fftw_plan  VISPlan;
 
   // Plan for frequency estimation
-  in      = fftw_malloc(sizeof(double) * FFTLen);
+  in = fftw_malloc(sizeof(double) * FFTLen);
   if (in == NULL) {
     perror("GetVIS: Unable to allocate memory for FFT");
     exit(EXIT_FAILURE);
   }
 
-  out     = fftw_malloc(sizeof(double) * FFTLen);
+  out = fftw_malloc(sizeof(double) * FFTLen);
   if (out == NULL) {
     perror("GetVIS: Unable to allocate memory for FFT");
     fftw_free(in);
@@ -44,19 +42,9 @@ int GetVIS () {
   }
   VISPlan = fftw_plan_r2r_1d(FFTLen, in, out, FFTW_FORWARD, FFTW_ESTIMATE);
 
-  unsigned int i=0, j=0, k=0, MaxBin = 0;
-  int          samplesread = 0;
-  int          Pointer = 0, VIS = 0, Parity = 0, ParityBit = 0, Bit[8] = {0};
-  double       Power[2048] = {0};
-  double       HedrBuf[100] = {0}, tone[100] = {0};
-  int          HedrPtr = 0;
-  short int    MaxPcm = 0;
-  char         infostr[60] = {0}, gotvis = FALSE;
-
   for (i = 0; i < FFTLen; i++) in[i] = 0;
 
   // Create 20ms Hann window
-  double Hann[SRATE/50] = {0};
   for (i = 0; i < SRATE*20e-3; i++) Hann[i] = 0.5 * (1 - cos( (2 * M_PI * (double)i) / (SRATE*20e-3 -1) ) );
 
   // Allocate space for PCM (1 second)
@@ -67,6 +55,12 @@ int GetVIS () {
   }
 
   ManualActivated = FALSE;
+  
+  printf("Waiting for header\n");
+
+  gdk_threads_enter();
+  gtk_statusbar_push( GTK_STATUSBAR(statusbar), 0, "Ready" );
+  gdk_threads_leave();
 
   while ( TRUE ) {
 
@@ -164,7 +158,7 @@ int GetVIS () {
                  (Bit[5] << 5) + (Bit[6] << 6);
             ParityBit = Bit[7];
 
-            printf("  VIS %d (%02Xh) @ %+.0f Hz\n", VIS, VIS, HedrShift);
+            printf("  VIS %d (%02Xh) @ %d Hz\n", VIS, VIS, HedrShift);
 
             Parity = Bit[0] ^ Bit[1] ^ Bit[2] ^ Bit[3] ^ Bit[4] ^ Bit[5] ^ Bit[6];
 
@@ -232,7 +226,7 @@ int GetVIS () {
 
   if (VISmap[VIS] != UNKNOWN) return VISmap[VIS];
   else                        printf("  No VIS found\n");
-  return -1;
+  return 0;
 }
 
 

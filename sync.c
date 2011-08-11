@@ -14,65 +14,56 @@
  *   Skip:    pointer to variable where the skip amount will be returned
  *   returns  adjusted sample rate
  */
-double FindSync (unsigned int Length, int Mode, double Rate, int *Skip) {
+guint FindSync (guint Length, guchar Mode, guint Rate, int *Skip) {
 
   int                LineWidth = ModeSpec[Mode].LineLen / ModeSpec[Mode].SyncLen * 4;
-
-//  LineWidth = 400;
-
+  int                x,y,xmid,x0;
+  int                q, d, qMost, dMost;
+  int                maxsy = 0;
   unsigned int       i, s, TotPix, xmax;
+  unsigned short int FFTLen = 1024;
+  unsigned short int LopassBin = GetBin(3000, FFTLen);
+  unsigned short int xAcc[700] = {0};
+  unsigned short int lines[600][(MAXSLANT-MINSLANT)*2];
+  unsigned short int cy, cx;
+  unsigned short int Retries = 0;
+  unsigned char      SyncImg[700][630];
   double             NextImgSample;
   double             t=0, slantAngle;
-  unsigned char      SyncImg[700][630];
-  int                x,y,xmid,x0;
-  unsigned short int xAcc[700] = {0};
+  double             Praw, Psync;
+  double             Pwr[2048];
+  double            *in;
+  double            *out;
+  double             Hann[50];
+  gboolean          *HasSync;
+  fftw_plan          Plan;
 
-  double  Praw, Psync;
-  unsigned char    *HasSync;
-  HasSync = malloc(Length * sizeof(char));
+  HasSync = malloc(Length * sizeof(gboolean));
   if (HasSync == NULL) {
     perror("FindSync: Unable to allocate memory for sync signal");
     exit(EXIT_FAILURE);
   }
-  memset(HasSync,0,Length * sizeof(char));
+  memset(HasSync,FALSE,Length * sizeof(gboolean));
   
-  unsigned short int lines[600][(MAXSLANT-MINSLANT)*2];
-
-  unsigned short int cy, cx;
-  int                q, d, qMost, dMost;
-  unsigned short int Retries = 0;
-  int                maxsy = 0;
-  double             Pwr[2048];
-    
-  // FFT plan
-  fftw_plan    Plan;
-  double       *in;
-  double       *out;
-  unsigned int FFTLen = 1024;
-
-  in      = fftw_malloc(sizeof(double) * FFTLen);
+  in = fftw_malloc(sizeof(double) * FFTLen);
   if (in == NULL) {
     perror("FindSync: Unable to allocate memory for FFT");
     free(HasSync);
     exit(EXIT_FAILURE);
   }
-  out     = fftw_malloc(sizeof(double) * FFTLen);
+  out = fftw_malloc(sizeof(double) * FFTLen);
   if (out == NULL) {
     perror("FindSync: Unable to allocate memory for FFT");
     fftw_free(in);
     free(HasSync);
     exit(EXIT_FAILURE);
   }
-  Plan    = fftw_plan_r2r_1d(FFTLen, in, out, FFTW_FORWARD, FFTW_ESTIMATE);
+  Plan = fftw_plan_r2r_1d(FFTLen, in, out, FFTW_FORWARD, FFTW_ESTIMATE);
 
   // Create 50-point Hann window
-  double Hann[50];
   for (i = 0; i < 50; i++) Hann[i] = 0.5 * (1 - cos( 2 * M_PI * i / 49.0) );
 
-  // Zero fill input array
   memset(in, 0, FFTLen * sizeof(in[0]));
-    
-  unsigned int LopassBin = GetBin(3000, FFTLen);
 
   printf("power est.\n");
 
@@ -120,7 +111,7 @@ double FindSync (unsigned int Length, int Mode, double Rate, int *Skip) {
     NextImgSample = 0;
     t             = 0;
     maxsy         = 0;
-    x = y = 0;
+    x = y         = 0;
 
     memset(SyncImg, 0, sizeof(SyncImg[0][0]) * LineWidth * 500);
         
@@ -184,7 +175,7 @@ double FindSync (unsigned int Length, int Mode, double Rate, int *Skip) {
     slantAngle = qMost / 2.0;
 
     //printf("  most (%d occurrences): d=%d  q=%f\n", LineAcc[dMost][ (int)(qMost * 10) ], dMost, qMost);
-    printf("    %.1f° (d=%d) @ %.2f Hz", slantAngle, dMost, Rate);
+    printf("    %.1f° (d=%d) @ %d Hz", slantAngle, dMost, Rate);
 
     Rate = Rate + tan(deg2rad(90 - slantAngle)) / (1.0 * LineWidth) * Rate;
 
@@ -197,7 +188,7 @@ double FindSync (unsigned int Length, int Mode, double Rate, int *Skip) {
       printf("    -> SRATE\n");
       break;
     } else {
-      printf(" -> %.2f    recalculating\n", Rate);
+      printf(" -> %d    recalculating\n", Rate);
       Retries ++;
     }
   }

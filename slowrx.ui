@@ -122,8 +122,8 @@
               <object class="GtkGrid" id="MainGrid">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
-                <property name="row_spacing">5</property>
-                <property name="column_spacing">5</property>
+                <property name="row_spacing">10</property>
+                <property name="column_spacing">10</property>
                 <child>
                   <object class="GtkFrame" id="ImgFrame">
                     <property name="visible">True</property>
@@ -136,7 +136,7 @@
                         <property name="can_focus">False</property>
                         <property name="top_padding">10</property>
                         <property name="bottom_padding">10</property>
-                        <property name="left_padding">12</property>
+                        <property name="left_padding">10</property>
                         <property name="right_padding">10</property>
                         <child>
                           <object class="GtkBox" id="box2">
@@ -194,7 +194,7 @@
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <property name="valign">start</property>
-                    <property name="spacing">5</property>
+                    <property name="spacing">10</property>
                     <child>
                       <object class="GtkFrame" id="OptsFrame">
                         <property name="visible">True</property>
@@ -206,10 +206,10 @@
                           <object class="GtkAlignment" id="alignment3">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
-                            <property name="top_padding">5</property>
-                            <property name="bottom_padding">5</property>
-                            <property name="left_padding">7</property>
-                            <property name="right_padding">5</property>
+                            <property name="top_padding">10</property>
+                            <property name="bottom_padding">10</property>
+                            <property name="left_padding">10</property>
+                            <property name="right_padding">10</property>
                             <child>
                               <object class="GtkGrid" id="OptsGrid">
                                 <property name="visible">True</property>
@@ -336,10 +336,10 @@
                           <object class="GtkAlignment" id="alignment5">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
-                            <property name="top_padding">5</property>
-                            <property name="bottom_padding">5</property>
-                            <property name="left_padding">7</property>
-                            <property name="right_padding">5</property>
+                            <property name="top_padding">10</property>
+                            <property name="bottom_padding">10</property>
+                            <property name="left_padding">10</property>
+                            <property name="right_padding">10</property>
                             <child>
                               <object class="GtkBox" id="ManualVBox">
                                 <property name="visible">True</property>
@@ -467,10 +467,10 @@
                           <object class="GtkAlignment" id="alignment6">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
-                            <property name="top_padding">5</property>
-                            <property name="bottom_padding">5</property>
-                            <property name="left_padding">7</property>
-                            <property name="right_padding">5</property>
+                            <property name="top_padding">10</property>
+                            <property name="bottom_padding">10</property>
+                            <property name="left_padding">10</property>
+                            <property name="right_padding">10</property>
                             <child>
                               <object class="GtkGrid" id="vugrid">
                                 <property name="visible">True</property>
@@ -569,15 +569,21 @@
                     <property name="label_xalign">0</property>
                     <property name="shadow_type">in</property>
                     <child>
-                      <object class="GtkIconView" id="iconview1">
-                        <property name="height_request">100</property>
+                      <object class="GtkAlignment" id="alignment4">
                         <property name="visible">True</property>
-                        <property name="can_focus">True</property>
-                        <property name="margin_left">5</property>
-                        <property name="margin_right">5</property>
-                        <property name="margin_top">5</property>
-                        <property name="margin_bottom">5</property>
-                        <property name="model">SavedStore</property>
+                        <property name="can_focus">False</property>
+                        <property name="top_padding">10</property>
+                        <property name="bottom_padding">10</property>
+                        <property name="left_padding">10</property>
+                        <property name="right_padding">10</property>
+                        <child>
+                          <object class="GtkIconView" id="iconview1">
+                            <property name="height_request">100</property>
+                            <property name="visible">True</property>
+                            <property name="can_focus">True</property>
+                            <property name="model">SavedStore</property>
+                          </object>
+                        </child>
                       </object>
                     </child>
                     <child type="label">
