@@ -25,10 +25,12 @@ gboolean GetVideo(guchar Mode, guint Rate, int Skip, gboolean Redraw) {
   int        FFTLen=0, WinLength=0;
   int        samplesread = 0, WinIdx = 0, LineNum = 0;
   int        x = 0, y = 0, prevline=0, tx=0, MaxPcm=0;
-  gushort    HannLens[7]   = { 64, 96, 128, 256, 512, 1024, 2048 };
+  gushort    HannLens[7] = { 64, 96, 128, 256, 512, 1024, 2048 };
+  gushort    LopassBin = GetBin(3000, 1024);
   double     Hann[7][2048] = {{0}};
-  double     t=0, Freq = 0, NextPixel = 0, NextSNR = 0, NextFFT = 0;
+  double     t=0, Freq = 0, NextPixel = 0, NextSNR = 0, NextFFT = 0, NextSync = 0;
   double     *in,  *out;
+  double     Praw, Psync;
   double     Power[2048] = {0};
   double     Pvideo_plus_noise=0, Pnoise_only=0, Pnoise=0, Psignal=0;
   double     SNR = 0;
@@ -38,6 +40,8 @@ gboolean GetVideo(guchar Mode, guint Rate, int Skip, gboolean Redraw) {
   guchar     Channel = 0;
   fftw_plan  Plan, BigPlan, SNRPlan;
 
+
+  printf("next sync %.5f\n",NextSync);
   // Prepare FFT
   in      = fftw_malloc(sizeof(double) * 2048);
   if (in == NULL) {
@@ -143,7 +147,22 @@ gboolean GetVideo(guchar Mode, guint Rate, int Skip, gboolean Redraw) {
         if (PcmPointer > Length-2048) break;
 
         samplesread = snd_pcm_readi(pcm_handle, PcmBuffer, 2048);
-        if (samplesread < 2048) break;
+        if (samplesread < 2048) {
+          if (samplesread == -EPIPE) {
+            printf("ALSA buffer overrun :(\n");
+            exit(EXIT_FAILURE);
+          } else if (samplesread == -EBADFD) {
+            printf("ALSA: PCM is not in the right state\n");
+            exit(EXIT_FAILURE);
+          } else if (samplesread == -ESTRPIPE) {
+            printf("ALSA: a suspend event occurred\n");
+            exit(EXIT_FAILURE);
+          } else if (samplesread < 0) {
+            printf("ALSA error\n");
+            exit(EXIT_FAILURE);
+          }
+          break;
+        }
 
         for (i = 0; i < 2048; i++) {
 
@@ -154,6 +173,42 @@ gboolean GetVideo(guchar Mode, guint Rate, int Skip, gboolean Redraw) {
 
         }
         PcmPointer += 2048;
+      }
+
+
+      /*** Take samples of the sync band for later adjustments ***/
+
+      if (t >= NextSync) {
+
+        memset(in, 0, sizeof(double)*2048);
+ 
+        for (i = 0; i < 64; i++) in[i] = PCM[Sample+i] * Hann[0][i];
+
+        fftw_execute(BigPlan);
+
+        // Power estimation
+        Praw = Psync = 0;
+        j = GetBin(1200+HedrShift, 1024);
+        for (i=0;i<LopassBin;i++) {
+          Praw += pow(out[i], 2) + pow(out[1024-i], 2);
+          if (i >= j-1 && i <= j+1) Psync += pow(out[i], 2) + pow(out[1024-i], 2);
+        }
+
+        Praw  /= (1024/2.0) * ( LopassBin/(1024/2.0));
+        Psync /= 3.0;
+
+        // If there is more than twice the amount of power per Hz in the
+        // sync band than in the rest of the band, we have a sync signal here
+        if (Psync > 2*Praw)  HasSync[Sample] = TRUE;
+        else                 HasSync[Sample] = FALSE;
+
+        // Copy forward 
+        for (i = 0; i < 64; i++) {
+          if (Sample+i >= Length) break;
+          HasSync[Sample+i] = HasSync[Sample];
+        }
+
+        NextSync += 64.0/Rate;
       }
 
 
@@ -199,6 +254,9 @@ gboolean GetVideo(guchar Mode, guint Rate, int Skip, gboolean Redraw) {
 
         NextSNR += ModeSpec[Mode].LineLen / 60;
       }
+
+
+      /*** FM demodulation ***/
 
       if (t >= NextFFT) {
 
@@ -355,7 +413,10 @@ gboolean GetVideo(guchar Mode, guint Rate, int Skip, gboolean Redraw) {
 
       }
 
-      if (y > ModeSpec[Mode].ImgHeight-1) break;
+      if (y > ModeSpec[Mode].ImgHeight-1) {
+        printf("y > ImgHeight-1\n");
+        break;
+      }
 
       // Calculate and draw pixels on line change 
       if (LineNum != prevline) {

@@ -9,20 +9,22 @@
 
 /* 
  *
- * Decode FSK
+ * Decode FSK ID
  *
+ * * The FSK ID's are 6-bit ASCII, LSB first, 45.45 baud, center freq 2000, shift 200
+ * * Text data starts after 3F 20 2A and ends in 01
  *
  */
 
-void GetFSK () {
+void GetFSK (char *dest) {
 
   int        samplesread = 0;
   int        Pointer = 0, ThisBit = 0, RunLength=0, PrevBit = -1, Bit = 0;
   guint      FFTLen = 2048, i=0, LoBin, HiBin, MidBin;
-  guchar     AsciiByte = 0;
+  guchar     AsciiByte = 0, ThisByteIndex = 0;
   double    *in, *out;
   double     HiPow,LoPow,Hann[2048];
-  gboolean   InFSK = FALSE, InCode = FALSE;
+  gboolean   InFSK = FALSE, InCode = FALSE, EndFSK = FALSE;
   fftw_plan  Plan;
 
   // Plan for frequency estimation
@@ -51,13 +53,6 @@ void GetFSK () {
     perror("GetFSK: Unable to allocate memory for PCM");
     exit(EXIT_FAILURE);
   }
-
-  printf("FSK ID: ");
-
-  //int a;
-  // Skip 300 ms end tone
-  //a = snd_pcm_forward (pcm_handle, SRATE*300e-3);
-  //printf("skip %d\n",a);
 
   while ( TRUE ) {
 
@@ -114,13 +109,17 @@ void GetFSK () {
           AsciiByte >>= 1;
           AsciiByte ^= (PrevBit << 6);
 
-          //printf("%d",PrevBit);
-
           if (InCode) {
             ThisBit ++;
-            if (ThisBit % 6 == 0) {
-              if ( (AsciiByte&0x3F)+0x20 == '!') break;
-              printf("%c",(AsciiByte&0x3F)+0x20);
+            if (ThisBit > 0 && ThisBit % 6 == 0) {
+              // Consider end of data when values would only produce special characters
+              if ( (AsciiByte&0x3F) < 0x0c) {
+                EndFSK = TRUE;
+                break;
+              }
+              dest[ThisByteIndex] = (AsciiByte&0x3F)+0x20;
+              ThisByteIndex ++;
+              if (ThisByteIndex > 20) break;
             }
           }
 
@@ -130,6 +129,7 @@ void GetFSK () {
           }
 
         }
+        if ( EndFSK ) break;
       }
 
       RunLength = 1;
@@ -138,6 +138,7 @@ void GetFSK () {
       RunLength ++;
     }
 
+
     Pointer++;
 
     if (Pointer > 200) {
@@ -145,14 +146,15 @@ void GetFSK () {
     }
 
   }
-
-  printf("\n");
+    
+  dest[ThisByteIndex] = '\0';
 
   fftw_free(in);
   fftw_free(out);
   fftw_destroy_plan(Plan);
 
   free(PCM);
+  PCM = NULL;
 
 }
 

@@ -7,7 +7,7 @@
 
 #include "common.h"
 
-/* Find the horizontal sync signal and adjust sample rate to cancel out any slant.
+/* Find the slant angle of the sync singnal and adjust sample rate to cancel it out
  *   Length:  number of PCM samples to process
  *   Mode:    one of M1, M2, S1, S2, R72, R36 ...
  *   Rate:    approximate sampling rate used
@@ -16,97 +16,22 @@
  */
 guint FindSync (guint Length, guchar Mode, guint Rate, int *Skip) {
 
-  int                LineWidth = ModeSpec[Mode].LineLen / ModeSpec[Mode].SyncLen * 4;
-  int                x,y,xmid,x0;
-  int                q, d, qMost, dMost;
-  int                maxsy = 0;
-  unsigned int       i, s, TotPix, xmax;
-  unsigned short int FFTLen = 1024;
-  unsigned short int LopassBin = GetBin(3000, FFTLen);
-  unsigned short int xAcc[700] = {0};
-  unsigned short int lines[600][(MAXSLANT-MINSLANT)*2];
-  unsigned short int cy, cx;
-  unsigned short int Retries = 0;
-  unsigned char      SyncImg[700][630];
-  double             NextImgSample;
-  double             t=0, slantAngle;
-  double             Praw, Psync;
-  double             Pwr[2048];
-  double            *in;
-  double            *out;
-  double             Hann[50];
-  gboolean          *HasSync;
-  fftw_plan          Plan;
+  int     LineWidth = ModeSpec[Mode].LineLen / ModeSpec[Mode].SyncLen * 4;
+  int     x,y,xmid,x0;
+  int     q, d, qMost, dMost;
+  int     maxsy = 0;
+  guint   s, TotPix, xmax;
+  gushort xAcc[700] = {0};
+  gushort lines[600][(MAXSLANT-MINSLANT)*2];
+  gushort cy, cx;
+  gushort Retries = 0;
+  guchar  SyncImg[700][630];
+  double  NextImgSample;
+  double  t=0, slantAngle;
 
-  HasSync = malloc(Length * sizeof(gboolean));
-  if (HasSync == NULL) {
-    perror("FindSync: Unable to allocate memory for sync signal");
-    exit(EXIT_FAILURE);
-  }
-  memset(HasSync,FALSE,Length * sizeof(gboolean));
-  
-  in = fftw_malloc(sizeof(double) * FFTLen);
-  if (in == NULL) {
-    perror("FindSync: Unable to allocate memory for FFT");
-    free(HasSync);
-    exit(EXIT_FAILURE);
-  }
-  out = fftw_malloc(sizeof(double) * FFTLen);
-  if (out == NULL) {
-    perror("FindSync: Unable to allocate memory for FFT");
-    fftw_free(in);
-    free(HasSync);
-    exit(EXIT_FAILURE);
-  }
-  Plan = fftw_plan_r2r_1d(FFTLen, in, out, FFTW_FORWARD, FFTW_ESTIMATE);
-
-  // Create 50-point Hann window
-  for (i = 0; i < 50; i++) Hann[i] = 0.5 * (1 - cos( 2 * M_PI * i / 49.0) );
-
-  memset(in, 0, FFTLen * sizeof(in[0]));
-
-  printf("power est.\n");
-
-  // Power estimation
-  
-  for (s = 0; s < Length; s+=50) {
-
-    // Hann window
-    for (i = 0; i < 50; i++) in[i] = PCM[s+i] * Hann[i];
-
-    // FFT
-    fftw_execute(Plan);
-
-    // Power in the whole band
-    Praw = 0;
-    for (i=0;i<LopassBin;i++) {
-      Pwr[i] = pow(out[i], 2) + pow(out[FFTLen-i], 2);
-      Praw += Pwr[i];
-    }
-
-    Praw /= (FFTLen/2.0) * ( LopassBin/(FFTLen/2.0));
-
-    // Power around the sync band
-    i = GetBin(1200+HedrShift, FFTLen);
-    Psync = (Pwr[i-1] + Pwr[i] + Pwr[i+1]) / 3.0;
-
-    // If there is more than twice the amount of Power per Hz in the
-    // sync band than in the rest of the band, we have a sync signal here
-    if (Psync > 2*Praw)  HasSync[s] = TRUE;
-    else                 HasSync[s] = FALSE;
-
-    for (i = 0; i < 50; i++) {
-      if (s+i >= Length) break;
-      HasSync[s+i] = HasSync[s];
-    }
-
-  }
-
-  printf("hough\n");
 
   // Repeat until slant < 0.5° or until we give up
   while (1) {
-
     TotPix        = LineWidth/2; // Start at the middle of the picture
     NextImgSample = 0;
     t             = 0;
@@ -137,7 +62,6 @@ guint FindSync (guint Length, guchar Mode, guint Rate, int *Skip) {
         NextImgSample += ModeSpec[Mode].LineLen / (1.0 * LineWidth);
       }
     }
-
 
     /** Linear Hough transform **/
 
@@ -238,11 +162,6 @@ guint FindSync (guint Length, guchar Mode, guint Rate, int *Skip) {
 
   *Skip = s;
   
-  free(HasSync);
-  fftw_destroy_plan(Plan);
-  fftw_free(in);
-  fftw_free(out);
-
   return (Rate);
 
 }

@@ -31,6 +31,7 @@ void createGUI() {
   togsave     = GTK_WIDGET(gtk_builder_get_object(builder,"TogSave"));
   togadapt    = GTK_WIDGET(gtk_builder_get_object(builder,"TogAdapt"));
   togrx       = GTK_WIDGET(gtk_builder_get_object(builder,"TogRx"));
+  togfsk      = GTK_WIDGET(gtk_builder_get_object(builder,"TogFSK"));
   modecombo   = GTK_WIDGET(gtk_builder_get_object(builder,"modecombo"));
   btnabort    = GTK_WIDGET(gtk_builder_get_object(builder,"BtnAbort"));
   btnstart    = GTK_WIDGET(gtk_builder_get_object(builder,"BtnStart"));
@@ -38,6 +39,7 @@ void createGUI() {
   shiftspin   = GTK_WIDGET(gtk_builder_get_object(builder,"ShiftSpin"));
   pwrimage    = GTK_WIDGET(gtk_builder_get_object(builder,"PowerImage"));
   snrimage    = GTK_WIDGET(gtk_builder_get_object(builder,"SNRImage"));
+  idlabel     = GTK_WIDGET(gtk_builder_get_object(builder,"IDLabel"));
 
   g_signal_connect        (quititem,    "activate",     G_CALLBACK(delete_event),        NULL);
   g_signal_connect        (mainwindow,  "delete-event", G_CALLBACK(delete_event),        NULL);

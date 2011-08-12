@@ -20,6 +20,7 @@ extern gshort     HedrShift;
 extern gboolean   Adaptive;
 extern gboolean   ManualActivated;
 extern gboolean   Abort;
+extern gboolean  *HasSync;
 
 extern GtkWidget *mainwindow;
 extern GtkWidget *notebook;
@@ -38,12 +39,14 @@ extern GtkWidget *togslant;
 extern GtkWidget *togsave;
 extern GtkWidget *togadapt;
 extern GtkWidget *togrx;
+extern GtkWidget *togfsk;
 extern GtkWidget *btnabort;
 extern GtkWidget *btnstart;
 extern GtkWidget *manualframe;
 extern GtkWidget *shiftspin;
 extern GtkWidget *pwrimage;
 extern GtkWidget *snrimage;
+extern GtkWidget *idlabel;
 
 extern GdkPixbuf *pixbufPWR;
 extern GdkPixbuf *pixbufSNR;
@@ -96,6 +99,6 @@ void     delete_event  ();
 void     GetAdaptive   ();
 void     ManualStart   ();
 void     AbortRx       ();
-void     GetFSK        ();
+void     GetFSK        (char*);
 
 #endif

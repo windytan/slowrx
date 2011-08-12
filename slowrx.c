@@ -66,11 +66,19 @@ void *Listen() {
       free(PCM);
       exit(EXIT_FAILURE);
     }
+
+    // Allocate space for sync signal
+    HasSync = calloc((ModeSpec[Mode].LineLen * ModeSpec[Mode].ImgHeight + 1) * SRATE, sizeof(gboolean));
+    if (HasSync == NULL) {
+      perror("FindSync: Unable to allocate memory for sync signal");
+      exit(EXIT_FAILURE);
+    }
   
     // Get video
     strftime(rctime, sizeof(rctime)-1, "%H:%M", timeptr);
     snprintf(infostr, sizeof(infostr)-1, "%s, %s UTC", ModeSpec[Mode].Name, rctime);
     gdk_threads_enter();
+    gtk_label_set_text(GTK_LABEL(idlabel), "");
     gtk_widget_set_sensitive( manualframe, FALSE);
     gtk_widget_set_sensitive( btnabort,    TRUE);
     gtk_statusbar_push( GTK_STATUSBAR(statusbar), 0, "Receiving video" );
@@ -87,10 +95,20 @@ void *Listen() {
     gtk_widget_set_sensitive( btnabort,    FALSE);
     gtk_widget_set_sensitive( manualframe, TRUE);
     gdk_threads_leave();
+    
+    free(PCM);
+    PCM = NULL;
 
-    if (Finished) {
-      GetFSK();
+    if (Finished && gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(togfsk))) {
+      char id[20];
+      GetFSK(id);
+      printf("got fsk\n");
+      printf("%s\n",id);
+      gdk_threads_enter();
+      gtk_label_set_text(GTK_LABEL(idlabel), id);
+      gdk_threads_leave();
     }
+
     snd_pcm_drop(pcm_handle);
 
     if (Finished && gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(togslant))) {
@@ -111,10 +129,9 @@ void *Listen() {
       printf("  getvideo @ %d Hz, Skip %d, HedrShift %d Hz\n", Rate, Skip, HedrShift);
       GetVideo(Mode, Rate, Skip, TRUE);
     }
+
+    free (HasSync);
       
-    free(PCM);
-    PCM = NULL;
-    
     if (gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON(togsave))) {
 
       // Save the raw signal

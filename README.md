@@ -7,17 +7,18 @@ Features
 --------
 
 * Support for a multitude of modes (see `modespec.c` for a list)
-* Automatic frequency shifting – no need to fine-tune the radio
+* Detect frequency-shifted signals – no need to fine-tune the radio
 * Automatic slant correction (compensation for sound card clock error) using Hough transform
 * Noise reduction using adaptive windowing
+* Decode FSK identification footers
 * Save received pictures as PNG
 
 Libraries
 ---------
 
-* ALSA
-* GTK+ 3.x
-* FFTW 3.x
+* Alsa
+* Gtk+ 3
+* FFTW 3
 * pnglite
 
 References

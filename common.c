@@ -21,6 +21,7 @@ int          SNRdBthresh[10] = {30, 15, 10,   5,   3,   0,  -3,  -5, -10, -15};
 gboolean     Adaptive        = TRUE;
 gboolean     ManualActivated = FALSE;
 gboolean     Abort           = FALSE;
+gboolean    *HasSync         = NULL;
 
 GtkWidget   *mainwindow      = NULL;
 GtkWidget   *notebook        = NULL;
@@ -43,12 +44,14 @@ GtkWidget   *togslant        = NULL;
 GtkWidget   *togsave         = NULL;
 GtkWidget   *togadapt        = NULL;
 GtkWidget   *togrx           = NULL;
+GtkWidget   *togfsk          = NULL;
 GtkWidget   *btnabort        = NULL;
 GtkWidget   *btnstart        = NULL;
 GtkWidget   *manualframe     = NULL;
 GtkWidget   *shiftspin       = NULL;
 GtkWidget   *pwrimage        = NULL;
 GtkWidget   *snrimage        = NULL;
+GtkWidget   *idlabel         = NULL;
 
 snd_pcm_t   *pcm_handle      = NULL;
 
