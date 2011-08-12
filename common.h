@@ -82,19 +82,20 @@ typedef struct ModeSpecDef {
 
 extern ModeSpecDef ModeSpec[];
 
-void               ClearPixbuf   (GdkPixbuf *, gushort, gushort);
-void               createGUI     ();
-gboolean           GetVideo      (guchar, guint, int, gboolean);
-guint              GetBin        (double, int);
-guchar             clip          (double);
-void               setVU         (short int, double);
-guchar             GetVIS        ();
-guint              FindSync      (guint, guchar, guint, int*);
-double             deg2rad       (double);
-void               initPcmDevice ();
-void               delete_event  ();
-void               GetAdaptive   ();
-void               ManualStart   ();
-void               AbortRx       ();
+void     ClearPixbuf   (GdkPixbuf *, gushort, gushort);
+void     createGUI     ();
+gboolean GetVideo      (guchar, guint, int, gboolean);
+guint    GetBin        (double, int);
+guchar   clip          (double);
+void     setVU         (short int, double);
+guchar   GetVIS        ();
+guint    FindSync      (guint, guchar, guint, int*);
+double   deg2rad       (double);
+void     initPcmDevice ();
+void     delete_event  ();
+void     GetAdaptive   ();
+void     ManualStart   ();
+void     AbortRx       ();
+void     GetFSK        ();
 
 #endif

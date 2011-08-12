@@ -27,6 +27,7 @@ void *Listen() {
   struct tm *timeptr = NULL;
   time_t     timet;
   FILE      *LumFile;
+  gboolean   Finished;
 
   while (TRUE) {
 
@@ -81,14 +82,18 @@ void *Listen() {
     Skip       = 0;
     printf("  getvideo @ %d Hz, Skip %d, HedrShift %d Hz\n", Rate, Skip, HedrShift);
 
-    GetVideo(Mode, Rate, Skip, FALSE);
-    snd_pcm_drop(pcm_handle);
+    Finished = GetVideo(Mode, Rate, Skip, FALSE);
     gdk_threads_enter();
     gtk_widget_set_sensitive( btnabort,    FALSE);
     gtk_widget_set_sensitive( manualframe, TRUE);
     gdk_threads_leave();
 
-    if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(togslant))) {
+    if (Finished) {
+      GetFSK();
+    }
+    snd_pcm_drop(pcm_handle);
+
+    if (Finished && gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(togslant))) {
 
       // Fix slant
       setVU(0,-100);
