@@ -22,7 +22,7 @@ void GetFSK (char *dest) {
   int        Pointer = 0, ThisBit = 0, RunLength=0, PrevBit = -1, Bit = 0;
   guint      FFTLen = 2048, i=0, LoBin, HiBin, MidBin;
   guchar     AsciiByte = 0, ThisByteIndex = 0;
-  double    *in, *out;
+  double    *in, *out, *PCM;
   double     HiPow,LoPow,Hann[2048];
   gboolean   InFSK = FALSE, InCode = FALSE, EndFSK = FALSE;
   fftw_plan  Plan;

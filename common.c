@@ -9,10 +9,8 @@
 
 guchar       VISmap[128];
 gint16       PcmBuffer[2048] = {0};
-double      *PCM             = NULL;
 int          PcmPointer      = 0;
 int          Sample          = 0;
-unsigned int SRate           = 44100;
 double      *StoredFreq      = NULL;
 guint        StoredFreqRate  = 0;
 gshort       HedrShift       = 0;
@@ -24,20 +22,12 @@ gboolean     Abort           = FALSE;
 gboolean    *HasSync         = NULL;
 
 GtkWidget   *mainwindow      = NULL;
-GtkWidget   *notebook        = NULL;
-GdkPixbuf   *RxPixbuf        = NULL;
-GdkPixbuf   *DispPixbuf      = NULL;
 GtkWidget   *RxImage         = NULL;
 GtkWidget   *statusbar       = NULL;
-GtkWidget   *snrbar          = NULL;
-GtkWidget   *pwrbar          = NULL;
 GtkWidget   *vugrid          = NULL;
-GdkPixbuf   *pixbufPWR       = NULL;
-GdkPixbuf   *pixbufSNR       = NULL;
 GtkWidget   *infolabel       = NULL;
 GtkWidget   *aboutdialog     = NULL;
 GtkWidget   *prefdialog      = NULL;
-GtkWidget   *sdialog         = NULL;
 GtkWidget   *cardcombo       = NULL;
 GtkWidget   *modecombo       = NULL;
 GtkWidget   *togslant        = NULL;
@@ -53,6 +43,13 @@ GtkWidget   *pwrimage        = NULL;
 GtkWidget   *snrimage        = NULL;
 GtkWidget   *idlabel         = NULL;
 
+GdkPixbuf   *RxPixbuf        = NULL;
+GdkPixbuf   *DispPixbuf      = NULL;
+GdkPixbuf   *pixbufPWR       = NULL;
+GdkPixbuf   *pixbufSNR       = NULL;
+
+GtkListStore *savedstore     = NULL;
+
 snd_pcm_t   *pcm_handle      = NULL;
 
 // Draw a fancy gradient
@@ -61,7 +58,7 @@ void ClearPixbuf(GdkPixbuf *pb, gushort width, gushort height) {
   guint   x,y,rowstride;
   guchar *pixels, *p;
   rowstride = gdk_pixbuf_get_rowstride (pb);
-  pixels    = gdk_pixbuf_get_pixels(pb);
+  pixels    = gdk_pixbuf_get_pixels    (pb);
 
   for (y = 0; y < height; y++) {
     for (x = 0; x < width; x++) {

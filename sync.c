@@ -16,18 +16,16 @@
  */
 guint FindSync (guint Length, guchar Mode, guint Rate, int *Skip) {
 
-  int     LineWidth = ModeSpec[Mode].LineLen / ModeSpec[Mode].SyncLen * 4;
-  int     x,y,xmid,x0;
-  int     q, d, qMost, dMost;
-  int     maxsy = 0;
-  guint   s, TotPix, xmax;
-  gushort xAcc[700] = {0};
-  gushort lines[600][(MAXSLANT-MINSLANT)*2];
-  gushort cy, cx;
-  gushort Retries = 0;
-  guchar  SyncImg[700][630];
-  double  NextImgSample;
-  double  t=0, slantAngle;
+  int      LineWidth = ModeSpec[Mode].LineLen / ModeSpec[Mode].SyncLen * 4;
+  int      x,y,xmid,x0;
+  int      q, d, qMost, dMost;
+  int      maxsy = 0;
+  guint    s, TotPix, xmax;
+  gushort  xAcc[700] = {0};
+  gushort  lines[600][(MAXSLANT-MINSLANT)*2];
+  gushort  cy, cx, Retries = 0;
+  gboolean SyncImg[700][630];
+  double   NextImgSample, t=0, slantAngle;
 
 
   // Repeat until slant < 0.5° or until we give up
@@ -38,7 +36,7 @@ guint FindSync (guint Length, guchar Mode, guint Rate, int *Skip) {
     maxsy         = 0;
     x = y         = 0;
 
-    memset(SyncImg, 0, sizeof(SyncImg[0][0]) * LineWidth * 500);
+    memset(SyncImg, FALSE, sizeof(SyncImg[0][0]) * 700 * 630);
         
     // Draw the sync signal into memory
     for (s = 0; s < Length; s++) {
@@ -67,7 +65,7 @@ guint FindSync (guint Length, guchar Mode, guint Rate, int *Skip) {
 
     // zero arrays
     dMost = qMost = 0;
-    memset(lines, 0, sizeof(lines[0][0]) * (MAXSLANT-MINSLANT)*2 * LineWidth);
+    memset(lines, 0, sizeof(lines[0][0]) * (MAXSLANT-MINSLANT)*2 * 600);
 
     // Find white pixels
     for (cy = 0; cy < TotPix / LineWidth; cy++) {

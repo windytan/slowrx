@@ -21,7 +21,7 @@ guchar GetVIS () {
   int        Pointer = 0, VIS = 0, Parity = 0, ParityBit = 0, Bit[8] = {0}, HedrPtr = 0;
   gushort    MaxPcm = 0;
   guint      FFTLen = 2048, i=0, j=0, k=0, MaxBin = 0;
-  double    *in, *out;
+  double    *in, *out, *PCM;
   double     Power[2048] = {0}, HedrBuf[100] = {0}, tone[100] = {0}, Hann[SRATE/50] = {0};
   char       infostr[60] = {0};
   gboolean   gotvis = FALSE;

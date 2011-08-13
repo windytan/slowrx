@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
   <!-- interface-requires gtk+ 3.0 -->
-  <object class="GtkListStore" id="SavedStore"/>
   <object class="GtkAdjustment" id="ShiftAdj">
     <property name="lower">-700</property>
     <property name="upper">1400</property>
@@ -308,7 +307,7 @@
                                 </child>
                                 <child>
                                   <object class="GtkToggleButton" id="TogFSK">
-                                    <property name="label" translatable="yes">DecodeFSK</property>
+                                    <property name="label" translatable="yes">FSKID</property>
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
                                     <property name="receives_default">True</property>
@@ -624,10 +623,12 @@
                   <object class="GtkFrame" id="SavedFrame">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
+                    <property name="vexpand">True</property>
                     <property name="label_xalign">0</property>
                     <property name="shadow_type">in</property>
                     <child>
                       <object class="GtkAlignment" id="alignment4">
+                        <property name="height_request">100</property>
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <property name="top_padding">10</property>
@@ -635,11 +636,23 @@
                         <property name="left_padding">10</property>
                         <property name="right_padding">10</property>
                         <child>
-                          <object class="GtkIconView" id="iconview1">
-                            <property name="height_request">100</property>
+                          <object class="GtkScrolledWindow" id="scrolledwindow1">
+                            <property name="height_request">150</property>
                             <property name="visible">True</property>
                             <property name="can_focus">True</property>
-                            <property name="model">SavedStore</property>
+                            <property name="shadow_type">in</property>
+                            <child>
+                              <object class="GtkIconView" id="SavedIconView">
+                                <property name="height_request">100</property>
+                                <property name="visible">True</property>
+                                <property name="can_focus">True</property>
+                                <property name="selection_mode">none</property>
+                                <property name="item_width">110</property>
+                                <property name="row_spacing">0</property>
+                                <property name="column_spacing">0</property>
+                                <property name="item_padding">0</property>
+                              </object>
+                            </child>
                           </object>
                         </child>
                       </object>
@@ -648,7 +661,7 @@
                       <object class="GtkLabel" id="label8">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
-                        <property name="label" translatable="yes">Saved pictures</property>
+                        <property name="label" translatable="yes">Recent pictures</property>
                         <property name="use_markup">True</property>
                       </object>
                     </child>

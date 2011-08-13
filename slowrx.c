@@ -28,19 +28,24 @@ void *Listen() {
   time_t     timet;
   FILE      *LumFile;
   gboolean   Finished;
+  GdkPixbuf *thumbbuf;
+  char       id[20];
+  GtkTreeIter iter;
 
   while (TRUE) {
 
     // Wait for VIS
-    HedrShift = 0;
-    gdk_threads_enter();
-    gtk_widget_set_sensitive(vugrid,   TRUE);
-    gtk_widget_set_sensitive(btnabort, FALSE);
-    gdk_threads_leave();
+    gdk_threads_enter        ();
+    gtk_widget_set_sensitive (vugrid,   TRUE);
+    gtk_widget_set_sensitive (btnabort, FALSE);
+    gdk_threads_leave        ();
 
+    HedrShift = 0;
     snd_pcm_prepare(pcm_handle);
     snd_pcm_start  (pcm_handle);
+
     Mode = GetVIS();
+
     if (Mode == 0) exit(EXIT_FAILURE);
 
     printf("  ==== %s ====\n", ModeSpec[Mode].Name);
@@ -52,18 +57,11 @@ void *Listen() {
     snprintf(lumfilename, sizeof(dest)-1, "rx/%s_%s-lum", ModeSpec[Mode].ShortName, dest);
     printf("  \"%s\"\n", pngfilename);
     
-    // Allocate space for PCM
-    PCM = calloc( (int)(ModeSpec[Mode].LineLen * ModeSpec[Mode].ImgHeight + 1) * SRATE, sizeof(double));
-    if (PCM == NULL) {
-      perror("Listen: Unable to allocate memory for PCM");
-      exit(EXIT_FAILURE);
-    }
 
     // Allocate space for cached FFT
     StoredFreq = calloc( (int)(ModeSpec[Mode].LineLen * ModeSpec[Mode].ImgHeight + 1) * SRATE, sizeof(double));
     if (StoredFreq == NULL) {
       perror("Listen: Unable to allocate memory for demodulated signal");
-      free(PCM);
       exit(EXIT_FAILURE);
     }
 
@@ -75,15 +73,15 @@ void *Listen() {
     }
   
     // Get video
-    strftime(rctime, sizeof(rctime)-1, "%H:%M", timeptr);
+    strftime(rctime,  sizeof(rctime)-1, "%H:%M", timeptr);
     snprintf(infostr, sizeof(infostr)-1, "%s, %s UTC", ModeSpec[Mode].Name, rctime);
-    gdk_threads_enter();
-    gtk_label_set_text(GTK_LABEL(idlabel), "");
-    gtk_widget_set_sensitive( manualframe, FALSE);
-    gtk_widget_set_sensitive( btnabort,    TRUE);
-    gtk_statusbar_push( GTK_STATUSBAR(statusbar), 0, "Receiving video" );
-    gtk_label_set_markup(GTK_LABEL(infolabel), infostr);
-    gdk_threads_leave();
+    gdk_threads_enter        ();
+    gtk_label_set_text       (GTK_LABEL(idlabel), "");
+    gtk_widget_set_sensitive (manualframe, FALSE);
+    gtk_widget_set_sensitive (btnabort,    TRUE);
+    gtk_statusbar_push       (GTK_STATUSBAR(statusbar), 0, "Receiving video" );
+    gtk_label_set_markup     (GTK_LABEL(infolabel), infostr);
+    gdk_threads_leave        ();
     PcmPointer = 2048;
     Sample     = 0;
     Rate       = SRATE;
@@ -91,22 +89,23 @@ void *Listen() {
     printf("  getvideo @ %d Hz, Skip %d, HedrShift %d Hz\n", Rate, Skip, HedrShift);
 
     Finished = GetVideo(Mode, Rate, Skip, FALSE);
-    gdk_threads_enter();
-    gtk_widget_set_sensitive( btnabort,    FALSE);
-    gtk_widget_set_sensitive( manualframe, TRUE);
-    gdk_threads_leave();
+
+    gdk_threads_enter        ();
+    gtk_widget_set_sensitive (btnabort,    FALSE);
+    gtk_widget_set_sensitive (manualframe, TRUE);
+    gdk_threads_leave        ();
     
-    free(PCM);
-    PCM = NULL;
+    id[0] = '\0';
 
     if (Finished && gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(togfsk))) {
-      char id[20];
+      gdk_threads_enter  ();
+      gtk_statusbar_push (GTK_STATUSBAR(statusbar), 0, "Receiving FSK ID" );
+      gdk_threads_leave  ();
       GetFSK(id);
-      printf("got fsk\n");
-      printf("%s\n",id);
-      gdk_threads_enter();
-      gtk_label_set_text(GTK_LABEL(idlabel), id);
-      gdk_threads_leave();
+      printf("  FSKID \"%s\"\n",id);
+      gdk_threads_enter  ();
+      gtk_label_set_text (GTK_LABEL(idlabel), id);
+      gdk_threads_leave  ();
     }
 
     snd_pcm_drop(pcm_handle);
@@ -115,31 +114,36 @@ void *Listen() {
 
       // Fix slant
       setVU(0,-100);
-      gdk_threads_enter();
-      gtk_statusbar_push( GTK_STATUSBAR(statusbar), 0, "Calculating slant" );
-      gtk_widget_set_sensitive(vugrid, FALSE);
-      gdk_threads_leave();
+      gdk_threads_enter        ();
+      gtk_statusbar_push       (GTK_STATUSBAR(statusbar), 0, "Calculating slant" );
+      gtk_widget_set_sensitive (vugrid, FALSE);
+      gdk_threads_leave        ();
       printf("  FindSync @ %d Hz\n",Rate);
       Rate = FindSync(PcmPointer, Mode, Rate, &Skip);
    
       // Final image  
-      gdk_threads_enter();
-      gtk_statusbar_push( GTK_STATUSBAR(statusbar), 0, "Redrawing" );
-      gdk_threads_leave();
+      gdk_threads_enter  ();
+      gtk_statusbar_push (GTK_STATUSBAR(statusbar), 0, "Redrawing" );
+      gdk_threads_leave  ();
       printf("  getvideo @ %d Hz, Skip %d, HedrShift %d Hz\n", Rate, Skip, HedrShift);
       GetVideo(Mode, Rate, Skip, TRUE);
     }
 
     free (HasSync);
+    HasSync = NULL;
+
+    thumbbuf = gdk_pixbuf_scale_simple (RxPixbuf, 100, 80, GDK_INTERP_HYPER);
+    gtk_list_store_prepend             (savedstore, &iter);
+    gtk_list_store_set                 (savedstore, &iter, 0, thumbbuf, 1, id, -1);
       
     if (gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON(togsave))) {
 
       // Save the raw signal
-      setVU(0,-100);
-      gdk_threads_enter();
-      gtk_statusbar_push( GTK_STATUSBAR(statusbar), 0, "Saving" );
-      gdk_threads_leave();
+      gdk_threads_enter  ();
+      gtk_statusbar_push (GTK_STATUSBAR(statusbar), 0, "Saving" );
+      gdk_threads_leave  ();
 
+      setVU(0,-100);
       Lum = malloc( (ModeSpec[Mode].LineLen * ModeSpec[Mode].ImgHeight) * SRATE );
       if (Lum == NULL) {
         perror("Unable to allocate memory for lum data");
@@ -195,7 +199,6 @@ int main(int argc, char *argv[]) {
   gtk_main();
 
   g_object_unref(RxPixbuf);
-  free(PCM);
   free(StoredFreq);
 
   printf("Clean exit\n");

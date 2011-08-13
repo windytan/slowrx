@@ -40,6 +40,8 @@ void createGUI() {
   pwrimage    = GTK_WIDGET(gtk_builder_get_object(builder,"PowerImage"));
   snrimage    = GTK_WIDGET(gtk_builder_get_object(builder,"SNRImage"));
   idlabel     = GTK_WIDGET(gtk_builder_get_object(builder,"IDLabel"));
+  GtkWidget *iconview;
+  iconview    = GTK_WIDGET(gtk_builder_get_object(builder,"SavedIconView"));
 
   g_signal_connect        (quititem,    "activate",     G_CALLBACK(delete_event),        NULL);
   g_signal_connect        (mainwindow,  "delete-event", G_CALLBACK(delete_event),        NULL);
@@ -54,9 +56,15 @@ void createGUI() {
   gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(togsave),  TRUE);
   gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(togadapt), TRUE);
   gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(togrx),    TRUE);
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(togfsk),   TRUE);
   gtk_combo_box_set_active    (GTK_COMBO_BOX(modecombo),    0);
   gtk_widget_set_sensitive    (btnabort,                    FALSE);
-  
+
+  savedstore = gtk_list_store_new (2, GDK_TYPE_PIXBUF, G_TYPE_STRING);
+  gtk_icon_view_set_model (GTK_ICON_VIEW(iconview), GTK_TREE_MODEL(savedstore));
+  gtk_icon_view_set_pixbuf_column (GTK_ICON_VIEW(iconview), 0);
+  gtk_icon_view_set_text_column (GTK_ICON_VIEW(iconview), 1);
+
   RxPixbuf   = gdk_pixbuf_new (GDK_COLORSPACE_RGB, FALSE, 8, 320, 256);
   ClearPixbuf (RxPixbuf, 320, 256);
   DispPixbuf = gdk_pixbuf_scale_simple (RxPixbuf, 500, 400, GDK_INTERP_NEAREST);

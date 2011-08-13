@@ -11,9 +11,7 @@ extern int        PcmPointer;
 extern int        Sample;
 extern int        PWRdBthresh[10];
 extern int        SNRdBthresh[10];
-extern guint      SRate;
 extern gint16     PcmBuffer[2048];
-extern double    *PCM;
 extern double    *StoredFreq;
 extern guint      StoredFreqRate;
 extern gshort     HedrShift;
@@ -23,7 +21,6 @@ extern gboolean   Abort;
 extern gboolean  *HasSync;
 
 extern GtkWidget *mainwindow;
-extern GtkWidget *notebook;
 extern GtkWidget *RxImage;
 extern GtkWidget *statusbar;
 extern GtkWidget *snrbar;
@@ -32,7 +29,6 @@ extern GtkWidget *vugrid;
 extern GtkWidget *infolabel;
 extern GtkWidget *aboutdialog;
 extern GtkWidget *prefdialog;
-extern GtkWidget *sdialog;
 extern GtkWidget *cardcombo;
 extern GtkWidget *modecombo;
 extern GtkWidget *togslant;
@@ -52,6 +48,8 @@ extern GdkPixbuf *pixbufPWR;
 extern GdkPixbuf *pixbufSNR;
 extern GdkPixbuf *RxPixbuf;
 extern GdkPixbuf *DispPixbuf;
+
+extern GtkListStore *savedstore;
 
 extern snd_pcm_t *pcm_handle;
 

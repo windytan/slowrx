@@ -72,7 +72,6 @@ void initPcmDevice() {
     fprintf(stderr, "ALSA: Error setting sample rate.\n");
     exit(EXIT_FAILURE);
   }
-  SRate = exact_rate;
   if (exact_rate != 44100) fprintf(stderr, "ALSA: Using %d Hz instead of 44100.\n", exact_rate);
 
   if (snd_pcm_hw_params_set_channels(pcm_handle, hwparams, 1) < 0) {

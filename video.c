@@ -20,17 +20,18 @@ gboolean GetVideo(guchar Mode, guint Rate, int Skip, gboolean Redraw) {
   guint      MaxBin = 0;
   guint      VideoPlusNoiseBins=0, ReceiverBins=0, NoiseOnlyBins=0;
   guint      n=0;
-  int        i=0, j=0;
+  int        i=0, j=0,TargetBin=0;
   int        Length=0, Sample=0;
   int        FFTLen=0, WinLength=0;
   int        samplesread = 0, WinIdx = 0, LineNum = 0;
   int        x = 0, y = 0, prevline=0, tx=0, MaxPcm=0;
   gushort    HannLens[7] = { 64, 96, 128, 256, 512, 1024, 2048 };
-  gushort    LopassBin = GetBin(3000, 1024);
+  gushort    LopassBin;
   double     Hann[7][2048] = {{0}};
   double     t=0, Freq = 0, NextPixel = 0, NextSNR = 0, NextFFT = 0, NextSync = 0;
-  double     *in,  *out;
+  double    *in,  *out;
   double     Praw, Psync;
+  double    *PCM;
   double     Power[2048] = {0};
   double     Pvideo_plus_noise=0, Pnoise_only=0, Pnoise=0, Psignal=0;
   double     SNR = 0;
@@ -39,9 +40,14 @@ gboolean GetVideo(guchar Mode, guint Rate, int Skip, gboolean Redraw) {
   guchar     Lum=0, Image[800][616][3] = {{{0}}};
   guchar     Channel = 0;
   fftw_plan  Plan, BigPlan, SNRPlan;
+    
+  // Allocate space for PCM
+  PCM = calloc( (int)(ModeSpec[Mode].LineLen * ModeSpec[Mode].ImgHeight + 1) * SRATE, sizeof(double));
+  if (PCM == NULL) {
+    perror("Listen: Unable to allocate memory for PCM");
+    exit(EXIT_FAILURE);
+  }
 
-
-  printf("next sync %.5f\n",NextSync);
   // Prepare FFT
   in      = fftw_malloc(sizeof(double) * 2048);
   if (in == NULL) {
@@ -142,7 +148,8 @@ gboolean GetVideo(guchar Mode, guint Rate, int Skip, gboolean Redraw) {
 
     } else {
 
-      // Read 2048 samples
+      /*** Read ahead from sound card ***/
+
       if (Sample == 0 || Sample >= PcmPointer - 2048) {
         if (PcmPointer > Length-2048) break;
 
@@ -176,22 +183,25 @@ gboolean GetVideo(guchar Mode, guint Rate, int Skip, gboolean Redraw) {
       }
 
 
-      /*** Take samples of the sync band for later adjustments ***/
+      /*** Save the sync band for later adjustments ***/
 
       if (t >= NextSync) {
-
-        memset(in, 0, sizeof(double)*2048);
  
+        Praw = Psync = 0;
+
+        TargetBin = GetBin(1200+HedrShift, 1024);
+        LopassBin = GetBin(3000, 1024);
+        
+        memset(in,  0, sizeof(in[0]) *2048);
+        memset(out, 0, sizeof(out[0])*2048);
+        
         for (i = 0; i < 64; i++) in[i] = PCM[Sample+i] * Hann[0][i];
 
         fftw_execute(BigPlan);
 
-        // Power estimation
-        Praw = Psync = 0;
-        j = GetBin(1200+HedrShift, 1024);
         for (i=0;i<LopassBin;i++) {
           Praw += pow(out[i], 2) + pow(out[1024-i], 2);
-          if (i >= j-1 && i <= j+1) Psync += pow(out[i], 2) + pow(out[1024-i], 2);
+          if (i >= TargetBin-1 && i <= TargetBin+1) Psync += pow(out[i], 2) + pow(out[1024-i], 2);
         }
 
         Praw  /= (1024/2.0) * ( LopassBin/(1024/2.0));
@@ -208,11 +218,11 @@ gboolean GetVideo(guchar Mode, guint Rate, int Skip, gboolean Redraw) {
           HasSync[Sample+i] = HasSync[Sample];
         }
 
-        NextSync += 64.0/Rate;
+        NextSync += 64.0/SRATE;
       }
 
 
-      /*** Estimate SNR at certain intervals ***/
+      /*** Estimate SNR ***/
 
       if (t >= NextSNR) {
 
@@ -494,6 +504,8 @@ gboolean GetVideo(guchar Mode, guint Rate, int Skip, gboolean Redraw) {
   fftw_destroy_plan(SNRPlan);
   fftw_free(in);
   fftw_free(out);
+
+  free(PCM);
 
   if (Abort) return FALSE;
   else       return TRUE;
