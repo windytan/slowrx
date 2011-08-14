@@ -141,7 +141,7 @@ void GetFSK (char *dest) {
 
     Pointer++;
 
-    if (Pointer > 200) {
+    if (Pointer > 200 || (!InFSK && Pointer > 50)) {
       break;
     }
 

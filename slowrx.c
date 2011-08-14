@@ -21,7 +21,7 @@
 void *Listen() {
 
   int        Skip = 0, i=0;
-  char       dest[40], pngfilename[40], lumfilename[40], infostr[60], rctime[8];
+  char       timestr[40], pngfilename[40], lumfilename[40], infostr[60], rctime[8];
   guchar    *Lum, *pixels, Mode=0;
   guint      Rate = SRATE;
   struct tm *timeptr = NULL;
@@ -52,9 +52,9 @@ void *Listen() {
 
     timet = time(NULL);
     timeptr = gmtime(&timet);
-    strftime(dest, sizeof(dest)-1,"%Y%m%d-%H%M%Sz", timeptr);
-    snprintf(pngfilename, sizeof(dest)-1, "rx/%s_%s.png", ModeSpec[Mode].ShortName, dest);
-    snprintf(lumfilename, sizeof(dest)-1, "rx/%s_%s-lum", ModeSpec[Mode].ShortName, dest);
+    strftime(timestr, sizeof(timestr)-1,"%Y%m%d-%H%M%Sz", timeptr);
+    snprintf(pngfilename, sizeof(timestr)-1, "rx/%s_%s.png", timestr, ModeSpec[Mode].ShortName);
+    snprintf(lumfilename, sizeof(timestr)-1, "rx/%s_%s-lum", timestr, ModeSpec[Mode].ShortName);
     printf("  \"%s\"\n", pngfilename);
     
 
@@ -132,9 +132,12 @@ void *Listen() {
     free (HasSync);
     HasSync = NULL;
 
-    thumbbuf = gdk_pixbuf_scale_simple (RxPixbuf, 100, 80, GDK_INTERP_HYPER);
+    // Add thumbnail to iconview
+    thumbbuf = gdk_pixbuf_scale_simple (RxPixbuf, 100, 100.0/ModeSpec[Mode].ImgWidth * ModeSpec[Mode].ImgHeight * ModeSpec[Mode].YScale, GDK_INTERP_HYPER);
+    gdk_threads_enter                  ();
     gtk_list_store_prepend             (savedstore, &iter);
     gtk_list_store_set                 (savedstore, &iter, 0, thumbbuf, 1, id, -1);
+    gdk_threads_leave                  ();
       
     if (gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON(togsave))) {
 
@@ -164,11 +167,14 @@ void *Listen() {
       png_t png;
       png_init(0,0);
 
-      pixels = gdk_pixbuf_get_pixels(RxPixbuf);
+      GdkPixbuf *scaledpb;
+      scaledpb = gdk_pixbuf_scale_simple (RxPixbuf, ModeSpec[Mode].ImgWidth, ModeSpec[Mode].ImgHeight * ModeSpec[Mode].YScale, GDK_INTERP_HYPER);
+      pixels = gdk_pixbuf_get_pixels(scaledpb);
 
       png_open_file_write(&png, pngfilename);
-      png_set_data(&png, ModeSpec[Mode].ImgWidth, ModeSpec[Mode].ImgHeight, 8, PNG_TRUECOLOR, pixels);
+      png_set_data(&png, ModeSpec[Mode].ImgWidth, ModeSpec[Mode].ImgHeight *  ModeSpec[Mode].YScale, 8, PNG_TRUECOLOR, pixels);
       png_close_file(&png);
+      g_object_unref(scaledpb);
     }
     
     free(StoredFreq);

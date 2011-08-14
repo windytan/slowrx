@@ -53,6 +53,7 @@ extern GtkListStore *savedstore;
 
 extern snd_pcm_t *pcm_handle;
 
+// SSTV modes
 enum {
   UNKNOWN=0,
   M1,    M2,   M3,    M4,
@@ -63,6 +64,7 @@ enum {
   W2120, W2180
 };
 
+// Color encodings
 enum {
   GBR, RGB, YUV, BW
 };

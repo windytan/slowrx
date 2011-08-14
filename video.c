@@ -262,7 +262,7 @@ gboolean GetVideo(guchar Mode, guint Rate, int Skip, gboolean Redraw) {
         // Lower bound to -20 dB
         SNR = ((Psignal / Pnoise < .01) ? -20 : 10 * log10(Psignal / Pnoise));
 
-        NextSNR += ModeSpec[Mode].LineLen / 60;
+        NextSNR += 8e-3;
       }
 
 
