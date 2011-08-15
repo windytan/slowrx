@@ -22,13 +22,14 @@ gboolean GetVideo(guchar Mode, guint Rate, int Skip, gboolean Redraw) {
   guint      n=0;
   int        i=0, j=0,TargetBin=0;
   int        Length=0, Sample=0;
-  int        FFTLen=0, WinLength=0;
+  int        FFTLen=0, WinLength=0,syncs,ffts,bigffts,snrs;
   int        samplesread = 0, WinIdx = 0, LineNum = 0;
   int        x = 0, y = 0, prevline=0, tx=0, MaxPcm=0;
   gushort    HannLens[7] = { 64, 96, 128, 256, 512, 1024, 2048 };
   gushort    LopassBin;
   double     Hann[7][2048] = {{0}};
-  double     t=0, Freq = 0, NextPixel = 0, NextSNR = 0, NextFFT = 0, NextSync = 0;
+  double     t=0, Freq = 0, PrevFreq = 0, InterpFreq = 0, NextPixel = 0, NextSNRtime = 0, NextFFTtime = 0;
+  double     NextSyncTime = 0;
   double    *in,  *out;
   double     Praw, Psync;
   double    *PCM;
@@ -133,6 +134,8 @@ gboolean GetVideo(guchar Mode, guint Rate, int Skip, gboolean Redraw) {
 
   Abort = FALSE;
 
+  snrs = bigffts = ffts = syncs = 0;
+
   // Loop through signal
   for (Sample = 0; Sample < Length; Sample++) {
 
@@ -144,7 +147,7 @@ gboolean GetVideo(guchar Mode, guint Rate, int Skip, gboolean Redraw) {
 
       // We're redrawing, so all DSP is skipped
 
-      Freq = StoredFreq[Sample];
+      InterpFreq = StoredFreq[Sample];
 
     } else {
 
@@ -185,7 +188,7 @@ gboolean GetVideo(guchar Mode, guint Rate, int Skip, gboolean Redraw) {
 
       /*** Save the sync band for later adjustments ***/
 
-      if (t >= NextSync) {
+      if (t >= NextSyncTime) {
  
         Praw = Psync = 0;
 
@@ -198,6 +201,8 @@ gboolean GetVideo(guchar Mode, guint Rate, int Skip, gboolean Redraw) {
         for (i = 0; i < 64; i++) in[i] = PCM[Sample+i] * Hann[0][i];
 
         fftw_execute(BigPlan);
+
+        syncs ++;
 
         for (i=0;i<LopassBin;i++) {
           Praw += pow(out[i], 2) + pow(out[1024-i], 2);
@@ -218,19 +223,21 @@ gboolean GetVideo(guchar Mode, guint Rate, int Skip, gboolean Redraw) {
           HasSync[Sample+i] = HasSync[Sample];
         }
 
-        NextSync += 64.0/SRATE;
+        NextSyncTime += 64.0/SRATE;
       }
 
 
       /*** Estimate SNR ***/
 
-      if (t >= NextSNR) {
+      if (t >= NextSNRtime) {
 
         // Apply Hann window to SNRSIZE samples
         for (i = 0; i < SNRSIZE; i++) in[i] = PCM[Sample + i] * Hann[6][i];
 
         // FFT
         fftw_execute(SNRPlan);
+
+        snrs ++;
 
         // Calculate video-plus-noise power (1500-2300 Hz)
 
@@ -262,13 +269,15 @@ gboolean GetVideo(guchar Mode, guint Rate, int Skip, gboolean Redraw) {
         // Lower bound to -20 dB
         SNR = ((Psignal / Pnoise < .01) ? -20 : 10 * log10(Psignal / Pnoise));
 
-        NextSNR += 8e-3;
+        NextSNRtime += 8e-3;
       }
 
 
       /*** FM demodulation ***/
 
-      if (t >= NextFFT) {
+      if (t >= NextFFTtime) {
+
+        PrevFreq = Freq;
 
         // Adapt window size to SNR
 
@@ -314,10 +323,13 @@ gboolean GetVideo(guchar Mode, guint Rate, int Skip, gboolean Redraw) {
         if (FFTLen == 1024) fftw_execute(BigPlan);
         else                fftw_execute(Plan);
 
+        if (FFTLen == 1024) bigffts ++;
+        else                ffts++;
+
         MaxBin = 0;
           
         // Find the bin with most power
-        for (n = GetBin(1500 + HedrShift, FFTLen) - 1; n <= GetBin(2300 + HedrShift, FFTLen) + 1; n++) {
+        for (n = GetBin(1500 + HedrShift, FFTLen) - 2; n <= GetBin(2300 + HedrShift, FFTLen) + 2; n++) {
 
           Power[n] = pow(out[n],2) + pow(out[FFTLen - n], 2);
           if (MaxBin == 0 || Power[n] > Power[MaxBin]) MaxBin = n;
@@ -325,20 +337,30 @@ gboolean GetVideo(guchar Mode, guint Rate, int Skip, gboolean Redraw) {
         }
 
         // Find the exact frequency by Gaussian interpolation
-        if (MaxBin > GetBin(1500 + HedrShift, FFTLen) - 1 && MaxBin < GetBin(2300 + HedrShift, FFTLen) + 1) {
+        if (MaxBin > GetBin(1500 + HedrShift, FFTLen) - 2 && MaxBin < GetBin(2300 + HedrShift, FFTLen) + 2) {
           Freq = MaxBin +            (log( Power[MaxBin + 1] / Power[MaxBin - 1] )) /
                            (2 * log( pow(Power[MaxBin], 2) / (Power[MaxBin + 1] * Power[MaxBin - 1])));
           // In Hertz
           Freq = Freq / FFTLen * SRATE;
+          InterpFreq = Freq;
         } else {
-          // Use last usable freq
+          // Clip if out of bounds
+          Freq = (MaxBin > GetBin(1900 + HedrShift, FFTLen)) ? 2300+HedrShift : 1500+HedrShift;
         }
 
-        NextFFT += ModeSpec[Mode].PixelLen / 2;
+
+        NextFFTtime += 0.4e-3;
+
+      } else {
+
+        // Linear interpolation of intermediate frequencies
+        
+        InterpFreq = PrevFreq + (t - NextFFTtime + 0.8e-3) * ((Freq - PrevFreq) / 0.4e-3);
+
       }
 
       // Store frequency for later image adjustments
-      StoredFreq[Sample] = Freq;
+      StoredFreq[Sample] = InterpFreq;
 
     }
 
@@ -407,7 +429,7 @@ gboolean GetVideo(guchar Mode, guint Rate, int Skip, gboolean Redraw) {
       }
 
       // Luminance from frequency
-      Lum = clip((Freq - (1500 + HedrShift)) / 3.1372549);
+      Lum = clip((InterpFreq - (1500 + HedrShift)) / 3.1372549);
 
       // Store pixel 
       if (x >= 0 && y >= 0 && x < ModeSpec[Mode].ImgWidth) {
@@ -482,9 +504,7 @@ gboolean GetVideo(guchar Mode, guint Rate, int Skip, gboolean Redraw) {
       MaxPcm = 0;
     }
 
-    if (Abort) {
-      break;
-    }
+    if (Abort) break;
 
   }
 

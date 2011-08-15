@@ -81,57 +81,6 @@ guchar clip (double a) {
   return  (unsigned char)round(a);
 }
 
-// Draw signal level meters according to given values
-void setVU (short int PcmValue, double SNRdB) {
-  int x,y;
-  int PWRdB = (int)round(10 * log10(pow(PcmValue/32767.0,2)));
-  guchar *pixelsPWR, *pixelsSNR, *pPWR, *pSNR;
-  unsigned int rowstridePWR,rowstrideSNR;
-
-  rowstridePWR = gdk_pixbuf_get_rowstride (pixbufPWR);
-  pixelsPWR    = gdk_pixbuf_get_pixels    (pixbufPWR);
-  
-  rowstrideSNR = gdk_pixbuf_get_rowstride (pixbufSNR);
-  pixelsSNR    = gdk_pixbuf_get_pixels    (pixbufSNR);
-
-  for (y=0; y<20; y++) {
-    for (x=0; x<100; x++) {
-
-      pPWR = pixelsPWR + y * rowstridePWR + (99-x) * 3;
-      pSNR = pixelsSNR + y * rowstrideSNR + (99-x) * 3;
-
-      if (y > 1 && y < 18 && x % 10 > 1 && x % 10 < 8 && x % 2 == 0 && y % 2 == 0) {
-
-        if (PWRdB >= PWRdBthresh[x/10]) {
-          pPWR[0] = 0x39;
-          pPWR[1] = 0xde;
-          pPWR[2] = 0xd4;
-        } else {
-          pPWR[0] = pPWR[1] = pPWR[2] = 0x80;
-        }
-
-        if (SNRdB >= SNRdBthresh[x/10]) {        
-          pSNR[0] = 0xef;
-          pSNR[1] = 0xe4;
-          pSNR[2] = 0x34;
-        } else {
-          pSNR[0] = pSNR[1] = pSNR[2] = 0x80;
-        }
-
-      } else {
-        pPWR[0] = pPWR[1] = pPWR[2] = 0x40;
-        pSNR[0] = pSNR[1] = pSNR[2] = 0x40;
-      }
-
-    }
-  }
-
-  gdk_threads_enter();
-  gtk_image_set_from_pixbuf(GTK_IMAGE(pwrimage), pixbufPWR);
-  gtk_image_set_from_pixbuf(GTK_IMAGE(snrimage), pixbufSNR);
-  gdk_threads_leave();
-
-}
 
 // Convert degrees -> radians
 double deg2rad (double Deg) {

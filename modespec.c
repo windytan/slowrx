@@ -17,7 +17,7 @@
  * LineLen       Time in seconds from the beginning of a sync pulse to the beginning of the next one
  * ImgWidth      Pixels per scanline
  * ImgHeight     Number of scanlines
- * YScale        Vertical size of a pixel (1 or 2)
+ * YScale        Height of one scanline in pixels (1 or 2)
  * ColorEnc      Color format (GBR, RGB, YUV, BW)
  *
  *
