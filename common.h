@@ -3,16 +3,16 @@
 
 #define MINSLANT 30
 #define MAXSLANT 150
-#define SNRSIZE  512
-#define SRATE    44100
+#define BUFLEN   4096
 
 extern guchar     VISmap[128];
 extern int        PcmPointer;
-extern int        Sample;
 extern int        PWRdBthresh[10];
 extern int        SNRdBthresh[10];
-extern gint16     PcmBuffer[2048];
+extern gint16    *PcmBuffer;
 extern double    *StoredFreq;
+extern double    *in;
+extern double    *out;
 extern guint      StoredFreqRate;
 extern gshort     HedrShift;
 extern gboolean   Adaptive;
@@ -52,6 +52,9 @@ extern GdkPixbuf *DispPixbuf;
 extern GtkListStore *savedstore;
 
 extern snd_pcm_t *pcm_handle;
+
+extern fftw_plan  Plan1024;
+extern fftw_plan  Plan2048;
 
 // SSTV modes
 enum {
@@ -100,5 +103,6 @@ void     GetAdaptive   ();
 void     ManualStart   ();
 void     AbortRx       ();
 void     GetFSK        (char*);
+void     readPcm       (gint);
 
 #endif

@@ -22,55 +22,24 @@ gboolean GetVideo(guchar Mode, guint Rate, int Skip, gboolean Redraw) {
   guint      n=0;
   int        i=0, j=0,TargetBin=0;
   int        Length=0, Sample=0;
-  int        FFTLen=0, WinLength=0,syncs,ffts,bigffts,snrs;
-  int        samplesread = 0, WinIdx = 0, LineNum = 0;
+  int        FFTLen=1024, WinLength=0;
+  int        WinIdx = 0, LineNum = 0;
   int        x = 0, y = 0, prevline=0, tx=0, MaxPcm=0;
-  gushort    HannLens[7] = { 64, 96, 128, 256, 512, 1024, 2048 };
+  gushort    HannLens[7] = { 64, 96, 128, 256, 512, 1024 };
   gushort    LopassBin;
-  double     Hann[7][2048] = {{0}};
+  double     Hann[7][1024] = {{0}};
   double     t=0, Freq = 0, PrevFreq = 0, InterpFreq = 0, NextPixel = 0, NextSNRtime = 0, NextFFTtime = 0;
   double     NextSyncTime = 0;
-  double    *in,  *out;
   double     Praw, Psync;
-  double    *PCM;
-  double     Power[2048] = {0};
+  double     Power[1024] = {0};
   double     Pvideo_plus_noise=0, Pnoise_only=0, Pnoise=0, Psignal=0;
   double     SNR = 0;
   double     CurLineTime = 0;
   double     ChanStart[4] = {0}, ChanLen[4] = {0};
   guchar     Lum=0, Image[800][616][3] = {{{0}}};
   guchar     Channel = 0;
-  fftw_plan  Plan, BigPlan, SNRPlan;
+  gboolean   PrevHasSync;
     
-  // Allocate space for PCM
-  PCM = calloc( (int)(ModeSpec[Mode].LineLen * ModeSpec[Mode].ImgHeight + 1) * SRATE, sizeof(double));
-  if (PCM == NULL) {
-    perror("Listen: Unable to allocate memory for PCM");
-    exit(EXIT_FAILURE);
-  }
-
-  // Prepare FFT
-  in      = fftw_malloc(sizeof(double) * 2048);
-  if (in == NULL) {
-    perror("GetVideo: Unable to allocate memory for FFT");
-    free(PCM);
-    exit(EXIT_FAILURE);
-  }
-  out     = fftw_malloc(sizeof(double) * 2048);
-  if (out == NULL) {
-    perror("GetVideo: Unable to allocate memory for FFT");
-    fftw_free(in);
-    free(PCM);
-    exit(EXIT_FAILURE);
-  }
-  
-  // FFTW plans for frequency estimation
-  Plan    = fftw_plan_r2r_1d(512,  in, out, FFTW_FORWARD, FFTW_ESTIMATE);
-  BigPlan = fftw_plan_r2r_1d(1024, in, out, FFTW_FORWARD, FFTW_ESTIMATE);
-
-  // FFTW plan for SNR estimation
-  SNRPlan = fftw_plan_r2r_1d(SNRSIZE, in, out, FFTW_FORWARD, FFTW_ESTIMATE);
-
   // Initialize Hann windows of different lengths
   for (j = 0; j < 7; j++)
     for (i = 0; i < HannLens[j]; i++)
@@ -83,7 +52,6 @@ gboolean GetVideo(guchar Mode, guint Rate, int Skip, gboolean Redraw) {
         0.9764067, 0.9940579, 1.0000000, 0.9940579, 0.9764067, 0.9475647, 0.9083715, 0.8599540,
         0.8036807, 0.7411060, 0.6739095, 0.6038308, 0.5326043, 0.4618960, 0.3932469, 0.3280227,
         0.2673747, 0.2122111, 0.1631808, 0.1206692, 0.1569882 };
-
 
   // Starting times of video channels on every line, counted from beginning of line
 
@@ -124,17 +92,18 @@ gboolean GetVideo(guchar Mode, guint Rate, int Skip, gboolean Redraw) {
     ClearPixbuf(RxPixbuf, ModeSpec[Mode].ImgWidth, ModeSpec[Mode].ImgHeight);
   }
 
-  int rowstride = gdk_pixbuf_get_rowstride (RxPixbuf);
+  int     rowstride = gdk_pixbuf_get_rowstride (RxPixbuf);
   guchar *pixels, *p;
   pixels = gdk_pixbuf_get_pixels(RxPixbuf);
 
   if (!Redraw) StoredFreqRate = Rate;
 
-  Length = (ModeSpec[Mode].LineLen * ModeSpec[Mode].ImgHeight) * SRATE;
+  Length = ModeSpec[Mode].LineLen * ModeSpec[Mode].ImgHeight * 44100;
 
-  Abort = FALSE;
+  Abort       = FALSE;
+  PrevHasSync = FALSE;
 
-  snrs = bigffts = ffts = syncs = 0;
+  printf("pcmpointer %d\n",PcmPointer);
 
   // Loop through signal
   for (Sample = 0; Sample < Length; Sample++) {
@@ -145,7 +114,7 @@ gboolean GetVideo(guchar Mode, guint Rate, int Skip, gboolean Redraw) {
 
     if (Redraw) {
 
-      // We're redrawing, so all DSP is skipped
+      // Redrawing; all DSP is skipped
 
       InterpFreq = StoredFreq[Sample];
 
@@ -153,63 +122,31 @@ gboolean GetVideo(guchar Mode, guint Rate, int Skip, gboolean Redraw) {
 
       /*** Read ahead from sound card ***/
 
-      if (Sample == 0 || Sample >= PcmPointer - 2048) {
-        if (PcmPointer > Length-2048) break;
+      if (PcmPointer >= BUFLEN-1024) readPcm(2048);
 
-        samplesread = snd_pcm_readi(pcm_handle, PcmBuffer, 2048);
-        if (samplesread < 2048) {
-          if (samplesread == -EPIPE) {
-            printf("ALSA buffer overrun :(\n");
-            exit(EXIT_FAILURE);
-          } else if (samplesread == -EBADFD) {
-            printf("ALSA: PCM is not in the right state\n");
-            exit(EXIT_FAILURE);
-          } else if (samplesread == -ESTRPIPE) {
-            printf("ALSA: a suspend event occurred\n");
-            exit(EXIT_FAILURE);
-          } else if (samplesread < 0) {
-            printf("ALSA error\n");
-            exit(EXIT_FAILURE);
-          }
-          break;
-        }
-
-        for (i = 0; i < 2048; i++) {
-
-          PCM[PcmPointer + i] = PcmBuffer[i] / 32768.0;
-
-         // Keep track of max amplitude for VU meter
-         if (abs(PcmBuffer[i]) > MaxPcm) MaxPcm = abs(PcmBuffer[i]);
-
-        }
-        PcmPointer += 2048;
-      }
-
-
-      /*** Save the sync band for later adjustments ***/
+      
+      /*** Store the sync band for later adjustments ***/
 
       if (t >= NextSyncTime) {
  
         Praw = Psync = 0;
 
-        TargetBin = GetBin(1200+HedrShift, 1024);
-        LopassBin = GetBin(3000, 1024);
+        TargetBin = GetBin(1200+HedrShift, FFTLen);
+        LopassBin = GetBin(3000, FFTLen);
         
-        memset(in,  0, sizeof(in[0]) *2048);
-        memset(out, 0, sizeof(out[0])*2048);
+        memset(in,  0, sizeof(in[0]) *FFTLen);
+        memset(out, 0, sizeof(out[0])*FFTLen);
         
-        for (i = 0; i < 64; i++) in[i] = PCM[Sample+i] * Hann[0][i];
+        for (i = 0; i < 64; i++) in[i] = PcmBuffer[PcmPointer+i-32] / 32768.0 * Hann[0][i];
 
-        fftw_execute(BigPlan);
-
-        syncs ++;
+        fftw_execute(Plan1024);
 
         for (i=0;i<LopassBin;i++) {
-          Praw += pow(out[i], 2) + pow(out[1024-i], 2);
-          if (i >= TargetBin-1 && i <= TargetBin+1) Psync += pow(out[i], 2) + pow(out[1024-i], 2);
+          Praw += pow(out[i], 2) + pow(out[FFTLen-i], 2);
+          if (i >= TargetBin-1 && i <= TargetBin+1) Psync += pow(out[i], 2) + pow(out[FFTLen-i], 2);
         }
 
-        Praw  /= (1024/2.0) * ( LopassBin/(1024/2.0));
+        Praw  /= (FFTLen/2.0) * ( LopassBin/(FFTLen/2.0));
         Psync /= 3.0;
 
         // If there is more than twice the amount of power per Hz in the
@@ -217,13 +154,12 @@ gboolean GetVideo(guchar Mode, guint Rate, int Skip, gboolean Redraw) {
         if (Psync > 2*Praw)  HasSync[Sample] = TRUE;
         else                 HasSync[Sample] = FALSE;
 
-        // Copy forward 
-        for (i = 0; i < 64; i++) {
-          if (Sample+i >= Length) break;
-          HasSync[Sample+i] = HasSync[Sample];
-        }
+        PrevHasSync = HasSync[Sample];
 
-        NextSyncTime += 64.0/SRATE;
+        NextSyncTime += 1.5e-3;
+
+      } else {
+        HasSync[Sample] = PrevHasSync;
       }
 
 
@@ -231,36 +167,34 @@ gboolean GetVideo(guchar Mode, guint Rate, int Skip, gboolean Redraw) {
 
       if (t >= NextSNRtime) {
 
-        // Apply Hann window to SNRSIZE samples
-        for (i = 0; i < SNRSIZE; i++) in[i] = PCM[Sample + i] * Hann[6][i];
+        // Apply Hann window
+        for (i = 0; i < FFTLen; i++) in[i] = PcmBuffer[PcmPointer + i - FFTLen/2] / 32768.0 * Hann[5][i];
 
         // FFT
-        fftw_execute(SNRPlan);
-
-        snrs ++;
+        fftw_execute(Plan1024);
 
         // Calculate video-plus-noise power (1500-2300 Hz)
 
         Pvideo_plus_noise = 0;
-        for (n = GetBin(1500+HedrShift, SNRSIZE); n <= GetBin(2300+HedrShift, SNRSIZE); n++)
-          Pvideo_plus_noise += pow(out[n], 2) + pow(out[SNRSIZE - n], 2);
+        for (n = GetBin(1500+HedrShift, FFTLen); n <= GetBin(2300+HedrShift, FFTLen); n++)
+          Pvideo_plus_noise += pow(out[n], 2) + pow(out[FFTLen - n], 2);
 
         // Calculate noise-only power (400-800 Hz + 2700-3400 Hz)
 
         Pnoise_only = 0;
-        for (n = GetBin(400+HedrShift,  SNRSIZE); n <= GetBin(800+HedrShift, SNRSIZE);  n++)
-          Pnoise_only += pow(out[n], 2) + pow(out[SNRSIZE - n], 2);
+        for (n = GetBin(400+HedrShift,  FFTLen); n <= GetBin(800+HedrShift, FFTLen);  n++)
+          Pnoise_only += pow(out[n], 2) + pow(out[FFTLen - n], 2);
 
-        for (n = GetBin(2700+HedrShift, SNRSIZE); n <= GetBin(3400+HedrShift, SNRSIZE); n++)
-          Pnoise_only += pow(out[n], 2) + pow(out[SNRSIZE - n], 2);
+        for (n = GetBin(2700+HedrShift, FFTLen); n <= GetBin(3400+HedrShift, FFTLen); n++)
+          Pnoise_only += pow(out[n], 2) + pow(out[FFTLen - n], 2);
 
         // Bandwidths
-        VideoPlusNoiseBins = GetBin(2300, SNRSIZE) - GetBin(1500, SNRSIZE) + 1;
+        VideoPlusNoiseBins = GetBin(2300, FFTLen) - GetBin(1500, FFTLen) + 1;
 
-        NoiseOnlyBins      = GetBin(800,  SNRSIZE) - GetBin(400,  SNRSIZE) + 1 +
-                             GetBin(3400, SNRSIZE) - GetBin(2700, SNRSIZE) + 1;
+        NoiseOnlyBins      = GetBin(800,  FFTLen) - GetBin(400,  FFTLen) + 1 +
+                             GetBin(3400, FFTLen) - GetBin(2700, FFTLen) + 1;
 
-        ReceiverBins       = GetBin(3400, SNRSIZE) - GetBin(400,  SNRSIZE);
+        ReceiverBins       = GetBin(3400, FFTLen) - GetBin(400,  FFTLen);
 
         // Eq 15
         Pnoise  = Pnoise_only * (1.0 * ReceiverBins / NoiseOnlyBins);
@@ -281,17 +215,15 @@ gboolean GetVideo(guchar Mode, guint Rate, int Skip, gboolean Redraw) {
 
         // Adapt window size to SNR
 
-        FFTLen = 512;
-
-        if        (!Adaptive)   WinLength = 37;
-        else if   (SNR >= 30)   WinLength = 37;
+        if        (!Adaptive) WinLength = 37;
+        else if   (SNR >= 30) WinLength = 37;
         else {
-          if      (SNR < -10) { WinIdx = 5; FFTLen = 1024; }
-          else if (SNR < -5)    WinIdx = 4;
-          else if (SNR < 3)     WinIdx = 3;
-          else if (SNR < 9)     WinIdx = 2;
-          else if (SNR < 10)    WinIdx = 1;
-          else                  WinIdx = 0;
+          if      (SNR < -10) WinIdx = 5;
+          else if (SNR < -5)  WinIdx = 4;
+          else if (SNR < 3)   WinIdx = 3;
+          else if (SNR < 9)   WinIdx = 2;
+          else if (SNR < 10)  WinIdx = 1;
+          else                WinIdx = 0;
 
           WinLength = HannLens[WinIdx];
 
@@ -303,7 +235,7 @@ gboolean GetVideo(guchar Mode, guint Rate, int Skip, gboolean Redraw) {
           WinIdx --;
         }
 
-        memset(in, 0, sizeof(double)*2048);
+        memset(in, 0, sizeof(double)*FFTLen);
 
         // Select window function based on SNR
 
@@ -311,25 +243,21 @@ gboolean GetVideo(guchar Mode, guint Rate, int Skip, gboolean Redraw) {
 
           // Apply Hann window
           for (i = 0; i < WinLength; i++)
-            in[i] = (Sample + i - (WinLength >> 1) < 0) ? 0 : PCM[Sample + i - (WinLength >> 1)] * Hann[WinIdx][i];
+            in[i] = PcmBuffer[PcmPointer + i - WinLength/2] / 32768.0 * Hann[WinIdx][i];
 
         } else {
 
           // Apply Chebyshev window
-           for (i = 0; i < 37; i++) in[i] = (Sample + i >= (37>>1) ? PCM[Sample + i - (37 >> 1)] * Cheb[i] : 0);
+          for (i = 0; i < 37; i++)
+            in[i] = PcmBuffer[PcmPointer + i - 37/2] / 32768.0 * Cheb[i];
         }
 
-        // FFT
-        if (FFTLen == 1024) fftw_execute(BigPlan);
-        else                fftw_execute(Plan);
-
-        if (FFTLen == 1024) bigffts ++;
-        else                ffts++;
+        fftw_execute(Plan1024);
 
         MaxBin = 0;
           
         // Find the bin with most power
-        for (n = GetBin(1500 + HedrShift, FFTLen) - 2; n <= GetBin(2300 + HedrShift, FFTLen) + 2; n++) {
+        for (n = GetBin(1500 + HedrShift, FFTLen) - 1; n <= GetBin(2300 + HedrShift, FFTLen) + 1; n++) {
 
           Power[n] = pow(out[n],2) + pow(out[FFTLen - n], 2);
           if (MaxBin == 0 || Power[n] > Power[MaxBin]) MaxBin = n;
@@ -337,27 +265,23 @@ gboolean GetVideo(guchar Mode, guint Rate, int Skip, gboolean Redraw) {
         }
 
         // Find the exact frequency by Gaussian interpolation
-        if (MaxBin > GetBin(1500 + HedrShift, FFTLen) - 2 && MaxBin < GetBin(2300 + HedrShift, FFTLen) + 2) {
+        if (MaxBin > GetBin(1500 + HedrShift, FFTLen) - 1 && MaxBin < GetBin(2300 + HedrShift, FFTLen) + 1) {
           Freq = MaxBin +            (log( Power[MaxBin + 1] / Power[MaxBin - 1] )) /
                            (2 * log( pow(Power[MaxBin], 2) / (Power[MaxBin + 1] * Power[MaxBin - 1])));
           // In Hertz
-          Freq = Freq / FFTLen * SRATE;
+          Freq = Freq / FFTLen * 44100;
           InterpFreq = Freq;
         } else {
           // Clip if out of bounds
           Freq = (MaxBin > GetBin(1900 + HedrShift, FFTLen)) ? 2300+HedrShift : 1500+HedrShift;
         }
 
-
-        NextFFTtime += 0.4e-3;
-
-      } else {
-
-        // Linear interpolation of intermediate frequencies
-        
-        InterpFreq = PrevFreq + (t - NextFFTtime + 0.8e-3) * ((Freq - PrevFreq) / 0.4e-3);
+        NextFFTtime += 0.3e-3;
 
       }
+
+      // Linear interpolation of intermediate frequencies
+      InterpFreq = PrevFreq + (t - NextFFTtime + 0.6e-3) * ((Freq - PrevFreq) / 0.3e-3);
 
       // Store frequency for later image adjustments
       StoredFreq[Sample] = InterpFreq;
@@ -450,8 +374,8 @@ gboolean GetVideo(guchar Mode, guint Rate, int Skip, gboolean Redraw) {
         break;
       }
 
-      // Calculate and draw pixels on line change 
-      if (LineNum != prevline) {
+      // Calculate and draw pixels on line change
+      if (LineNum != prevline || (LineNum == ModeSpec[Mode].ImgHeight-1 && x == ModeSpec[Mode].ImgWidth-1)) {
         for (tx = 0; tx < ModeSpec[Mode].ImgWidth; tx++) {
           p = pixels + prevline * rowstride + tx * 3;
 
@@ -487,7 +411,7 @@ gboolean GetVideo(guchar Mode, guint Rate, int Skip, gboolean Redraw) {
           // Scale and update image
           g_object_unref(DispPixbuf);
           DispPixbuf = gdk_pixbuf_scale_simple(RxPixbuf, 500,
-              500.0/ModeSpec[Mode].ImgWidth * ModeSpec[Mode].ImgHeight * ModeSpec[Mode].YScale, GDK_INTERP_NEAREST);
+              500.0/ModeSpec[Mode].ImgWidth * ModeSpec[Mode].ImgHeight * ModeSpec[Mode].YScale, GDK_INTERP_BILINEAR);
 
           gdk_threads_enter();
           gtk_image_set_from_pixbuf(GTK_IMAGE(RxImage), DispPixbuf);
@@ -506,26 +430,9 @@ gboolean GetVideo(guchar Mode, guint Rate, int Skip, gboolean Redraw) {
 
     if (Abort) break;
 
+    PcmPointer ++;
+
   }
-
-  // High-quality scaling when finished
-  if (Redraw || !(gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON(togslant)))) {
-    g_object_unref(DispPixbuf);
-    DispPixbuf = gdk_pixbuf_scale_simple(RxPixbuf, 500,
-        500.0/ModeSpec[Mode].ImgWidth * ModeSpec[Mode].ImgHeight * ModeSpec[Mode].YScale, GDK_INTERP_HYPER);
-
-    gdk_threads_enter();
-    gtk_image_set_from_pixbuf(GTK_IMAGE(RxImage), DispPixbuf);
-    gdk_threads_leave();
-  }
-
-  fftw_destroy_plan(Plan);
-  fftw_destroy_plan(BigPlan);
-  fftw_destroy_plan(SNRPlan);
-  fftw_free(in);
-  fftw_free(out);
-
-  free(PCM);
 
   if (Abort) return FALSE;
   else       return TRUE;

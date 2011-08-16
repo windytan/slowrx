@@ -2,6 +2,7 @@
 #include <gtk/gtk.h>
 #include <alsa/asoundlib.h>
 #include <math.h>
+#include <fftw3.h>
 
 #include "common.h"
 
@@ -68,7 +69,7 @@ void createGUI() {
 
   RxPixbuf   = gdk_pixbuf_new (GDK_COLORSPACE_RGB, FALSE, 8, 320, 256);
   ClearPixbuf (RxPixbuf, 320, 256);
-  DispPixbuf = gdk_pixbuf_scale_simple (RxPixbuf, 500, 400, GDK_INTERP_NEAREST);
+  DispPixbuf = gdk_pixbuf_scale_simple (RxPixbuf, 500, 400, GDK_INTERP_BILINEAR);
   gtk_image_set_from_pixbuf(GTK_IMAGE(RxImage), DispPixbuf);
 
   pixbufPWR = gdk_pixbuf_new (GDK_COLORSPACE_RGB, FALSE, 8, 100, 20);

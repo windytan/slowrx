@@ -17,42 +17,18 @@
 
 guchar GetVIS () {
 
-  int        selmode, samplesread = 0;
+  int        selmode;
   int        Pointer = 0, VIS = 0, Parity = 0, ParityBit = 0, Bit[8] = {0}, HedrPtr = 0;
   gushort    MaxPcm = 0;
   guint      FFTLen = 2048, i=0, j=0, k=0, MaxBin = 0;
-  double    *in, *out, *PCM;
-  double     Power[2048] = {0}, HedrBuf[100] = {0}, tone[100] = {0}, Hann[SRATE/50] = {0};
+  double     Power[2048] = {0}, HedrBuf[100] = {0}, tone[100] = {0}, Hann[882] = {0};
   char       infostr[60] = {0};
   gboolean   gotvis = FALSE;
-  fftw_plan  VISPlan;
-
-  // Plan for frequency estimation
-  in = fftw_malloc(sizeof(double) * FFTLen);
-  if (in == NULL) {
-    perror("GetVIS: Unable to allocate memory for FFT");
-    exit(EXIT_FAILURE);
-  }
-
-  out = fftw_malloc(sizeof(double) * FFTLen);
-  if (out == NULL) {
-    perror("GetVIS: Unable to allocate memory for FFT");
-    fftw_free(in);
-    exit(EXIT_FAILURE);
-  }
-  VISPlan = fftw_plan_r2r_1d(FFTLen, in, out, FFTW_FORWARD, FFTW_ESTIMATE);
 
   for (i = 0; i < FFTLen; i++) in[i] = 0;
 
   // Create 20ms Hann window
-  for (i = 0; i < SRATE*20e-3; i++) Hann[i] = 0.5 * (1 - cos( (2 * M_PI * (double)i) / (SRATE*20e-3 -1) ) );
-
-  // Allocate space for PCM (1 second)
-  PCM = calloc(SRATE, sizeof(double));
-  if (PCM == NULL) {
-    perror("GetVIS: Unable to allocate memory for PCM");
-    exit(EXIT_FAILURE);
-  }
+  for (i = 0; i < 882; i++) Hann[i] = 0.5 * (1 - cos( (2 * M_PI * (double)i) / 881 ) );
 
   ManualActivated = FALSE;
   
@@ -64,37 +40,14 @@ guchar GetVIS () {
 
   while ( TRUE ) {
 
-    // Read 10 ms from DSP
-    samplesread = snd_pcm_readi(pcm_handle, PcmBuffer, SRATE*10e-3);
-
-    if (samplesread == -EPIPE) {
-      printf("ALSA buffer overrun :(\n");
-      exit(EXIT_FAILURE);
-    } else if (samplesread == -EBADFD) {
-      printf("ALSA: PCM is not in the right state\n");
-      exit(EXIT_FAILURE);
-    } else if (samplesread == -ESTRPIPE) {
-      printf("ALSA: a suspend event occurred\n");
-      exit(EXIT_FAILURE);
-    } else if (samplesread < 0) {
-      printf("ALSA error\n");
-      exit(EXIT_FAILURE);
-    }
-
-    // Move buffer
-    for (i = 0; i < samplesread; i++) {
-      PCM[i] = PCM[i + samplesread];
-      PCM[i+samplesread] = PcmBuffer[i];
-
-      // Keep track of max power for VU meter
-      if (abs(PcmBuffer[i]) > MaxPcm) MaxPcm = abs(PcmBuffer[i]);
-    }
+    // Read 10 ms from sound card
+    readPcm(441);
 
     // Apply Hann window
-    for (i = 0; i < SRATE* 20e-3; i++) in[i] = PCM[i] * Hann[i];
+    for (i = 0; i < 882; i++) in[i] = PcmBuffer[PcmPointer + i - 441] / 32768.0 * Hann[i];
 
     // FFT of last 20 ms
-    fftw_execute(VISPlan);
+    fftw_execute(Plan2048);
 
     MaxBin = 0;
 
@@ -119,23 +72,23 @@ guchar GetVIS () {
 
     for (i = 0; i < 50; i++) {
       tone[i] = HedrBuf[(HedrPtr + i) % 50];
-      tone[i] = 1.0 * tone[i] / FFTLen * SRATE;
+      tone[i] = 1.0 * tone[i] / FFTLen * 44100;
     }
 
     // Is there a pattern that looks like (the end of) a calibration header + VIS?
-    // Tolerance ±25 Hz
+    // Tolerance ±10 Hz
     HedrShift = 0;
     gotvis    = FALSE;
     for (i = 0; i < 3; i++) {
       if (HedrShift != 0) break;
       for (j = 0; j < 3; j++) {
-        if ( (tone[3+i]  > tone[0+j] - 25 && tone[3+i]  < tone[0+j] + 25) && // 1900 Hz leader
-             (tone[6+i]  > tone[0+j] - 25 && tone[6+i]  < tone[0+j] + 25) && // 1900 Hz leader
-             (tone[9+i]  > tone[0+j] - 25 && tone[9+i]  < tone[0+j] + 25) && // 1900 Hz leader
-             (tone[12+i] > tone[0+j] - 25 && tone[12+i] < tone[0+j] + 25) && // 1900 Hz leader
+        if ( (tone[1*3+i]  > tone[0+j] - 10  && tone[1*3+i]  < tone[0+j] + 10) && // 1900 Hz leader
+             (tone[2*3+i]  > tone[0+j] - 10  && tone[2*3+i]  < tone[0+j] + 10) && // 1900 Hz leader
+             (tone[3*3+i]  > tone[0+j] - 10  && tone[3*3+i]  < tone[0+j] + 10) && // 1900 Hz leader
+             (tone[4*3+i]  > tone[0+j] - 10  && tone[4*3+i]  < tone[0+j] + 10) && // 1900 Hz leader
 
-             (tone[15+i] > tone[0+j] - 725 && tone[15+i] < tone[0+j] - 675) && // 1200 Hz start bit
-             (tone[42+i] > tone[0+j] - 725 && tone[42+i] < tone[0+j] - 675)    // 1200 Hz stop bit
+             (tone[5*3+i]  > tone[0+j] - 710 && tone[5*3+i]  < tone[0+j] - 690) && // 1200 Hz start bit
+             (tone[14*3+i] > tone[0+j] - 710 && tone[14*3+i] < tone[0+j] - 690)    // 1200 Hz stop bit
            ) {
 
           printf("Possible header @ %+.0f Hz\n",tone[0+j]-1900);
@@ -144,8 +97,8 @@ guchar GetVIS () {
 
           gotvis = TRUE;
           for (k = 0; k < 8; k++) {
-            if      (tone[18+i+3*k] > tone[0+j] - 625 && tone[18+i+3*k] < tone[0+j] - 575) Bit[k] = 0;
-            else if (tone[18+i+3*k] > tone[0+j] - 825 && tone[18+i+3*k] < tone[0+j] - 775) Bit[k] = 1;
+            if      (tone[6*3+i+3*k] > tone[0+j] - 610 && tone[6*3+i+3*k] < tone[0+j] - 590) Bit[k] = 0;
+            else if (tone[6*3+i+3*k] > tone[0+j] - 810 && tone[6*3+i+3*k] < tone[0+j] - 790) Bit[k] = 1;
             else { // erroneous bit
               gotvis = FALSE;
               break;
@@ -181,9 +134,7 @@ guchar GetVIS () {
     }
 
     if (gotvis) {
-      if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(togrx))) {
-        break;
-      }
+     if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(togrx))) break;
     }
 
     // Manual start
@@ -212,17 +163,15 @@ guchar GetVIS () {
       setVU(MaxPcm, -20);
       MaxPcm = 0;
     }
+
+    PcmPointer += 441;
   }
 
-  fftw_free(in);
-  fftw_free(out);
-  fftw_destroy_plan(VISPlan);
-
-  free(PCM);
+  // Hack;
+  //PcmPointer -= 1800;
 
   // In case of Scottie, skip 9 ms
-  if (VISmap[VIS] == S1 || VISmap[VIS] == S2 || VISmap[VIS] == SDX)
-    samplesread = snd_pcm_readi(pcm_handle, PcmBuffer, SRATE*9e-3);
+  if (VISmap[VIS] == S1 || VISmap[VIS] == S2 || VISmap[VIS] == SDX) readPcm(44100*9e-3);
 
   if (VISmap[VIS] != UNKNOWN) return VISmap[VIS];
   else                        printf("  No VIS found\n");

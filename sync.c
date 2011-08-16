@@ -27,6 +27,7 @@ guint FindSync (guint Length, guchar Mode, guint Rate, int *Skip) {
   gboolean SyncImg[700][630];
   double   NextImgSample, t=0, slantAngle;
 
+  printf("len %d\n",Length);
 
   // Repeat until slant < 0.5° or until we give up
   while (1) {
@@ -106,8 +107,8 @@ guint FindSync (guint Length, guchar Mode, guint Rate, int *Skip) {
       break;
     } else if (Retries == 3) {
       printf("            still slanted; giving up\n");
-      Rate = SRATE;
-      printf("    -> SRATE\n");
+      Rate = 44100;
+      printf("    -> 44100\n");
       break;
     } else {
       printf(" -> %d    recalculating\n", Rate);

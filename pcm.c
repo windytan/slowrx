@@ -1,13 +1,53 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include <gtk/gtk.h>
 
 #include <alsa/asoundlib.h>
+#include <fftw3.h>
 
 #include "common.h"
 
+/*
+ * Stuff related to sound card capture
+ *
+ */
 
+// Append fresh PCM data to buffer
+void readPcm(gint numsamples) {
+
+  int    samplesread, i;
+  gint16 tmp[BUFLEN];
+
+  samplesread = snd_pcm_readi(pcm_handle, tmp, (PcmPointer == 0 ? BUFLEN : numsamples));
+
+  if (samplesread < numsamples) {
+    if      (samplesread == -EPIPE)    printf("ALSA: buffer overrun\n");
+    else if (samplesread == -EBADFD)   printf("ALSA: PCM is not in the right state\n");
+    else if (samplesread == -ESTRPIPE) printf("ALSA: a suspend event occurred\n");
+    else if (samplesread < 0)          printf("ALSA error %d\n", samplesread);
+    else                               printf("Can't read %d samples\n", numsamples);
+    exit(EXIT_FAILURE);
+  }
+
+  if (PcmPointer == 0) {
+    // Fill buffer on first run
+    memcpy(PcmBuffer, tmp, BUFLEN);
+    PcmPointer = BUFLEN/2;
+  } else {
+    for (i=0; i<BUFLEN-numsamples; i++) PcmBuffer[i] = PcmBuffer[i+numsamples];
+    for (i=0; i<numsamples;        i++) PcmBuffer[BUFLEN-numsamples+i] = tmp[i];
+
+    PcmPointer -= numsamples;
+  }
+
+  // Keep track of max power for VU meter
+  //if (abs(PcmBuffer[i]) > MaxPcm) MaxPcm = abs(PcmBuffer[i]);
+
+}
+
+// Initialize sound card
 void initPcmDevice() {
 
   int                  card;
@@ -82,5 +122,7 @@ void initPcmDevice() {
     fprintf(stderr, "ALSA: Error setting HW params.\n");
     exit(EXIT_FAILURE);
   }
+
+  PcmBuffer = calloc( BUFLEN, sizeof(gint16));
 
 }

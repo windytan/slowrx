@@ -12,6 +12,7 @@
 #include <gtk/gtk.h>
 #include <pthread.h>
 #include <pnglite.h>
+#include <fftw3.h>
 
 #include <alsa/asoundlib.h>
 
@@ -23,7 +24,7 @@ void *Listen() {
   int        Skip = 0, i=0;
   char       timestr[40], pngfilename[40], lumfilename[40], infostr[60], rctime[8];
   guchar    *Lum, *pixels, Mode=0;
-  guint      Rate = SRATE;
+  guint      Rate;
   struct tm *timeptr = NULL;
   time_t     timet;
   FILE      *LumFile;
@@ -31,6 +32,23 @@ void *Listen() {
   GdkPixbuf *thumbbuf;
   char       id[20];
   GtkTreeIter iter;
+
+  /** Prepare FFT **/
+  in = fftw_malloc(sizeof(double) * 2048);
+  if (in == NULL) {
+    perror("GetVideo: Unable to allocate memory for FFT");
+    exit(EXIT_FAILURE);
+  }
+  out = fftw_malloc(sizeof(double) * 2048);
+  if (out == NULL) {
+    perror("GetVideo: Unable to allocate memory for FFT");
+    fftw_free(in);
+    exit(EXIT_FAILURE);
+  }
+
+  Plan1024 = fftw_plan_r2r_1d(1024, in, out, FFTW_FORWARD, FFTW_ESTIMATE);
+  Plan2048 = fftw_plan_r2r_1d(2048, in, out, FFTW_FORWARD, FFTW_ESTIMATE);
+
 
   while (TRUE) {
 
@@ -40,7 +58,9 @@ void *Listen() {
     gtk_widget_set_sensitive (btnabort, FALSE);
     gdk_threads_leave        ();
 
-    HedrShift = 0;
+    HedrShift  = 0;
+    PcmPointer = 0;
+    Rate       = 44100;
     snd_pcm_prepare(pcm_handle);
     snd_pcm_start  (pcm_handle);
 
@@ -59,14 +79,14 @@ void *Listen() {
     
 
     // Allocate space for cached FFT
-    StoredFreq = calloc( (int)(ModeSpec[Mode].LineLen * ModeSpec[Mode].ImgHeight + 1) * SRATE, sizeof(double));
+    StoredFreq = calloc( (int)(ModeSpec[Mode].LineLen * ModeSpec[Mode].ImgHeight + 1) * 44100, sizeof(double));
     if (StoredFreq == NULL) {
       perror("Listen: Unable to allocate memory for demodulated signal");
       exit(EXIT_FAILURE);
     }
 
     // Allocate space for sync signal
-    HasSync = calloc((ModeSpec[Mode].LineLen * ModeSpec[Mode].ImgHeight + 1) * SRATE, sizeof(gboolean));
+    HasSync = calloc((ModeSpec[Mode].LineLen * ModeSpec[Mode].ImgHeight + 1) * 44100, sizeof(gboolean));
     if (HasSync == NULL) {
       perror("FindSync: Unable to allocate memory for sync signal");
       exit(EXIT_FAILURE);
@@ -79,16 +99,12 @@ void *Listen() {
     gtk_label_set_text       (GTK_LABEL(idlabel), "");
     gtk_widget_set_sensitive (manualframe, FALSE);
     gtk_widget_set_sensitive (btnabort,    TRUE);
-    gtk_statusbar_push       (GTK_STATUSBAR(statusbar), 0, "Receiving video" );
+    gtk_statusbar_push       (GTK_STATUSBAR(statusbar), 0, "Receiving video..." );
     gtk_label_set_markup     (GTK_LABEL(infolabel), infostr);
     gdk_threads_leave        ();
-    PcmPointer = 2048;
-    Sample     = 0;
-    Rate       = SRATE;
-    Skip       = 0;
-    printf("  getvideo @ %d Hz, Skip %d, HedrShift %d Hz\n", Rate, Skip, HedrShift);
+    printf("  getvideo @ %d Hz, Skip %d, HedrShift %d Hz\n", 44100, 0, HedrShift);
 
-    Finished = GetVideo(Mode, Rate, Skip, FALSE);
+    Finished = GetVideo(Mode, 44100, 0, FALSE);
 
     gdk_threads_enter        ();
     gtk_widget_set_sensitive (btnabort,    FALSE);
@@ -99,7 +115,7 @@ void *Listen() {
 
     if (Finished && gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(togfsk))) {
       gdk_threads_enter  ();
-      gtk_statusbar_push (GTK_STATUSBAR(statusbar), 0, "Receiving FSK ID" );
+      gtk_statusbar_push (GTK_STATUSBAR(statusbar), 0, "Receiving FSK ID..." );
       gdk_threads_leave  ();
       GetFSK(id);
       printf("  FSKID \"%s\"\n",id);
@@ -115,15 +131,15 @@ void *Listen() {
       // Fix slant
       setVU(0,-100);
       gdk_threads_enter        ();
-      gtk_statusbar_push       (GTK_STATUSBAR(statusbar), 0, "Calculating slant" );
+      gtk_statusbar_push       (GTK_STATUSBAR(statusbar), 0, "Calculating slant..." );
       gtk_widget_set_sensitive (vugrid, FALSE);
       gdk_threads_leave        ();
       printf("  FindSync @ %d Hz\n",Rate);
-      Rate = FindSync(PcmPointer, Mode, Rate, &Skip);
+      Rate = FindSync(ModeSpec[Mode].LineLen * ModeSpec[Mode].ImgHeight * 44100, Mode, Rate, &Skip);
    
       // Final image  
       gdk_threads_enter  ();
-      gtk_statusbar_push (GTK_STATUSBAR(statusbar), 0, "Redrawing" );
+      gtk_statusbar_push (GTK_STATUSBAR(statusbar), 0, "Redrawing..." );
       gdk_threads_leave  ();
       printf("  getvideo @ %d Hz, Skip %d, HedrShift %d Hz\n", Rate, Skip, HedrShift);
       GetVideo(Mode, Rate, Skip, TRUE);
@@ -143,16 +159,16 @@ void *Listen() {
 
       // Save the raw signal
       gdk_threads_enter  ();
-      gtk_statusbar_push (GTK_STATUSBAR(statusbar), 0, "Saving" );
+      gtk_statusbar_push (GTK_STATUSBAR(statusbar), 0, "Saving..." );
       gdk_threads_leave  ();
 
       setVU(0,-100);
-      Lum = malloc( (ModeSpec[Mode].LineLen * ModeSpec[Mode].ImgHeight) * SRATE );
+      Lum = malloc( (ModeSpec[Mode].LineLen * ModeSpec[Mode].ImgHeight) * 44100 );
       if (Lum == NULL) {
         perror("Unable to allocate memory for lum data");
         exit(EXIT_FAILURE);
       }
-      for (i=0; i<(ModeSpec[Mode].LineLen * ModeSpec[Mode].ImgHeight) * SRATE; i++)
+      for (i=0; i<(ModeSpec[Mode].LineLen * ModeSpec[Mode].ImgHeight) * 44100; i++)
         Lum[i] = clip((StoredFreq[i] - (1500 + HedrShift)) / 3.1372549);
 
       LumFile = fopen(lumfilename,"w");
@@ -160,7 +176,7 @@ void *Listen() {
         perror("Unable to open luma file for writing");
         exit(EXIT_FAILURE);
       }
-      fwrite(Lum,1,(ModeSpec[Mode].LineLen * ModeSpec[Mode].ImgHeight) * SRATE,LumFile);
+      fwrite(Lum,1,(ModeSpec[Mode].LineLen * ModeSpec[Mode].ImgHeight) * 44100,LumFile);
       fclose(LumFile);
 
       // Save the received image as PNG

@@ -4,14 +4,16 @@
 
 #include <gtk/gtk.h>
 #include <alsa/asoundlib.h>
+#include <fftw3.h>
 
 #include "common.h"
 
 guchar       VISmap[128];
-gint16       PcmBuffer[2048] = {0};
+gint16      *PcmBuffer       = NULL;
 int          PcmPointer      = 0;
-int          Sample          = 0;
 double      *StoredFreq      = NULL;
+double      *in              = NULL;
+double      *out             = NULL;
 guint        StoredFreqRate  = 0;
 gshort       HedrShift       = 0;
 int          PWRdBthresh[10] = {0,  -3, -5, -10, -15, -20, -25, -30, -40, -50};
@@ -52,6 +54,9 @@ GtkListStore *savedstore     = NULL;
 
 snd_pcm_t   *pcm_handle      = NULL;
 
+fftw_plan    Plan1024        = NULL;
+fftw_plan    Plan2048        = NULL;
+
 // Draw a fancy gradient
 void ClearPixbuf(GdkPixbuf *pb, gushort width, gushort height) {
 
@@ -64,6 +69,8 @@ void ClearPixbuf(GdkPixbuf *pb, gushort width, gushort height) {
     for (x = 0; x < width; x++) {
       p = pixels + y * rowstride + x * 3;
       p[0] = p[2] = p[1] = 96 + (1.0*y/height) * 32;
+      p[2] = 0xff;
+//      p[0] = p[1] = p[2] = (x % 10 == 0 || y % 10 == 0) ? 255 : 0;
     }
   }
 
@@ -71,7 +78,7 @@ void ClearPixbuf(GdkPixbuf *pb, gushort width, gushort height) {
 
 // Return the bin index matching the given frequency
 guint GetBin (double Freq, int FFTLen) {
-  return (Freq / SRATE * FFTLen);
+  return (Freq / 44100 * FFTLen);
 }
 
 // Clip to [0..255]
