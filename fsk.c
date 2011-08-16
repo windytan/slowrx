@@ -1,7 +1,6 @@
 #include <stdlib.h>
 #include <math.h>
 #include <fftw3.h>
-#include <pthread.h>
 #include <gtk/gtk.h>
 #include <alsa/asoundlib.h>
 
@@ -11,14 +10,14 @@
  *
  * Decode FSK ID
  *
- * * The FSK ID's are 6-bit ASCII, LSB first, 45.45 baud, center freq 2000, shift 200
+ * * The FSK IDs are 6-bit ASCII, LSB first, 45.45 baud, center freq 2000, shift 200
  * * Text data starts after 3F 20 2A and ends in 01
  *
  */
 
 void GetFSK (char *dest) {
 
-  int        Pointer = 0, ThisBit = 0, RunLength=0, PrevBit = -1, Bit = 0;
+  int        Pointer = 0, ThisBitIndex = 0, RunLength=0, PrevBit = -1, Bit = 0;
   guint      FFTLen = 2048, i=0, LoBin, HiBin, MidBin;
   guchar     AsciiByte = 0, ThisByteIndex = 0;
   double     HiPow,LoPow,Hann[970];
@@ -65,21 +64,20 @@ void GetFSK (char *dest) {
           AsciiByte ^= (PrevBit << 6);
 
           if (InCode) {
-            ThisBit ++;
-            if (ThisBit > 0 && ThisBit % 6 == 0) {
+            ThisBitIndex ++;
+            if (ThisBitIndex > 0 && ThisBitIndex % 6 == 0) {
               // Consider end of data when values would only produce special characters
               if ( (AsciiByte&0x3F) < 0x0c) {
                 EndFSK = TRUE;
                 break;
               }
               dest[ThisByteIndex] = (AsciiByte&0x3F)+0x20;
-              ThisByteIndex ++;
-              if (ThisByteIndex > 20) break;
+              if (++ThisByteIndex > 20) break;
             }
           }
 
           if (AsciiByte == 0x55 && !InCode) {
-            ThisBit=-1;
+            ThisBitIndex=-1;
             InCode = TRUE;
           }
 
