@@ -27,10 +27,8 @@ guint FindSync (guint Length, guchar Mode, guint Rate, int *Skip) {
   gboolean SyncImg[700][630];
   double   NextImgSample, t=0, slantAngle;
 
-  printf("len %d\n",Length);
-
   // Repeat until slant < 0.5° or until we give up
-  while (1) {
+  while (TRUE) {
     TotPix        = LineWidth/2; // Start at the middle of the picture
     NextImgSample = 0;
     t             = 0;
@@ -39,26 +37,12 @@ guint FindSync (guint Length, guchar Mode, guint Rate, int *Skip) {
 
     memset(SyncImg, FALSE, sizeof(SyncImg[0][0]) * 700 * 630);
         
-    // Draw the sync signal into memory
-    for (s = 0; s < Length; s++) {
+    // Draw the 2D sync signal at current rate
 
-      // t keeps track of time in seconds
-      t += 1.0/Rate;
-
-      if (t >= NextImgSample) {
-
-        SyncImg[x][y] = HasSync[s];
-
-        if (y > maxsy) maxsy = y;
-
-        TotPix++;
-        x++;
-        if (x >= LineWidth) {
-          y++;
-          x=0;
-        }
-
-        NextImgSample += ModeSpec[Mode].LineLen / (1.0 * LineWidth);
+    for (y=0; y<ModeSpec[Mode].ImgHeight; y++) {
+      for (x=0; x<LineWidth; x++) {
+        t = y * ModeSpec[Mode].LineLen + 1.0*x/LineWidth * ModeSpec[Mode].LineLen;
+        SyncImg[x][y] = HasSync[ (int)(t / 1.5e-3 * Rate/44100) ];
       }
     }
 
@@ -69,7 +53,7 @@ guint FindSync (guint Length, guchar Mode, guint Rate, int *Skip) {
     memset(lines, 0, sizeof(lines[0][0]) * (MAXSLANT-MINSLANT)*2 * 600);
 
     // Find white pixels
-    for (cy = 0; cy < TotPix / LineWidth; cy++) {
+    for (cy = 0; cy < ModeSpec[Mode].ImgHeight; cy++) {
       for (cx = 0; cx < LineWidth; cx++) {
         if (SyncImg[cx][cy]) {
 

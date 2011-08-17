@@ -20,6 +20,7 @@ gboolean GetVideo(guchar Mode, guint Rate, int Skip, gboolean Redraw) {
   guint      MaxBin = 0;
   guint      VideoPlusNoiseBins=0, ReceiverBins=0, NoiseOnlyBins=0;
   guint      n=0;
+  guint      SyncSample;
   int        i=0, j=0,TargetBin=0;
   int        Length=0, Sample=0;
   int        FFTLen=1024, WinLength=0;
@@ -38,7 +39,6 @@ gboolean GetVideo(guchar Mode, guint Rate, int Skip, gboolean Redraw) {
   double     ChanStart[4] = {0}, ChanLen[4] = {0};
   guchar     Lum=0, Image[800][616][3] = {{{0}}};
   guchar     Channel = 0;
-  gboolean   PrevHasSync;
     
   // Initialize Hann windows of different lengths
   for (j = 0; j < 7; j++)
@@ -101,9 +101,7 @@ gboolean GetVideo(guchar Mode, guint Rate, int Skip, gboolean Redraw) {
   Length = ModeSpec[Mode].LineLen * ModeSpec[Mode].ImgHeight * 44100;
 
   Abort       = FALSE;
-  PrevHasSync = FALSE;
-
-  printf("pcmpointer %d\n",PcmPointer);
+  SyncSample  = 0;
 
   // Loop through signal
   for (Sample = 0; Sample < Length; Sample++) {
@@ -136,7 +134,8 @@ gboolean GetVideo(guchar Mode, guint Rate, int Skip, gboolean Redraw) {
         
         memset(in,  0, sizeof(in[0]) *FFTLen);
         memset(out, 0, sizeof(out[0])*FFTLen);
-        
+       
+        // Hann window
         for (i = 0; i < 64; i++) in[i] = PcmBuffer[PcmPointer+i-32] / 32768.0 * Hann[0][i];
 
         fftw_execute(Plan1024);
@@ -151,15 +150,12 @@ gboolean GetVideo(guchar Mode, guint Rate, int Skip, gboolean Redraw) {
 
         // If there is more than twice the amount of power per Hz in the
         // sync band than in the rest of the band, we have a sync signal here
-        if (Psync > 2*Praw)  HasSync[Sample] = TRUE;
-        else                 HasSync[Sample] = FALSE;
-
-        PrevHasSync = HasSync[Sample];
+        if (Psync > 2*Praw)  HasSync[SyncSample] = TRUE;
+        else                 HasSync[SyncSample] = FALSE;
 
         NextSyncTime += 1.5e-3;
+        SyncSample ++;
 
-      } else {
-        HasSync[Sample] = PrevHasSync;
       }
 
 
@@ -230,6 +226,7 @@ gboolean GetVideo(guchar Mode, guint Rate, int Skip, gboolean Redraw) {
         }
 
         // Halve the window size for M2 and S2, except under excellent or hopeless SNR
+        // FIXME: nonsensic hack
         if ( (Mode == M2 || Mode == S2) && WinLength > 64 && WinLength < 512) {
           WinLength /= 2;
           WinIdx --;
