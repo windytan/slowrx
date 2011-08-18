@@ -11,10 +11,9 @@
 guchar       VISmap[128];
 gint16      *PcmBuffer       = NULL;
 int          PcmPointer      = 0;
-double      *StoredFreq      = NULL;
+guchar      *StoredLum       = NULL;
 double      *in              = NULL;
 double      *out             = NULL;
-guint        StoredFreqRate  = 0;
 gshort       HedrShift       = 0;
 int          PWRdBthresh[10] = {0,  -3, -5, -10, -15, -20, -25, -30, -40, -50};
 int          SNRdBthresh[10] = {30, 15, 10,   5,   3,   0,  -3,  -5, -10, -15};

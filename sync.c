@@ -14,29 +14,21 @@
  *   Skip:    pointer to variable where the skip amount will be returned
  *   returns  adjusted sample rate
  */
-guint FindSync (guint Length, guchar Mode, guint Rate, int *Skip) {
+double FindSync (guchar Mode, double Rate, int *Skip) {
 
   int      LineWidth = ModeSpec[Mode].LineLen / ModeSpec[Mode].SyncLen * 4;
   int      x,y,xmid,x0;
   int      q, d, qMost, dMost;
-  int      maxsy = 0;
-  guint    s, TotPix, xmax;
+  guint    s, xmax;
   gushort  xAcc[700] = {0};
   gushort  lines[600][(MAXSLANT-MINSLANT)*2];
   gushort  cy, cx, Retries = 0;
   gboolean SyncImg[700][630];
-  double   NextImgSample, t=0, slantAngle;
+  double   t=0, slantAngle;
 
   // Repeat until slant < 0.5° or until we give up
   while (TRUE) {
-    TotPix        = LineWidth/2; // Start at the middle of the picture
-    NextImgSample = 0;
-    t             = 0;
-    maxsy         = 0;
-    x = y         = 0;
 
-    memset(SyncImg, FALSE, sizeof(SyncImg[0][0]) * 700 * 630);
-        
     // Draw the 2D sync signal at current rate
 
     for (y=0; y<ModeSpec[Mode].ImgHeight; y++) {
@@ -48,7 +40,6 @@ guint FindSync (guint Length, guchar Mode, guint Rate, int *Skip) {
 
     /** Linear Hough transform **/
 
-    // zero arrays
     dMost = qMost = 0;
     memset(lines, 0, sizeof(lines[0][0]) * (MAXSLANT-MINSLANT)*2 * 600);
 
@@ -81,10 +72,10 @@ guint FindSync (guint Length, guchar Mode, guint Rate, int *Skip) {
 
     slantAngle = qMost / 2.0;
 
-    //printf("  most (%d occurrences): d=%d  q=%f\n", LineAcc[dMost][ (int)(qMost * 10) ], dMost, qMost);
-    printf("    %.1f° (d=%d) @ %d Hz", slantAngle, dMost, Rate);
+    printf("    %.1f° (d=%d) @ %.1f Hz", slantAngle, dMost, Rate);
 
-    Rate = Rate + tan(deg2rad(90 - slantAngle)) / (1.0 * LineWidth) * Rate;
+    // Adjust sample rate
+    Rate = Rate + tan(deg2rad(90 - slantAngle)) / LineWidth * Rate;
 
     if (slantAngle > 89 && slantAngle < 91) {
       printf("            slant OK :)\n");
@@ -94,34 +85,20 @@ guint FindSync (guint Length, guchar Mode, guint Rate, int *Skip) {
       Rate = 44100;
       printf("    -> 44100\n");
       break;
-    } else {
-      printf(" -> %d    recalculating\n", Rate);
-      Retries ++;
     }
+    printf(" -> %.1f    recalculating\n", Rate);
+    Retries ++;
   }
 
-  printf("    gray = %dx%d\n", LineWidth, maxsy);
-    
-  // find abscissa at high granularity
-  t = 0;
-  x = 0;
-  xmax=0;
-  NextImgSample=0;
-  
+  // find abscissa at higher granularity
   memset(xAcc, 0, sizeof(xAcc[0]) * 700);
-  
-  for (s = 0; s < Length; s++) {
-
-    t += 1.0/Rate;
-
-    if (t >= NextImgSample) {
-
-      xAcc[x] += HasSync[s];
+  xmax = 0;
+ 
+  for (y=0; y<ModeSpec[Mode].ImgHeight; y++) {
+    for (x=0; x<700; x++) { 
+      t = y * ModeSpec[Mode].LineLen + x/700.0 * ModeSpec[Mode].LineLen;
+      xAcc[x] += HasSync[ (int)(t / 1.5e-3 * Rate/44100) ];
       if (xAcc[x] > xAcc[xmax]) xmax = x;
-
-      if (++x >= 700) x = 0;
-
-      NextImgSample += ModeSpec[Mode].LineLen / 700.0;
     }
   }
 

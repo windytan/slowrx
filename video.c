@@ -8,14 +8,14 @@
 
 #include "common.h"
 
-/* Demodulate the video signal
+/* Demodulate the video signal & store all kinds of stuff for later stages
  *  Mode:      M1, M2, S1, S2, R72, R36...
  *  Rate:      exact sampling rate used
  *  Skip:      number of PCM samples to skip at the beginning (for sync phase adjustment)
  *  Redraw:    false = Apply windowing and FFT to the signal, true = Redraw from cached FFT data
  *  returns:   TRUE when finished, FALSE when aborted
  */
-gboolean GetVideo(guchar Mode, guint Rate, int Skip, gboolean Redraw) {
+gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
 
   guint      MaxBin = 0;
   guint      VideoPlusNoiseBins=0, ReceiverBins=0, NoiseOnlyBins=0;
@@ -86,7 +86,6 @@ gboolean GetVideo(guchar Mode, guint Rate, int Skip, gboolean Redraw) {
 
   // Initialize pixbuffer
   if (!Redraw) {
-
     g_object_unref(RxPixbuf);
     RxPixbuf = gdk_pixbuf_new (GDK_COLORSPACE_RGB, FALSE, 8, ModeSpec[Mode].ImgWidth, ModeSpec[Mode].ImgHeight);
     ClearPixbuf(RxPixbuf, ModeSpec[Mode].ImgWidth, ModeSpec[Mode].ImgHeight);
@@ -96,8 +95,6 @@ gboolean GetVideo(guchar Mode, guint Rate, int Skip, gboolean Redraw) {
   guchar *pixels, *p;
   pixels = gdk_pixbuf_get_pixels(RxPixbuf);
 
-  if (!Redraw) StoredFreqRate = Rate;
-
   Length = ModeSpec[Mode].LineLen * ModeSpec[Mode].ImgHeight * 44100;
 
   Abort       = FALSE;
@@ -106,23 +103,17 @@ gboolean GetVideo(guchar Mode, guint Rate, int Skip, gboolean Redraw) {
   // Loop through signal
   for (Sample = 0; Sample < Length; Sample++) {
 
-    t = (1.0 * Sample - Skip) / Rate;
+    t = (Sample - Skip) / Rate;
 
     CurLineTime = fmod(t, ModeSpec[Mode].LineLen);
 
-    if (Redraw) {
-
-      // Redrawing; all DSP is skipped
-
-      InterpFreq = StoredFreq[Sample];
-
-    } else {
+    if (!Redraw) {
 
       /*** Read ahead from sound card ***/
 
       if (PcmPointer >= BUFLEN-1024) readPcm(2048);
+     
 
-      
       /*** Store the sync band for later adjustments ***/
 
       if (t >= NextSyncTime) {
@@ -280,8 +271,8 @@ gboolean GetVideo(guchar Mode, guint Rate, int Skip, gboolean Redraw) {
       // Linear interpolation of intermediate frequencies
       InterpFreq = PrevFreq + (t - NextFFTtime + 0.6e-3) * ((Freq - PrevFreq) / 0.3e-3);
 
-      // Store frequency for later image adjustments
-      StoredFreq[Sample] = InterpFreq;
+      // Calculate luminency & store for later use
+      StoredLum[Sample] = clip((InterpFreq - (1500 + HedrShift)) / 3.1372549);
 
     }
 
@@ -350,7 +341,7 @@ gboolean GetVideo(guchar Mode, guint Rate, int Skip, gboolean Redraw) {
       }
 
       // Luminance from frequency
-      Lum = clip((InterpFreq - (1500 + HedrShift)) / 3.1372549);
+      Lum = StoredLum[Sample];
 
       // Store pixel 
       if (x >= 0 && y >= 0 && x < ModeSpec[Mode].ImgWidth) {
@@ -363,7 +354,6 @@ gboolean GetVideo(guchar Mode, guint Rate, int Skip, gboolean Redraw) {
               if (y < ModeSpec[Mode].ImgHeight-1) Image[x][y+1][Channel] = Lum;
               break;
           }
-
       }
 
       if (y > ModeSpec[Mode].ImgHeight-1) {

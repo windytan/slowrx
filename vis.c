@@ -18,14 +18,16 @@
 guchar GetVIS () {
 
   int        selmode;
-  int        Pointer = 0, VIS = 0, Parity = 0, ParityBit = 0, Bit[8] = {0}, HedrPtr = 0;
-  gushort    MaxPcm = 0;
+  //int        Pointer = 0;
+  int        VIS = 0, Parity = 0, HedrPtr = 0;
+  //gushort    MaxPcm = 0;
   guint      FFTLen = 2048, i=0, j=0, k=0, MaxBin = 0;
   double     Power[2048] = {0}, HedrBuf[100] = {0}, tone[100] = {0}, Hann[882] = {0};
   char       infostr[60] = {0};
   gboolean   gotvis = FALSE;
+  guchar     Bit[8] = {0}, ParityBit = 0;
 
-  for (i = 0; i < FFTLen; i++) in[i] = 0;
+  for (i = 0; i < FFTLen; i++) in[i]    = 0;
 
   // Create 20ms Hann window
   for (i = 0; i < 882; i++) Hann[i] = 0.5 * (1 - cos( (2 * M_PI * (double)i) / 881 ) );
@@ -49,31 +51,27 @@ guchar GetVIS () {
     // FFT of last 20 ms
     fftw_execute(Plan2048);
 
-    MaxBin = 0;
-
     // Save most powerful freq
+    MaxBin = 0;
     for (i = GetBin(500, FFTLen); i <= GetBin(3300, FFTLen); i++) {
-
       Power[i] = pow(out[i], 2) + pow(out[FFTLen - i], 2);
       if (Power[i] > Power[MaxBin] || MaxBin == 0) MaxBin = i;
-
     }
 
     // Gaussian interpolation to get the exact peak frequency
-    if (MaxBin > GetBin(500, FFTLen) && MaxBin < GetBin(3300, FFTLen)) {
-      HedrBuf[HedrPtr] = MaxBin +            (log( Power[MaxBin + 1] / Power[MaxBin - 1] )) /
-                          (2 * log( pow(Power[MaxBin], 2) / (Power[MaxBin + 1] * Power[MaxBin - 1])));
-    } else {
-      HedrBuf[HedrPtr] = HedrBuf[(HedrPtr-1)%50];
-    }
+    if (MaxBin > GetBin(500, FFTLen) && MaxBin < GetBin(3300, FFTLen))
+         HedrBuf[HedrPtr] = MaxBin +            (log( Power[MaxBin + 1] / Power[MaxBin - 1] )) /
+                             (2 * log( pow(Power[MaxBin], 2) / (Power[MaxBin + 1] * Power[MaxBin - 1])));
+    else HedrBuf[HedrPtr] = HedrBuf[(HedrPtr-1) % 45];
 
-    // Header buffer holds 50 * 10 msec = 500 msec
-    HedrPtr = (HedrPtr + 1) % 50;
+    // In Hertz
+    HedrBuf[HedrPtr] = HedrBuf[HedrPtr] / FFTLen * 44100;
 
-    for (i = 0; i < 50; i++) {
-      tone[i] = HedrBuf[(HedrPtr + i) % 50];
-      tone[i] = 1.0 * tone[i] / FFTLen * 44100;
-    }
+    // Header buffer holds 45 * 10 msec = 450 msec
+    HedrPtr = (HedrPtr + 1) % 45;
+
+    // Frequency in the last 450 msec
+    for (i = 0; i < 45; i++) tone[i] = HedrBuf[(HedrPtr + i) % 45];
 
     // Is there a pattern that looks like (the end of) a calibration header + VIS?
     // Tolerance ±10 Hz
@@ -82,18 +80,18 @@ guchar GetVIS () {
     for (i = 0; i < 3; i++) {
       if (HedrShift != 0) break;
       for (j = 0; j < 3; j++) {
-        if ( (tone[1*3+i]  > tone[0+j] - 10  && tone[1*3+i]  < tone[0+j] + 10) && // 1900 Hz leader
-             (tone[2*3+i]  > tone[0+j] - 10  && tone[2*3+i]  < tone[0+j] + 10) && // 1900 Hz leader
-             (tone[3*3+i]  > tone[0+j] - 10  && tone[3*3+i]  < tone[0+j] + 10) && // 1900 Hz leader
-             (tone[4*3+i]  > tone[0+j] - 10  && tone[4*3+i]  < tone[0+j] + 10) && // 1900 Hz leader
-
+        if ( (tone[1*3+i]  > tone[0+j] - 10  && tone[1*3+i]  < tone[0+j] + 10)  && // 1900 Hz leader
+             (tone[2*3+i]  > tone[0+j] - 10  && tone[2*3+i]  < tone[0+j] + 10)  && // 1900 Hz leader
+             (tone[3*3+i]  > tone[0+j] - 10  && tone[3*3+i]  < tone[0+j] + 10)  && // 1900 Hz leader
+             (tone[4*3+i]  > tone[0+j] - 10  && tone[4*3+i]  < tone[0+j] + 10)  && // 1900 Hz leader
              (tone[5*3+i]  > tone[0+j] - 710 && tone[5*3+i]  < tone[0+j] - 690) && // 1200 Hz start bit
+                                                                                   // ...8 VIS bits...
              (tone[14*3+i] > tone[0+j] - 710 && tone[14*3+i] < tone[0+j] - 690)    // 1200 Hz stop bit
            ) {
 
           printf("Possible header @ %+.0f Hz\n",tone[0+j]-1900);
 
-          // Read VIS
+          // Attempt to read VIS
 
           gotvis = TRUE;
           for (k = 0; k < 8; k++) {
@@ -133,9 +131,8 @@ guchar GetVIS () {
       }
     }
 
-    if (gotvis) {
+    if (gotvis)
      if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(togrx))) break;
-    }
 
     // Manual start
     if (ManualActivated) {
@@ -157,21 +154,18 @@ guchar GetVIS () {
       break;
     }
 
-    if (++Pointer >= 50) Pointer = 0;
+    //if (++Pointer >= 50) Pointer = 0;
 
-    if (Pointer == 0 || Pointer == 25) {
-      setVU(MaxPcm, -20);
-      MaxPcm = 0;
-    }
+    //if (Pointer == 0 || Pointer == 25) {
+    //  setVU(MaxPcm, -20);
+    //  MaxPcm = 0;
+    //}
 
     PcmPointer += 441;
   }
 
-  // Hack;
-  //PcmPointer -= 1800;
-
   // In case of Scottie, skip 9 ms
-  if (VISmap[VIS] == S1 || VISmap[VIS] == S2 || VISmap[VIS] == SDX) readPcm(44100*9e-3);
+  if (VISmap[VIS] == S1 || VISmap[VIS] == S2 || VISmap[VIS] == SDX) readPcm(44100 * 9e-3);
 
   if (VISmap[VIS] != UNKNOWN) return VISmap[VIS];
   else                        printf("  No VIS found\n");
