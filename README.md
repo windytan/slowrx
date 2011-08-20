@@ -1,7 +1,7 @@
 slowrx
 ========
 
-A shortwave listener's Linux tool for decoding analogue [SSTV](http://en.wikipedia.org/wiki/Slow-scan%20television) images received through the sound card. Aims for intuitive simplicity and lack of features not needed by the SWL.
+Slowrx is an [SSTV](http://en.wikipedia.org/wiki/Slow-scan%20television) decoder that aims for intuitive simplicity and lack of features not needed by a shortwave listener (SWL).
 
 Features
 --------
@@ -10,7 +10,7 @@ Features
 * Detect frequency-shifted signals – no need to fine-tune the radio
 * Automatic slant correction (compensation for sound card clock error)
 * Adaptive noise reduction
-* FSK ID decoding
+* Decode digital FSK ID
 * Save received pictures as PNG
 * Written in C
 

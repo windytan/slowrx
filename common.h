@@ -5,10 +5,11 @@
 #define MAXSLANT 150
 #define BUFLEN   4096
 
-extern guchar     VISmap[128];
+extern guchar     VISmap[];
 extern int        PcmPointer;
-extern int        PWRdBthresh[10];
-extern int        SNRdBthresh[10];
+extern int        PWRdBthresh[];
+extern int        SNRdBthresh[];
+extern int        MaxPcm;
 extern gint16    *PcmBuffer;
 extern guchar    *StoredLum;
 extern double    *in;
@@ -17,17 +18,12 @@ extern gshort     HedrShift;
 extern gboolean   Adaptive;
 extern gboolean   ManualActivated;
 extern gboolean   Abort;
-extern gboolean  *HasSync;
+extern guchar    *HasSync;
 
-extern GtkWidget *mainwindow;
 extern GtkWidget *RxImage;
 extern GtkWidget *statusbar;
-extern GtkWidget *snrbar;
-extern GtkWidget *pwrbar;
 extern GtkWidget *vugrid;
 extern GtkWidget *infolabel;
-extern GtkWidget *aboutdialog;
-extern GtkWidget *prefdialog;
 extern GtkWidget *cardcombo;
 extern GtkWidget *modecombo;
 extern GtkWidget *togslant;
@@ -87,21 +83,20 @@ typedef struct ModeSpecDef {
 
 extern ModeSpecDef ModeSpec[];
 
-void     ClearPixbuf   (GdkPixbuf *, gushort, gushort);
 void     createGUI     ();
-gboolean GetVideo      (guchar, double, int, gboolean);
-guint    GetBin        (double, int);
-guchar   clip          (double);
-void     setVU         (short int, double);
+gboolean GetVideo      (guchar Mode, double Rate, int Skip, gboolean Redraw);
+guint    GetBin        (double Freq, guint FFTLen);
+guchar   clip          (double a);
+void     setVU         (short int PcmValue, double SNRdB);
 guchar   GetVIS        ();
-double   FindSync     (guchar, double, int*);
-double   deg2rad       (double);
+double   FindSync      (guchar Mode, double Rate, int *Skip);
+double   deg2rad       (double Deg);
 void     initPcmDevice ();
 void     delete_event  ();
 void     GetAdaptive   ();
 void     ManualStart   ();
 void     AbortRx       ();
-void     GetFSK        (char*);
-void     readPcm       (gint);
+void     GetFSK        (char *dest);
+void     readPcm       (gint numsamples);
 
 #endif

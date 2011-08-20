@@ -10,8 +10,8 @@
 #include <time.h>
 
 #include <gtk/gtk.h>
-#include <pthread.h>
 #include <pnglite.h>
+#include <pthread.h>
 #include <fftw3.h>
 
 #include <alsa/asoundlib.h>
@@ -89,7 +89,7 @@ void *Listen() {
     }
 
     // Allocate space for sync signal
-    HasSync = calloc((int)(ModeSpec[Mode].LineLen * ModeSpec[Mode].ImgHeight / 1.5e-3 +1), sizeof(gboolean));
+    HasSync = calloc((int)(ModeSpec[Mode].LineLen * ModeSpec[Mode].ImgHeight / 1.5e-3 +1), sizeof(guchar));
     if (HasSync == NULL) {
       perror("Listen: Unable to allocate memory for sync signal");
       exit(EXIT_FAILURE);

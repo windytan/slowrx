@@ -13,18 +13,19 @@
  *   Rate:    approximate sampling rate used
  *   Skip:    pointer to variable where the skip amount will be returned
  *   returns  adjusted sample rate
+ *
  */
 double FindSync (guchar Mode, double Rate, int *Skip) {
 
   int      LineWidth = ModeSpec[Mode].LineLen / ModeSpec[Mode].SyncLen * 4;
   int      x,y,xmid,x0;
   int      q, d, qMost, dMost;
-  guint    s, xmax;
-  gushort  xAcc[700] = {0};
+  gushort  xAcc[700] = {0}, xmax, s;
   gushort  lines[600][(MAXSLANT-MINSLANT)*2];
   gushort  cy, cx, Retries = 0;
-  gboolean SyncImg[700][630];
+  guchar   SyncImg[700][630] = {{FALSE}};
   double   t=0, slantAngle;
+
 
   // Repeat until slant < 0.5° or until we give up
   while (TRUE) {
@@ -33,8 +34,9 @@ double FindSync (guchar Mode, double Rate, int *Skip) {
 
     for (y=0; y<ModeSpec[Mode].ImgHeight; y++) {
       for (x=0; x<LineWidth; x++) {
-        t = y * ModeSpec[Mode].LineLen + 1.0*x/LineWidth * ModeSpec[Mode].LineLen;
-        SyncImg[x][y] = HasSync[ (int)(t / 1.5e-3 * Rate/44100) ];
+        t = (y + 1.0*x/LineWidth) * ModeSpec[Mode].LineLen;
+        // Center sync pulse horizontally
+        if (y>0 || x>=LineWidth/2) SyncImg[x][y] = HasSync[ (int)( (t-ModeSpec[Mode].LineLen/2) / 1.5e-3 * Rate/44100) ];
       }
     }
 
@@ -89,8 +91,8 @@ double FindSync (guchar Mode, double Rate, int *Skip) {
     printf(" -> %.1f    recalculating\n", Rate);
     Retries ++;
   }
-
-  // find abscissa at higher granularity
+  
+  // find abscissa at higher resolution
   memset(xAcc, 0, sizeof(xAcc[0]) * 700);
   xmax = 0;
  

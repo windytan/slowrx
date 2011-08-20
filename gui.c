@@ -9,25 +9,26 @@
 void createGUI() {
 
   GtkBuilder *builder;
-  GtkWidget  *quititem;
-  GtkWidget  *aboutitem;
-  GtkWidget  *prefitem;
+  GtkWidget  *quititem,  *aboutitem,  *prefitem;
+  GtkWidget  *mainwindow, *aboutdialog, *prefdialog;
 
   builder = gtk_builder_new();
   gtk_builder_add_from_file(builder, "slowrx.ui",      NULL);
   gtk_builder_add_from_file(builder, "aboutdialog.ui", NULL);
   gtk_builder_add_from_file(builder, "prefs.ui",       NULL);
 
-  vugrid      = GTK_WIDGET(gtk_builder_get_object(builder,"vugrid"));
   mainwindow  = GTK_WIDGET(gtk_builder_get_object(builder,"mainwindow"));
-  RxImage     = GTK_WIDGET(gtk_builder_get_object(builder,"RxImage"));
-  statusbar   = GTK_WIDGET(gtk_builder_get_object(builder,"statusbar"));
-  infolabel   = GTK_WIDGET(gtk_builder_get_object(builder,"infolabel"));
+  aboutdialog = GTK_WIDGET(gtk_builder_get_object(builder,"aboutdialog"));
+  prefdialog  = GTK_WIDGET(gtk_builder_get_object(builder,"prefdialog"));
+
   quititem    = GTK_WIDGET(gtk_builder_get_object(builder,"quititem"));
   prefitem    = GTK_WIDGET(gtk_builder_get_object(builder,"prefmenuitem"));
   aboutitem   = GTK_WIDGET(gtk_builder_get_object(builder,"aboutitem"));
-  aboutdialog = GTK_WIDGET(gtk_builder_get_object(builder,"aboutdialog"));
-  prefdialog  = GTK_WIDGET(gtk_builder_get_object(builder,"prefdialog"));
+
+  vugrid      = GTK_WIDGET(gtk_builder_get_object(builder,"vugrid"));
+  RxImage     = GTK_WIDGET(gtk_builder_get_object(builder,"RxImage"));
+  statusbar   = GTK_WIDGET(gtk_builder_get_object(builder,"statusbar"));
+  infolabel   = GTK_WIDGET(gtk_builder_get_object(builder,"infolabel"));
   cardcombo   = GTK_WIDGET(gtk_builder_get_object(builder,"cardcombo"));
   togslant    = GTK_WIDGET(gtk_builder_get_object(builder,"TogSlant"));
   togsave     = GTK_WIDGET(gtk_builder_get_object(builder,"TogSave"));
@@ -68,7 +69,7 @@ void createGUI() {
   gtk_icon_view_set_text_column (GTK_ICON_VIEW(iconview), 1);
 
   RxPixbuf   = gdk_pixbuf_new (GDK_COLORSPACE_RGB, FALSE, 8, 320, 256);
-  ClearPixbuf (RxPixbuf, 320, 256);
+  gdk_pixbuf_fill(RxPixbuf, 0);
   DispPixbuf = gdk_pixbuf_scale_simple (RxPixbuf, 500, 400, GDK_INTERP_BILINEAR);
   gtk_image_set_from_pixbuf(GTK_IMAGE(RxImage), DispPixbuf);
 

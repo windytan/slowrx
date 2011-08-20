@@ -14,7 +14,7 @@
  *
  */
 
-// Append fresh PCM data to buffer
+// Capture fresh PCM data to buffer
 void readPcm(gint numsamples) {
 
   int    samplesread, i;
@@ -37,13 +37,14 @@ void readPcm(gint numsamples) {
     PcmPointer = BUFLEN/2;
   } else {
     for (i=0; i<BUFLEN-numsamples; i++) PcmBuffer[i] = PcmBuffer[i+numsamples];
-    for (i=0; i<numsamples;        i++) PcmBuffer[BUFLEN-numsamples+i] = tmp[i];
+    for (i=0; i<numsamples;        i++) {
+      PcmBuffer[BUFLEN-numsamples+i] = tmp[i];
+      // Keep track of max power for VU meter
+      if (abs(tmp[i]) > MaxPcm) MaxPcm = abs(PcmBuffer[i]);
+    }
 
     PcmPointer -= numsamples;
   }
-
-  // Keep track of max power for VU meter
-  //if (abs(PcmBuffer[i]) > MaxPcm) MaxPcm = abs(PcmBuffer[i]);
 
 }
 

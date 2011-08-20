@@ -21,12 +21,11 @@ gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
   guint      VideoPlusNoiseBins=0, ReceiverBins=0, NoiseOnlyBins=0;
   guint      n=0;
   guint      SyncSample;
-  int        i=0, j=0,TargetBin=0;
+  int        i=0, j=0,SyncTargetBin=0;
   int        Length=0, Sample=0;
   int        FFTLen=1024, WinLength=0;
   int        WinIdx = 0, LineNum = 0;
   int        x = 0, y = 0, prevline=0, tx=0, MaxPcm=0;
-  gushort    HannLens[7] = { 64, 96, 128, 256, 512, 1024 };
   gushort    LopassBin;
   double     Hann[7][1024] = {{0}};
   double     t=0, Freq = 0, PrevFreq = 0, InterpFreq = 0, NextPixel = 0, NextSNRtime = 0, NextFFTtime = 0;
@@ -37,10 +36,11 @@ gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
   double     SNR = 0;
   double     CurLineTime = 0;
   double     ChanStart[4] = {0}, ChanLen[4] = {0};
-  guchar     Lum=0, Image[800][616][3] = {{{0}}};
+  guchar     Image[800][616][3] = {{{0}}};
   guchar     Channel = 0;
     
   // Initialize Hann windows of different lengths
+  gushort HannLens[7] = { 64, 96, 128, 256, 512, 1024 };
   for (j = 0; j < 7; j++)
     for (i = 0; i < HannLens[j]; i++)
       Hann[j][i] = 0.5 * (1 - cos( (2 * M_PI * i) / (HannLens[j] - 1)) );
@@ -88,17 +88,26 @@ gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
   if (!Redraw) {
     g_object_unref(RxPixbuf);
     RxPixbuf = gdk_pixbuf_new (GDK_COLORSPACE_RGB, FALSE, 8, ModeSpec[Mode].ImgWidth, ModeSpec[Mode].ImgHeight);
-    ClearPixbuf(RxPixbuf, ModeSpec[Mode].ImgWidth, ModeSpec[Mode].ImgHeight);
+    gdk_pixbuf_fill(RxPixbuf, 0);
   }
 
   int     rowstride = gdk_pixbuf_get_rowstride (RxPixbuf);
   guchar *pixels, *p;
   pixels = gdk_pixbuf_get_pixels(RxPixbuf);
+          
+  g_object_unref(DispPixbuf);
+  DispPixbuf = gdk_pixbuf_scale_simple(RxPixbuf, 500,
+      500.0/ModeSpec[Mode].ImgWidth * ModeSpec[Mode].ImgHeight * ModeSpec[Mode].YScale, GDK_INTERP_BILINEAR);
 
-  Length = ModeSpec[Mode].LineLen * ModeSpec[Mode].ImgHeight * 44100;
+  gdk_threads_enter();
+  gtk_image_set_from_pixbuf(GTK_IMAGE(RxImage), DispPixbuf);
+  gdk_threads_leave();
 
-  Abort       = FALSE;
-  SyncSample  = 0;
+  Length        = ModeSpec[Mode].LineLen * ModeSpec[Mode].ImgHeight * 44100;
+  SyncTargetBin = GetBin(1200+HedrShift, FFTLen);
+  LopassBin     = GetBin(3000, FFTLen);
+  Abort         = FALSE;
+  SyncSample    = 0;
 
   // Loop through signal
   for (Sample = 0; Sample < Length; Sample++) {
@@ -120,9 +129,6 @@ gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
  
         Praw = Psync = 0;
 
-        TargetBin = GetBin(1200+HedrShift, FFTLen);
-        LopassBin = GetBin(3000, FFTLen);
-        
         memset(in,  0, sizeof(in[0]) *FFTLen);
         memset(out, 0, sizeof(out[0])*FFTLen);
        
@@ -133,7 +139,7 @@ gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
 
         for (i=0;i<LopassBin;i++) {
           Praw += pow(out[i], 2) + pow(out[FFTLen-i], 2);
-          if (i >= TargetBin-1 && i <= TargetBin+1) Psync += pow(out[i], 2) + pow(out[FFTLen-i], 2);
+          if (i >= SyncTargetBin-1 && i <= SyncTargetBin+1) Psync += pow(out[i], 2) + pow(out[FFTLen-i], 2);
         }
 
         Praw  /= (FFTLen/2.0) * ( LopassBin/(FFTLen/2.0));
@@ -252,7 +258,7 @@ gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
 
         }
 
-        // Find the exact frequency by Gaussian interpolation
+        // Find the peak frequency by Gaussian interpolation
         if (MaxBin > GetBin(1500 + HedrShift, FFTLen) - 1 && MaxBin < GetBin(2300 + HedrShift, FFTLen) + 1) {
           Freq = MaxBin +            (log( Power[MaxBin + 1] / Power[MaxBin - 1] )) /
                            (2 * log( pow(Power[MaxBin], 2) / (Power[MaxBin + 1] * Power[MaxBin - 1])));
@@ -340,18 +346,15 @@ gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
           break;
       }
 
-      // Luminance from frequency
-      Lum = StoredLum[Sample];
-
       // Store pixel 
       if (x >= 0 && y >= 0 && x < ModeSpec[Mode].ImgWidth) {
-        Image[x][y][Channel] = Lum;
+        Image[x][y][Channel] = StoredLum[Sample];
         // Some modes have R-Y & B-Y channels that are twice the height of the Y channel
         if (Channel > 0)
           switch(Mode) {
             case R36:
             case R24:
-              if (y < ModeSpec[Mode].ImgHeight-1) Image[x][y+1][Channel] = Lum;
+              if (y < ModeSpec[Mode].ImgHeight-1) Image[x][y+1][Channel] = StoredLum[Sample];
               break;
           }
       }

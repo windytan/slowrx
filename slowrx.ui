@@ -22,19 +22,19 @@
             <property name="can_focus">False</property>
             <property name="ubuntu_local">True</property>
             <child>
-              <object class="GtkMenuItem" id="menuitem1">
+              <object class="GtkMenuItem" id="filemenuitem">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <property name="use_action_appearance">False</property>
                 <property name="label" translatable="yes">_File</property>
                 <property name="use_underline">True</property>
                 <child type="submenu">
-                  <object class="GtkMenu" id="menu1">
+                  <object class="GtkMenu" id="filemenu">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <property name="ubuntu_local">True</property>
                     <child>
-                      <object class="GtkImageMenuItem" id="imagemenuitem2">
+                      <object class="GtkImageMenuItem" id="openitem">
                         <property name="label">gtk-open</property>
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
@@ -68,6 +68,7 @@
                         <property name="use_action_appearance">False</property>
                         <property name="use_underline">True</property>
                         <property name="use_stock">True</property>
+                        <accelerator key="q" signal="activate" modifiers="GDK_CONTROL_MASK"/>
                         <signal name="activate" handler="delete_event" swapped="no"/>
                       </object>
                     </child>
@@ -76,14 +77,14 @@
               </object>
             </child>
             <child>
-              <object class="GtkMenuItem" id="menuitem4">
+              <object class="GtkMenuItem" id="helpmenuitem">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <property name="use_action_appearance">False</property>
                 <property name="label" translatable="yes">_Help</property>
                 <property name="use_underline">True</property>
                 <child type="submenu">
-                  <object class="GtkMenu" id="menu3">
+                  <object class="GtkMenu" id="helpmenu">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <property name="ubuntu_local">True</property>
@@ -220,9 +221,12 @@
                                   <object class="GtkToggleButton" id="TogSlant">
                                     <property name="label" translatable="yes">AutoSlant</property>
                                     <property name="visible">True</property>
-                                    <property name="can_focus">True</property>
+                                    <property name="can_focus">False</property>
                                     <property name="receives_default">True</property>
+                                    <property name="tooltip_text" translatable="yes">Fix slant after reception [2]</property>
                                     <property name="use_action_appearance">False</property>
+                                    <property name="relief">none</property>
+                                    <accelerator key="2" signal="clicked"/>
                                   </object>
                                   <packing>
                                     <property name="left_attach">1</property>
@@ -235,9 +239,12 @@
                                   <object class="GtkToggleButton" id="TogSave">
                                     <property name="label" translatable="yes">AutoSave</property>
                                     <property name="visible">True</property>
-                                    <property name="can_focus">True</property>
+                                    <property name="can_focus">False</property>
                                     <property name="receives_default">True</property>
+                                    <property name="tooltip_text" translatable="yes">Save received pictures [3]</property>
                                     <property name="use_action_appearance">False</property>
+                                    <property name="relief">none</property>
+                                    <accelerator key="3" signal="clicked"/>
                                   </object>
                                   <packing>
                                     <property name="left_attach">0</property>
@@ -250,9 +257,12 @@
                                   <object class="GtkToggleButton" id="TogAdapt">
                                     <property name="label" translatable="yes">NoiseAdapt</property>
                                     <property name="visible">True</property>
-                                    <property name="can_focus">True</property>
+                                    <property name="can_focus">False</property>
                                     <property name="receives_default">True</property>
+                                    <property name="tooltip_text" translatable="yes">Adaptive noise reduction [4]</property>
                                     <property name="use_action_appearance">False</property>
+                                    <property name="relief">none</property>
+                                    <accelerator key="4" signal="clicked"/>
                                   </object>
                                   <packing>
                                     <property name="left_attach">1</property>
@@ -267,7 +277,9 @@
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
                                     <property name="receives_default">True</property>
+                                    <property name="tooltip_text" translatable="yes">Stop video decoding [Esc]</property>
                                     <property name="use_action_appearance">False</property>
+                                    <accelerator key="Escape" signal="clicked"/>
                                   </object>
                                   <packing>
                                     <property name="left_attach">0</property>
@@ -280,9 +292,12 @@
                                   <object class="GtkToggleButton" id="TogRx">
                                     <property name="label" translatable="yes">AutoStart</property>
                                     <property name="visible">True</property>
-                                    <property name="can_focus">True</property>
+                                    <property name="can_focus">False</property>
                                     <property name="receives_default">True</property>
+                                    <property name="tooltip_text" translatable="yes">Automatically start upon hearing a VIS code [1]</property>
                                     <property name="use_action_appearance">False</property>
+                                    <property name="relief">none</property>
+                                    <accelerator key="1" signal="clicked"/>
                                   </object>
                                   <packing>
                                     <property name="left_attach">0</property>
@@ -309,9 +324,12 @@
                                   <object class="GtkToggleButton" id="TogFSK">
                                     <property name="label" translatable="yes">FSKID</property>
                                     <property name="visible">True</property>
-                                    <property name="can_focus">True</property>
+                                    <property name="can_focus">False</property>
                                     <property name="receives_default">True</property>
+                                    <property name="tooltip_text" translatable="yes">Decode digital FSK callsign [5]</property>
                                     <property name="use_action_appearance">False</property>
+                                    <property name="relief">none</property>
+                                    <accelerator key="5" signal="clicked"/>
                                   </object>
                                   <packing>
                                     <property name="left_attach">0</property>
@@ -367,6 +385,7 @@
                                   <object class="GtkComboBoxText" id="modecombo">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
+                                    <property name="tooltip_text" translatable="yes">SSTV mode</property>
                                     <items>
                                       <item translatable="yes">Martin M1</item>
                                       <item translatable="yes">Martin M2</item>
@@ -422,6 +441,7 @@
                                       <object class="GtkSpinButton" id="ShiftSpin">
                                         <property name="visible">True</property>
                                         <property name="can_focus">True</property>
+                                        <property name="tooltip_text" translatable="yes">Number of Hertz to shift the FM window</property>
                                         <property name="has_frame">False</property>
                                         <property name="invisible_char">•</property>
                                         <property name="adjustment">ShiftAdj</property>
@@ -447,7 +467,9 @@
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
                                     <property name="receives_default">True</property>
+                                    <property name="tooltip_text" translatable="yes">Start receiving immediately [Space]</property>
                                     <property name="use_action_appearance">False</property>
+                                    <accelerator key="space" signal="clicked"/>
                                   </object>
                                   <packing>
                                     <property name="expand">False</property>
@@ -513,7 +535,7 @@
                                   <object class="GtkLabel" id="label11">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
-                                    <property name="label" translatable="yes">S/N ratio</property>
+                                    <property name="label" translatable="yes">SNR</property>
                                   </object>
                                   <packing>
                                     <property name="left_attach">0</property>
