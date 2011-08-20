@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <stdbool.h>
 #include <gtk/gtk.h>
 #include <alsa/asoundlib.h>
 #include <math.h>
@@ -55,26 +56,26 @@ void createGUI() {
   g_signal_connect        (btnstart,    "clicked",      G_CALLBACK(ManualStart),         NULL);
   g_signal_connect        (btnabort,    "clicked",      G_CALLBACK(AbortRx),             NULL);
 
-  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(togslant), TRUE);
-  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(togsave),  TRUE);
-  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(togadapt), TRUE);
-  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(togrx),    TRUE);
-  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(togfsk),   TRUE);
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(togslant), true);
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(togsave),  true);
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(togadapt), true);
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(togrx),    true);
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(togfsk),   true);
   gtk_combo_box_set_active    (GTK_COMBO_BOX(modecombo),    0);
-  gtk_widget_set_sensitive    (btnabort,                    FALSE);
+  gtk_widget_set_sensitive    (btnabort,                    false);
 
   savedstore = gtk_list_store_new (2, GDK_TYPE_PIXBUF, G_TYPE_STRING);
   gtk_icon_view_set_model (GTK_ICON_VIEW(iconview), GTK_TREE_MODEL(savedstore));
   gtk_icon_view_set_pixbuf_column (GTK_ICON_VIEW(iconview), 0);
   gtk_icon_view_set_text_column (GTK_ICON_VIEW(iconview), 1);
 
-  RxPixbuf   = gdk_pixbuf_new (GDK_COLORSPACE_RGB, FALSE, 8, 320, 256);
+  RxPixbuf   = gdk_pixbuf_new (GDK_COLORSPACE_RGB, false, 8, 320, 256);
   gdk_pixbuf_fill(RxPixbuf, 0);
   DispPixbuf = gdk_pixbuf_scale_simple (RxPixbuf, 500, 400, GDK_INTERP_BILINEAR);
   gtk_image_set_from_pixbuf(GTK_IMAGE(RxImage), DispPixbuf);
 
-  pixbufPWR = gdk_pixbuf_new (GDK_COLORSPACE_RGB, FALSE, 8, 100, 20);
-  pixbufSNR = gdk_pixbuf_new (GDK_COLORSPACE_RGB, FALSE, 8, 100, 20);
+  pixbufPWR = gdk_pixbuf_new (GDK_COLORSPACE_RGB, false, 8, 100, 20);
+  pixbufSNR = gdk_pixbuf_new (GDK_COLORSPACE_RGB, false, 8, 100, 20);
 
   setVU(0, -100);
 

@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdbool.h>
 #include <math.h>
 #include <string.h>
 #include <fftw3.h>
@@ -13,9 +14,9 @@
  *  Rate:      exact sampling rate used
  *  Skip:      number of PCM samples to skip at the beginning (for sync phase adjustment)
  *  Redraw:    false = Apply windowing and FFT to the signal, true = Redraw from cached FFT data
- *  returns:   TRUE when finished, FALSE when aborted
+ *  returns:   true when finished, false when aborted
  */
-gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
+bool GetVideo(guchar Mode, double Rate, int Skip, bool Redraw) {
 
   guint      MaxBin = 0;
   guint      VideoPlusNoiseBins=0, ReceiverBins=0, NoiseOnlyBins=0;
@@ -87,7 +88,7 @@ gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
   // Initialize pixbuffer
   if (!Redraw) {
     g_object_unref(RxPixbuf);
-    RxPixbuf = gdk_pixbuf_new (GDK_COLORSPACE_RGB, FALSE, 8, ModeSpec[Mode].ImgWidth, ModeSpec[Mode].ImgHeight);
+    RxPixbuf = gdk_pixbuf_new (GDK_COLORSPACE_RGB, false, 8, ModeSpec[Mode].ImgWidth, ModeSpec[Mode].ImgHeight);
     gdk_pixbuf_fill(RxPixbuf, 0);
   }
 
@@ -106,7 +107,7 @@ gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
   Length        = ModeSpec[Mode].LineLen * ModeSpec[Mode].ImgHeight * 44100;
   SyncTargetBin = GetBin(1200+HedrShift, FFTLen);
   LopassBin     = GetBin(3000, FFTLen);
-  Abort         = FALSE;
+  Abort         = false;
   SyncSample    = 0;
 
   // Loop through signal
@@ -147,8 +148,8 @@ gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
 
         // If there is more than twice the amount of power per Hz in the
         // sync band than in the rest of the band, we have a sync signal here
-        if (Psync > 2*Praw)  HasSync[SyncSample] = TRUE;
-        else                 HasSync[SyncSample] = FALSE;
+        if (Psync > 2*Praw)  HasSync[SyncSample] = true;
+        else                 HasSync[SyncSample] = false;
 
         NextSyncTime += 1.5e-3;
         SyncSample ++;
@@ -267,7 +268,7 @@ gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
           InterpFreq = Freq;
         } else {
           // Clip if out of bounds
-          Freq = (MaxBin > GetBin(1900 + HedrShift, FFTLen)) ? 2300+HedrShift : 1500+HedrShift;
+          Freq = ( (MaxBin > GetBin(1900 + HedrShift, FFTLen)) ? 2300 : 1500 ) + HedrShift;
         }
 
         NextFFTtime += 0.3e-3;
@@ -359,10 +360,7 @@ gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
           }
       }
 
-      if (y > ModeSpec[Mode].ImgHeight-1) {
-        printf("y > ImgHeight-1\n");
-        break;
-      }
+      if (y > ModeSpec[Mode].ImgHeight-1) break;
 
       // Calculate and draw pixels on line change
       if (LineNum != prevline || (LineNum == ModeSpec[Mode].ImgHeight-1 && x == ModeSpec[Mode].ImgWidth-1)) {
@@ -424,7 +422,7 @@ gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
 
   }
 
-  if (Abort) return FALSE;
-  else       return TRUE;
+  if (Abort) return false;
+  else       return true;
 
 }

@@ -6,6 +6,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <math.h>
 #include <time.h>
 
@@ -28,7 +29,7 @@ void *Listen() {
   struct tm  *timeptr = NULL;
   time_t      timet;
   FILE       *LumFile;
-  gboolean    Finished;
+  bool        Finished;
   GdkPixbuf  *thumbbuf;
   char        id[20];
   GtkTreeIter iter;
@@ -52,11 +53,11 @@ void *Listen() {
   Plan2048 = fftw_plan_r2r_1d(2048, in, out, FFTW_FORWARD, FFTW_ESTIMATE);
 
 
-  while (TRUE) {
+  while (true) {
 
     gdk_threads_enter        ();
-    gtk_widget_set_sensitive (vugrid,   TRUE);
-    gtk_widget_set_sensitive (btnabort, FALSE);
+    gtk_widget_set_sensitive (vugrid,   true);
+    gtk_widget_set_sensitive (btnabort, false);
     gdk_threads_leave        ();
 
     HedrShift  = 0;
@@ -89,7 +90,7 @@ void *Listen() {
     }
 
     // Allocate space for sync signal
-    HasSync = calloc((int)(ModeSpec[Mode].LineLen * ModeSpec[Mode].ImgHeight / 1.5e-3 +1), sizeof(guchar));
+    HasSync = calloc((int)(ModeSpec[Mode].LineLen * ModeSpec[Mode].ImgHeight / 1.5e-3 +1), sizeof(bool));
     if (HasSync == NULL) {
       perror("Listen: Unable to allocate memory for sync signal");
       exit(EXIT_FAILURE);
@@ -100,18 +101,18 @@ void *Listen() {
     snprintf(infostr, sizeof(infostr)-1, "%s, %s UTC", ModeSpec[Mode].Name, rctime);
     gdk_threads_enter        ();
     gtk_label_set_text       (GTK_LABEL(idlabel), "");
-    gtk_widget_set_sensitive (manualframe, FALSE);
-    gtk_widget_set_sensitive (btnabort,    TRUE);
+    gtk_widget_set_sensitive (manualframe, false);
+    gtk_widget_set_sensitive (btnabort,    true);
     gtk_statusbar_push       (GTK_STATUSBAR(statusbar), 0, "Receiving video..." );
     gtk_label_set_markup     (GTK_LABEL(infolabel), infostr);
     gdk_threads_leave        ();
     printf("  getvideo @ %.1f Hz, Skip %d, HedrShift %d Hz\n", 44100.0, 0, HedrShift);
 
-    Finished = GetVideo(Mode, 44100, 0, FALSE);
+    Finished = GetVideo(Mode, 44100, 0, false);
 
     gdk_threads_enter        ();
-    gtk_widget_set_sensitive (btnabort,    FALSE);
-    gtk_widget_set_sensitive (manualframe, TRUE);
+    gtk_widget_set_sensitive (btnabort,    false);
+    gtk_widget_set_sensitive (manualframe, true);
     gdk_threads_leave        ();
     
     id[0] = '\0';
@@ -135,7 +136,7 @@ void *Listen() {
       setVU(0,-100);
       gdk_threads_enter        ();
       gtk_statusbar_push       (GTK_STATUSBAR(statusbar), 0, "Calculating slant..." );
-      gtk_widget_set_sensitive (vugrid, FALSE);
+      gtk_widget_set_sensitive (vugrid, false);
       gdk_threads_leave        ();
       printf("  FindSync @ %.1f Hz\n",Rate);
       Rate = FindSync(Mode, Rate, &Skip);
@@ -145,7 +146,7 @@ void *Listen() {
       gtk_statusbar_push (GTK_STATUSBAR(statusbar), 0, "Redrawing..." );
       gdk_threads_leave  ();
       printf("  getvideo @ %.1f Hz, Skip %d, HedrShift %d Hz\n", Rate, Skip, HedrShift);
-      GetVideo(Mode, Rate, Skip, TRUE);
+      GetVideo(Mode, Rate, Skip, true);
     }
 
     free (HasSync);

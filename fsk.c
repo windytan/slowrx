@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <stdbool.h>
 #include <math.h>
 #include <fftw3.h>
 #include <gtk/gtk.h>
@@ -21,14 +22,14 @@ void GetFSK (char *dest) {
   guint      FFTLen = 2048, i=0, LoBin, HiBin, MidBin;
   guchar     AsciiByte = 0, ThisByteIndex = 0;
   double     HiPow,LoPow,Hann[970];
-  gboolean   InFSK = FALSE, InCode = FALSE, EndFSK = FALSE;
+  bool       InFSK = false, InCode = false, EndFSK = false;
 
   for (i = 0; i < FFTLen; i++) in[i] = 0;
 
   // Create 22ms Hann window
   for (i = 0; i < 970; i++) Hann[i] = 0.5 * (1 - cos( 2 * M_PI * i / 969.0 ) );
 
-  while ( TRUE ) {
+  while ( true ) {
 
     // Read 11 ms from DSP
     readPcm(485);
@@ -54,7 +55,7 @@ void GetFSK (char *dest) {
     Bit = (HiPow<LoPow);
 
     if (Bit != PrevBit) {
-      if (RunLength/2.0 > 3) InFSK = TRUE;
+      if (RunLength/2.0 > 3) InFSK = true;
 
       if (InFSK) {
         if (RunLength/2.0 < .5) break;
@@ -68,7 +69,7 @@ void GetFSK (char *dest) {
             if (ThisBitIndex > 0 && ThisBitIndex % 6 == 0) {
               // Consider end of data when values would only produce special characters
               if ( (AsciiByte&0x3F) < 0x0c) {
-                EndFSK = TRUE;
+                EndFSK = true;
                 break;
               }
               dest[ThisByteIndex] = (AsciiByte&0x3F)+0x20;
@@ -78,7 +79,7 @@ void GetFSK (char *dest) {
 
           if (AsciiByte == 0x55 && !InCode) {
             ThisBitIndex=-1;
-            InCode = TRUE;
+            InCode = true;
           }
 
         }

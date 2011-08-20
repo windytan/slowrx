@@ -15,10 +15,10 @@ extern guchar    *StoredLum;
 extern double    *in;
 extern double    *out;
 extern gshort     HedrShift;
-extern gboolean   Adaptive;
-extern gboolean   ManualActivated;
-extern gboolean   Abort;
-extern guchar    *HasSync;
+extern bool       Adaptive;
+extern bool       ManualActivated;
+extern bool       Abort;
+extern bool      *HasSync;
 
 extern GtkWidget *RxImage;
 extern GtkWidget *statusbar;
@@ -84,7 +84,7 @@ typedef struct ModeSpecDef {
 extern ModeSpecDef ModeSpec[];
 
 void     createGUI     ();
-gboolean GetVideo      (guchar Mode, double Rate, int Skip, gboolean Redraw);
+bool     GetVideo      (guchar Mode, double Rate, int Skip, bool Redraw);
 guint    GetBin        (double Freq, guint FFTLen);
 guchar   clip          (double a);
 void     setVU         (short int PcmValue, double SNRdB);

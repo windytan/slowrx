@@ -12,7 +12,7 @@ Features
 * Adaptive noise reduction
 * Decode digital FSK ID
 * Save received pictures as PNG
-* Written in C
+* Written in C99
 
 Requirements
 ------------

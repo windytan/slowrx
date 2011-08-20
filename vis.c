@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <stdbool.h>
 #include <math.h>
 #include <fftw3.h>
 #include <gtk/gtk.h>
@@ -23,7 +24,7 @@ guchar GetVIS () {
   guint      FFTLen = 2048, i=0, j=0, k=0, MaxBin = 0;
   double     Power[2048] = {0}, HedrBuf[100] = {0}, tone[100] = {0}, Hann[882] = {0};
   char       infostr[60] = {0};
-  gboolean   gotvis = FALSE;
+  bool       gotvis = false;
   guchar     Bit[8] = {0}, ParityBit = 0;
 
   for (i = 0; i < FFTLen; i++) in[i]    = 0;
@@ -31,7 +32,7 @@ guchar GetVIS () {
   // Create 20ms Hann window
   for (i = 0; i < 882; i++) Hann[i] = 0.5 * (1 - cos( (2 * M_PI * (double)i) / 881 ) );
 
-  ManualActivated = FALSE;
+  ManualActivated = false;
   
   printf("Waiting for header\n");
 
@@ -39,7 +40,7 @@ guchar GetVIS () {
   gtk_statusbar_push( GTK_STATUSBAR(statusbar), 0, "Ready" );
   gdk_threads_leave();
 
-  while ( TRUE ) {
+  while ( true ) {
 
     // Read 10 ms from sound card
     readPcm(441);
@@ -75,7 +76,7 @@ guchar GetVIS () {
     // Is there a pattern that looks like (the end of) a calibration header + VIS?
     // Tolerance ±25 Hz
     HedrShift = 0;
-    gotvis    = FALSE;
+    gotvis    = false;
     for (i = 0; i < 3; i++) {
       if (HedrShift != 0) break;
       for (j = 0; j < 3; j++) {
@@ -92,12 +93,12 @@ guchar GetVIS () {
 
           // Attempt to read VIS
 
-          gotvis = TRUE;
+          gotvis = true;
           for (k = 0; k < 8; k++) {
             if      (tone[6*3+i+3*k] > tone[0+j] - 625 && tone[6*3+i+3*k] < tone[0+j] - 575) Bit[k] = 0;
             else if (tone[6*3+i+3*k] > tone[0+j] - 825 && tone[6*3+i+3*k] < tone[0+j] - 775) Bit[k] = 1;
             else { // erroneous bit
-              gotvis = FALSE;
+              gotvis = false;
               break;
             }
           }
@@ -116,11 +117,11 @@ guchar GetVIS () {
 
             if (Parity != ParityBit) {
               printf("  Parity fail\n");
-              gotvis = FALSE;
+              gotvis = false;
             } else if (VISmap[VIS] == UNKNOWN) {
               printf("  Unknown VIS\n");
               snprintf(infostr, sizeof(infostr)-1, "How to decode image with VIS %d (%02Xh)?", VIS, VIS);
-              gotvis = FALSE;
+              gotvis = false;
               gdk_threads_enter();
               gtk_label_set_markup(GTK_LABEL(infolabel), infostr);
               gdk_threads_leave();
@@ -139,7 +140,7 @@ guchar GetVIS () {
     if (ManualActivated) {
 
       gdk_threads_enter();
-      gtk_widget_set_sensitive( manualframe, FALSE );
+      gtk_widget_set_sensitive( manualframe, false );
       gdk_threads_leave();
 
       selmode   = gtk_combo_box_get_active (GTK_COMBO_BOX(modecombo)) + 1;

@@ -410,8 +410,8 @@
                                       <item translatable="yes">Pasokon P3</item>
                                       <item translatable="yes">Pasokon P5</item>
                                       <item translatable="yes">Pasokon P7</item>
-                                      <item translatable="yes">Wraase SC2 120</item>
-                                      <item translatable="yes">Wraase SC2 180</item>
+                                      <item translatable="yes">Wraase SC-2 120</item>
+                                      <item translatable="yes">Wraase SC-2 180</item>
                                     </items>
                                   </object>
                                   <packing>
@@ -694,6 +694,12 @@
                     <property name="width">3</property>
                     <property name="height">1</property>
                   </packing>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
                 </child>
               </object>
             </child>
