@@ -9,7 +9,7 @@
 
 /* 
  *
- * Detect VIS
+ * Detect VIS & frequency shift
  *
  * Each bit lasts 30 ms (1323 samples)
  *

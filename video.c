@@ -21,15 +21,14 @@ bool GetVideo(guchar Mode, double Rate, int Skip, bool Redraw) {
   guint      MaxBin = 0;
   guint      VideoPlusNoiseBins=0, ReceiverBins=0, NoiseOnlyBins=0;
   guint      n=0;
-  guint      SyncSample;
-  int        i=0, j=0,SyncTargetBin=0;
-  int        Length=0, Sample=0;
-  int        FFTLen=1024, WinLength=0;
-  int        WinIdx = 0, LineNum = 0;
+  guint      SyncSampleNum;
+  guint      i=0, j=0;
+  guint      FFTLen=1024, WinLength=0;
+  guint      LopassBin,SyncTargetBin;
+  int        LineNum = 0, SampleNum, Length;
   int        x = 0, y = 0, prevline=0, tx=0, MaxPcm=0;
-  gushort    LopassBin;
   double     Hann[7][1024] = {{0}};
-  double     t=0, Freq = 0, PrevFreq = 0, InterpFreq = 0, NextPixel = 0, NextSNRtime = 0, NextFFTtime = 0;
+  double     t=0, Freq = 0, PrevFreq = 0, InterpFreq = 0, NextPixelTime = 0, NextSNRtime = 0, NextFFTtime = 0;
   double     NextSyncTime = 0;
   double     Praw, Psync;
   double     Power[1024] = {0};
@@ -38,21 +37,13 @@ bool GetVideo(guchar Mode, double Rate, int Skip, bool Redraw) {
   double     CurLineTime = 0;
   double     ChanStart[4] = {0}, ChanLen[4] = {0};
   guchar     Image[800][616][3] = {{{0}}};
-  guchar     Channel = 0;
+  guchar     Channel = 0, WinIdx = 0;
     
   // Initialize Hann windows of different lengths
-  gushort HannLens[7] = { 64, 96, 128, 256, 512, 1024 };
+  gushort HannLens[7] = { 32, 64, 96, 128, 256, 512, 1024 };
   for (j = 0; j < 7; j++)
     for (i = 0; i < HannLens[j]; i++)
       Hann[j][i] = 0.5 * (1 - cos( (2 * M_PI * i) / (HannLens[j] - 1)) );
-
-  // Initialize 37-point Dolph-Chebyshev window for frequency estimation in HQ cases
-  double Cheb[37] =
-      { 0.1569882, 0.1206692, 0.1631808, 0.2122111, 0.2673747, 0.3280227, 0.3932469, 0.4618960,
-        0.5326043, 0.6038308, 0.6739095, 0.7411060, 0.8036807, 0.8599540, 0.9083715, 0.9475647,
-        0.9764067, 0.9940579, 1.0000000, 0.9940579, 0.9764067, 0.9475647, 0.9083715, 0.8599540,
-        0.8036807, 0.7411060, 0.6739095, 0.6038308, 0.5326043, 0.4618960, 0.3932469, 0.3280227,
-        0.2673747, 0.2122111, 0.1631808, 0.1206692, 0.1569882 };
 
   // Starting times of video channels on every line, counted from beginning of line
 
@@ -108,12 +99,12 @@ bool GetVideo(guchar Mode, double Rate, int Skip, bool Redraw) {
   SyncTargetBin = GetBin(1200+HedrShift, FFTLen);
   LopassBin     = GetBin(3000, FFTLen);
   Abort         = false;
-  SyncSample    = 0;
+  SyncSampleNum    = 0;
 
   // Loop through signal
-  for (Sample = 0; Sample < Length; Sample++) {
+  for (SampleNum = 0; SampleNum < Length; SampleNum++) {
 
-    t = (Sample - Skip) / Rate;
+    t = (SampleNum - Skip) / Rate;
 
     CurLineTime = fmod(t, ModeSpec[Mode].LineLen);
 
@@ -134,7 +125,7 @@ bool GetVideo(guchar Mode, double Rate, int Skip, bool Redraw) {
         memset(out, 0, sizeof(out[0])*FFTLen);
        
         // Hann window
-        for (i = 0; i < 64; i++) in[i] = PcmBuffer[PcmPointer+i-32] / 32768.0 * Hann[0][i];
+        for (i = 0; i < 64; i++) in[i] = PcmBuffer[PcmPointer+i-32] / 32768.0 * Hann[1][i];
 
         fftw_execute(Plan1024);
 
@@ -148,11 +139,11 @@ bool GetVideo(guchar Mode, double Rate, int Skip, bool Redraw) {
 
         // If there is more than twice the amount of power per Hz in the
         // sync band than in the rest of the band, we have a sync signal here
-        if (Psync > 2*Praw)  HasSync[SyncSample] = true;
-        else                 HasSync[SyncSample] = false;
+        if (Psync > 2*Praw)  HasSync[SyncSampleNum] = true;
+        else                 HasSync[SyncSampleNum] = false;
 
         NextSyncTime += 1.5e-3;
-        SyncSample ++;
+        SyncSampleNum ++;
 
       }
 
@@ -162,7 +153,7 @@ bool GetVideo(guchar Mode, double Rate, int Skip, bool Redraw) {
       if (t >= NextSNRtime) {
 
         // Apply Hann window
-        for (i = 0; i < FFTLen; i++) in[i] = PcmBuffer[PcmPointer + i - FFTLen/2] / 32768.0 * Hann[5][i];
+        for (i = 0; i < FFTLen; i++) in[i] = PcmBuffer[PcmPointer + i - FFTLen/2] / 32768.0 * Hann[6][i];
 
         // FFT
         fftw_execute(Plan1024);
@@ -209,43 +200,26 @@ bool GetVideo(guchar Mode, double Rate, int Skip, bool Redraw) {
 
         // Adapt window size to SNR
 
-        if        (!Adaptive) WinLength = 37;
-        else if   (SNR >= 30) WinLength = 37;
-        else {
-          if      (SNR < -10) WinIdx = 5;
-          else if (SNR < -5)  WinIdx = 4;
-          else if (SNR < 3)   WinIdx = 3;
-          else if (SNR < 9)   WinIdx = 2;
-          else if (SNR < 10)  WinIdx = 1;
-          else                WinIdx = 0;
+        if      (!Adaptive)  WinIdx = 0;
 
-          WinLength = HannLens[WinIdx];
+        else if (SNR >=  30) WinIdx = 0;
+        else if (SNR >=  10) WinIdx = 1;
+        else if (SNR >=   9) WinIdx = 2;
+        else if (SNR >=   3) WinIdx = 3;
+        else if (SNR >=  -5) WinIdx = 4;
+        else if (SNR >= -10) WinIdx = 5;
+        else                 WinIdx = 6;
 
-        }
+        // Minimum winlength can be doubled for Scottie DX
+        if (Mode == SDX && WinIdx < 6) WinIdx++;
 
-        // Halve the window size for M2 and S2, except under excellent or hopeless SNR
-        // FIXME: nonsensic hack
-        if ( (Mode == M2 || Mode == S2) && WinLength > 64 && WinLength < 512) {
-          WinLength /= 2;
-          WinIdx --;
-        }
+        WinLength = HannLens[WinIdx];
 
         memset(in, 0, sizeof(double)*FFTLen);
 
-        // Select window function based on SNR
+        // Apply window function
 
-        if (Adaptive && SNR < 30) {
-
-          // Apply Hann window
-          for (i = 0; i < WinLength; i++)
-            in[i] = PcmBuffer[PcmPointer + i - WinLength/2] / 32768.0 * Hann[WinIdx][i];
-
-        } else {
-
-          // Apply Chebyshev window
-          for (i = 0; i < 37; i++)
-            in[i] = PcmBuffer[PcmPointer + i - 37/2] / 32768.0 * Cheb[i];
-        }
+        for (i = 0; i < WinLength; i++) in[i] = PcmBuffer[PcmPointer + i - WinLength/2] / 32768.0 * Hann[WinIdx][i];
 
         fftw_execute(Plan1024);
 
@@ -279,7 +253,7 @@ bool GetVideo(guchar Mode, double Rate, int Skip, bool Redraw) {
       InterpFreq = PrevFreq + (t - NextFFTtime + 0.6e-3) * ((Freq - PrevFreq) / 0.3e-3);
 
       // Calculate luminency & store for later use
-      StoredLum[Sample] = clip((InterpFreq - (1500 + HedrShift)) / 3.1372549);
+      StoredLum[SampleNum] = clip((InterpFreq - (1500 + HedrShift)) / 3.1372549);
 
     }
 
@@ -289,7 +263,7 @@ bool GetVideo(guchar Mode, double Rate, int Skip, bool Redraw) {
     if ( ( (CurLineTime >= ChanStart[0] && CurLineTime < ChanStart[0] + ChanLen[0])
         || (CurLineTime >= ChanStart[1] && CurLineTime < ChanStart[1] + ChanLen[1])
         || (CurLineTime >= ChanStart[2] && CurLineTime < ChanStart[2] + ChanLen[2]) )
-        && t >= NextPixel
+        && t >= NextPixelTime
        ) {
 
       LineNum = t / ModeSpec[Mode].LineLen;
@@ -349,20 +323,20 @@ bool GetVideo(guchar Mode, double Rate, int Skip, bool Redraw) {
 
       // Store pixel 
       if (x >= 0 && y >= 0 && x < ModeSpec[Mode].ImgWidth) {
-        Image[x][y][Channel] = StoredLum[Sample];
+        Image[x][y][Channel] = StoredLum[SampleNum];
         // Some modes have R-Y & B-Y channels that are twice the height of the Y channel
         if (Channel > 0)
           switch(Mode) {
             case R36:
             case R24:
-              if (y < ModeSpec[Mode].ImgHeight-1) Image[x][y+1][Channel] = StoredLum[Sample];
+              if (y < ModeSpec[Mode].ImgHeight-1) Image[x][y+1][Channel] = StoredLum[SampleNum];
               break;
           }
       }
 
       if (y > ModeSpec[Mode].ImgHeight-1) break;
 
-      // Calculate and draw pixels on line change
+      // Calculate and draw pixels to pixbuf on line change
       if (LineNum != prevline || (LineNum == ModeSpec[Mode].ImgHeight-1 && x == ModeSpec[Mode].ImgWidth-1)) {
         for (tx = 0; tx < ModeSpec[Mode].ImgWidth; tx++) {
           p = pixels + prevline * rowstride + tx * 3;
@@ -408,21 +382,20 @@ bool GetVideo(guchar Mode, double Rate, int Skip, bool Redraw) {
       }
       prevline = LineNum;
 
-      NextPixel += ModeSpec[Mode].PixelLen / 2;
+      NextPixelTime += ModeSpec[Mode].PixelLen / 2;
     }
 
-    if (!Redraw && Sample % 8820 == 0) {
+    if (!Redraw && SampleNum % 8820 == 0) {
       setVU(MaxPcm, SNR);
       MaxPcm = 0;
     }
 
-    if (Abort) break;
+    if (Abort) return false;
 
     PcmPointer ++;
 
   }
 
-  if (Abort) return false;
-  else       return true;
+  return true;
 
 }

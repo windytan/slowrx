@@ -11,18 +11,29 @@
  *
  * Decode FSK ID
  *
- * * The FSK IDs are 6-bit ASCII, LSB first, 45.45 baud, center freq 2000, shift 200
- * * Text data starts after 3F 20 2A and ends in 01
+ * * The FSK IDs are 6-bit bytes, LSB first, 45.45 baud (22 ms/bit), 1900 Hz = 1, 2100 Hz = 0
+ * * Text data starts with 20 2A and ends in 01
+ * * Add 0x20 and the data becomes ASCII
  *
  */
 
 void GetFSK (char *dest) {
 
-  int        Pointer = 0, ThisBitIndex = 0, RunLength=0, PrevBit = -1, Bit = 0;
-  guint      FFTLen = 2048, i=0, LoBin, HiBin, MidBin;
-  guchar     AsciiByte = 0, ThisByteIndex = 0;
+  guint      FFTLen = 2048, i=0, LoBin, HiBin, MidBin, TestNum=0, TestPtr=0;
+  guchar     Bit = 0, AsciiByte = 0, BytePtr = 0, TestBits[24] = {0}, BitPtr=0;
   double     HiPow,LoPow,Hann[970];
-  bool       InFSK = false, InCode = false, EndFSK = false;
+  bool       InSync = false;
+
+  // Bit-reversion lookup table
+  static const guchar BitRev[] = {
+    0x00, 0x20, 0x10, 0x30,   0x08, 0x28, 0x18, 0x38,
+    0x04, 0x24, 0x14, 0x34,   0x0c, 0x2c, 0x1c, 0x3c,
+    0x02, 0x22, 0x12, 0x32,   0x0a, 0x2a, 0x1a, 0x3a,
+    0x06, 0x26, 0x16, 0x36,   0x0e, 0x2e, 0x1e, 0x3e,
+    0x01, 0x21, 0x11, 0x31,   0x09, 0x29, 0x19, 0x39,
+    0x05, 0x25, 0x15, 0x35,   0x0d, 0x2d, 0x1d, 0x3d,
+    0x03, 0x23, 0x13, 0x33,   0x0b, 0x2b, 0x1b, 0x3b,
+    0x07, 0x27, 0x17, 0x37,   0x0f, 0x2f, 0x1f, 0x3f };
 
   for (i = 0; i < FFTLen; i++) in[i] = 0;
 
@@ -31,11 +42,13 @@ void GetFSK (char *dest) {
 
   while ( true ) {
 
-    // Read 11 ms from DSP
-    readPcm(485);
+    // Read data from DSP
+    readPcm(InSync ? 970: 485);
 
     // Apply Hann window
-    for (i = 0; i < 970; i++) in[i] = PcmBuffer[PcmPointer+i-485] * Hann[i];
+    for (i = 0; i < 970; i++) in[i] = PcmBuffer[PcmPointer+i- 485] * Hann[i];
+    
+    PcmPointer += (InSync ? 970 : 485);
 
     // FFT of last 22 ms
     fftw_execute(Plan2048);
@@ -52,56 +65,42 @@ void GetFSK (char *dest) {
       else            HiPow += pow(out[i], 2) + pow(out[FFTLen - i], 2);
     }
 
-    Bit = (HiPow<LoPow);
+    Bit = (LoPow>HiPow);
 
-    if (Bit != PrevBit) {
-      if (RunLength/2.0 > 3) InFSK = true;
+    if (!InSync) {
 
-      if (InFSK) {
-        if (RunLength/2.0 < .5) break;
+      // Wait for 20 2A
+      
+      TestBits[TestPtr % 24] = Bit;
 
-        for (i=0; i<RunLength/2.0; i++) {
-          AsciiByte >>= 1;
-          AsciiByte ^= (PrevBit << 6);
+      TestNum = 0;
+      for (i=0; i<12; i++) TestNum |= TestBits[(TestPtr - (23-i*2)) % 24] << (11-i);
 
-          if (InCode) {
-            ThisBitIndex ++;
-            if (ThisBitIndex > 0 && ThisBitIndex % 6 == 0) {
-              // Consider end of data when values would only produce special characters
-              if ( (AsciiByte&0x3F) < 0x0c) {
-                EndFSK = true;
-                break;
-              }
-              dest[ThisByteIndex] = (AsciiByte&0x3F)+0x20;
-              if (++ThisByteIndex > 20) break;
-            }
-          }
-
-          if (AsciiByte == 0x55 && !InCode) {
-            ThisBitIndex=-1;
-            InCode = true;
-          }
-
-        }
-        if ( EndFSK ) break;
+      if (BitRev[(TestNum >>  6) & 0x3f] == 0x20 &&
+          BitRev[(TestNum >>  0) & 0x3f] == 0x2a) {
+        InSync    = true;
+        AsciiByte = 0;
+        BitPtr    = 0;
+        BytePtr   = 0;
       }
 
-      RunLength = 1;
-      PrevBit = Bit;
+      if (++TestPtr > 200) break;
+
     } else {
-      RunLength ++;
+
+      AsciiByte |= Bit << BitPtr;
+
+      if (++BitPtr == 6) {
+        if (AsciiByte == 0x01 || BytePtr > 9) break;
+        dest[BytePtr] = AsciiByte + 0x20;
+        BitPtr        = 0;
+        AsciiByte     = 0;
+        BytePtr ++;
+      }
     }
-
-    Pointer++;
-
-    if (Pointer > 200 || (!InFSK && Pointer > 50)) break;
-
-    PcmPointer += 485;
 
   }
     
-  dest[ThisByteIndex] = '\0';
+  dest[BytePtr] = '\0';
 
 }
-
-
