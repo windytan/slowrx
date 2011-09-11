@@ -76,8 +76,7 @@ void GetFSK (char *dest) {
       TestNum = 0;
       for (i=0; i<12; i++) TestNum |= TestBits[(TestPtr - (23-i*2)) % 24] << (11-i);
 
-      if (BitRev[(TestNum >>  6) & 0x3f] == 0x20 &&
-          BitRev[(TestNum >>  0) & 0x3f] == 0x2a) {
+      if (BitRev[(TestNum >>  6) & 0x3f] == 0x20 && BitRev[TestNum & 0x3f] == 0x2a) {
         InSync    = true;
         AsciiByte = 0;
         BitPtr    = 0;
@@ -91,7 +90,7 @@ void GetFSK (char *dest) {
       AsciiByte |= Bit << BitPtr;
 
       if (++BitPtr == 6) {
-        if (AsciiByte == 0x01 || BytePtr > 9) break;
+        if (AsciiByte < 0x0d || BytePtr > 9) break;
         dest[BytePtr] = AsciiByte + 0x20;
         BitPtr        = 0;
         AsciiByte     = 0;

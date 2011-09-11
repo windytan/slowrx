@@ -99,7 +99,7 @@ bool GetVideo(guchar Mode, double Rate, int Skip, bool Redraw) {
   SyncTargetBin = GetBin(1200+HedrShift, FFTLen);
   LopassBin     = GetBin(3000, FFTLen);
   Abort         = false;
-  SyncSampleNum    = 0;
+  SyncSampleNum = 0;
 
   // Loop through signal
   for (SampleNum = 0; SampleNum < Length; SampleNum++) {

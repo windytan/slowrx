@@ -3,6 +3,8 @@ slowrx
 
 Slowrx is an [SSTV](http://en.wikipedia.org/wiki/Slow-scan%20television) decoder that aims for intuitive simplicity and lack of features not needed by a shortwave listener (SWL).
 
+![Screenshot](http://www.cs.helsinki.fi/u/okraisan/shot-slowrx.png)
+
 Features
 --------
 
