@@ -5,6 +5,9 @@ Slowrx is an [SSTV](http://en.wikipedia.org/wiki/Slow-scan%20television) decoder
 
 [![endorse](http://api.coderwall.com/windytan/endorsecount.png)](http://coderwall.com/windytan)
 
+Screenshot
+----------
+
 ![Screenshot](http://www.cs.helsinki.fi/u/okraisan/shot-slowrx.png)
 
 Features
