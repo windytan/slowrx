@@ -3,6 +3,8 @@ slowrx
 
 Slowrx is an [SSTV](http://en.wikipedia.org/wiki/Slow-scan%20television) decoder that aims for intuitive simplicity and lack of features not needed by a shortwave listener (SWL).
 
+[![endorse](http://api.coderwall.com/windytan/endorsecount.png)](http://coderwall.com/windytan)
+
 ![Screenshot](http://www.cs.helsinki.fi/u/okraisan/shot-slowrx.png)
 
 Features
@@ -45,7 +47,7 @@ The program was inspired by several articles:
 Licensing
 ---------
 
-    Copyright (c) 2007-2011, windytan (OH2-250)
+    Copyright (c) 2007-2012, windytan (OH2-250)
     
     Permission to use, copy, modify, and/or distribute this software for any
     purpose with or without fee is hereby granted, provided that the above
