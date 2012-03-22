@@ -19,7 +19,7 @@
 void readPcm(gint numsamples) {
 
   int    samplesread, i;
-  gint16 tmp[BUFLEN];
+  gint32 tmp[BUFLEN];
 
   samplesread = snd_pcm_readi(pcm_handle, tmp, (PcmPointer == 0 ? BUFLEN : numsamples));
 
@@ -34,14 +34,15 @@ void readPcm(gint numsamples) {
 
   if (PcmPointer == 0) {
     // Fill buffer on first run
-    memcpy(PcmBuffer, tmp, BUFLEN);
+    for (i=0; i<BUFLEN; i++)
+      PcmBuffer[i] = tmp[i] & 0xffff;
     PcmPointer = BUFLEN/2;
   } else {
     for (i=0; i<BUFLEN-numsamples; i++) PcmBuffer[i] = PcmBuffer[i+numsamples];
     for (i=0; i<numsamples;        i++) {
-      PcmBuffer[BUFLEN-numsamples+i] = tmp[i];
+      PcmBuffer[BUFLEN-numsamples+i] = tmp[i] & 0xffff;
       // Keep track of max power for VU meter
-      if (abs(tmp[i]) > MaxPcm) MaxPcm = abs(PcmBuffer[i]);
+      if (abs(PcmBuffer[i]) > MaxPcm) MaxPcm = abs(PcmBuffer[i]);
     }
 
     PcmPointer -= numsamples;
@@ -78,7 +79,7 @@ void initPcmDevice() {
     printf("No sound cards found!\n");
     exit(EXIT_SUCCESS);
   } else {
-    cardnum = 0;
+    cardnum = 2;
   }
 
   gtk_combo_box_set_active(GTK_COMBO_BOX(cardcombo), 0);
@@ -116,9 +117,16 @@ void initPcmDevice() {
   }
   if (exact_rate != 44100) fprintf(stderr, "ALSA: Using %d Hz instead of 44100.\n", exact_rate);
 
+  isStereo = false;
   if (snd_pcm_hw_params_set_channels(pcm_handle, hwparams, 1) < 0) {
     fprintf(stderr, "ALSA: Can't capture mono.\n");
-    exit(EXIT_FAILURE);
+    if (snd_pcm_hw_params_set_channels(pcm_handle, hwparams, 2) < 0) {
+      fprintf(stderr, "ALSA: Can't capture stereo either.\n");
+      exit(EXIT_FAILURE);
+    } else {
+      fprintf(stderr, "ALSA: Using right stereo channel instead.\n");
+      isStereo = true;
+    }
   }
   if (snd_pcm_hw_params(pcm_handle, hwparams) < 0) {
     fprintf(stderr, "ALSA: Error setting HW params.\n");

@@ -22,6 +22,7 @@ int          SNRdBthresh[10] = {30, 15, 10,   5,   3,   0,  -3,  -5, -10, -15};
 bool         Adaptive        = true;
 bool         ManualActivated = false;
 bool         Abort           = false;
+bool         isStereo        = false;
 
 GtkWidget   *RxImage         = NULL;
 GtkWidget   *statusbar       = NULL;
