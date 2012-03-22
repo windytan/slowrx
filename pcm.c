@@ -117,7 +117,6 @@ void initPcmDevice() {
   }
   if (exact_rate != 44100) fprintf(stderr, "ALSA: Using %d Hz instead of 44100.\n", exact_rate);
 
-  isStereo = false;
   if (snd_pcm_hw_params_set_channels(pcm_handle, hwparams, 1) < 0) {
     fprintf(stderr, "ALSA: Can't capture mono.\n");
     if (snd_pcm_hw_params_set_channels(pcm_handle, hwparams, 2) < 0) {
@@ -125,7 +124,6 @@ void initPcmDevice() {
       exit(EXIT_FAILURE);
     } else {
       fprintf(stderr, "ALSA: Using right stereo channel instead.\n");
-      isStereo = true;
     }
   }
   if (snd_pcm_hw_params(pcm_handle, hwparams) < 0) {

@@ -19,7 +19,6 @@ extern bool       Adaptive;
 extern bool       ManualActivated;
 extern bool       Abort;
 extern bool      *HasSync;
-extern bool       isStereo;
 
 extern GtkWidget *RxImage;
 extern GtkWidget *statusbar;
