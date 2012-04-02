@@ -19,7 +19,7 @@
 void readPcm(gint numsamples) {
 
   int    samplesread, i;
-  gint32 tmp[BUFLEN];
+  gint32 tmp[BUFLEN];  // Holds one or two 16-bit channels, will be ANDed to single channel
 
   samplesread = snd_pcm_readi(pcm_handle, tmp, (PcmPointer == 0 ? BUFLEN : numsamples));
 
@@ -117,13 +117,12 @@ void initPcmDevice() {
   }
   if (exact_rate != 44100) fprintf(stderr, "ALSA: Using %d Hz instead of 44100.\n", exact_rate);
 
-  if (snd_pcm_hw_params_set_channels(pcm_handle, hwparams, 1) < 0) {
-    fprintf(stderr, "ALSA: Can't capture mono.\n");
-    if (snd_pcm_hw_params_set_channels(pcm_handle, hwparams, 2) < 0) {
-      fprintf(stderr, "ALSA: Can't capture stereo either.\n");
+  // Try stereo first
+  if (snd_pcm_hw_params_set_channels(pcm_handle, hwparams, 2) < 0) {
+    // Fall back to mono
+    if (snd_pcm_hw_params_set_channels(pcm_handle, hwparams, 1) < 0) {
+      fprintf(stderr, "ALSA: Error setting channels.\n");
       exit(EXIT_FAILURE);
-    } else {
-      fprintf(stderr, "ALSA: Using right stereo channel instead.\n");
     }
   }
   if (snd_pcm_hw_params(pcm_handle, hwparams) < 0) {
