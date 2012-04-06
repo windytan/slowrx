@@ -20,8 +20,8 @@ double FindSync (guchar Mode, double Rate, int *Skip) {
 
   int      LineWidth = ModeSpec[Mode].LineLen / ModeSpec[Mode].SyncLen * 4;
   int      x,y,xmid,x0;
-  int      q, d, qMost, dMost;
-  gushort  xAcc[700] = {0}, xmax, s;
+  int      q, d, qMost, dMost, s;
+  gushort  xAcc[700] = {0}, xmax;
   gushort  lines[600][(MAXSLANT-MINSLANT)*2];
   gushort  cy, cx, Retries = 0;
   bool     SyncImg[700][630] = {{false}};

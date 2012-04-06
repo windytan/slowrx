@@ -78,7 +78,7 @@ void *Listen() {
     timeptr = gmtime(&timet);
     strftime(timestr, sizeof(timestr)-1,"%Y%m%d-%H%M%Sz", timeptr);
     snprintf(pngfilename, sizeof(timestr)-1, "rx/%s_%s.png", timestr, ModeSpec[Mode].ShortName);
-    snprintf(lumfilename, sizeof(timestr)-1, "rx/%s_%s-lum", timestr, ModeSpec[Mode].ShortName);
+    snprintf(lumfilename, sizeof(timestr)-1, "rx-lum/%s_%s-lum", timestr, ModeSpec[Mode].ShortName);
     printf("  \"%s\"\n", pngfilename);
     
 

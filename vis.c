@@ -126,6 +126,10 @@ guchar GetVIS () {
               gtk_label_set_markup(GTK_LABEL(infolabel), infostr);
               gdk_threads_leave();
             } else {
+              gdk_threads_enter();
+              gtk_combo_box_set_active (GTK_COMBO_BOX(modecombo), VISmap[VIS]-1);
+              gtk_spin_button_set_value (GTK_SPIN_BUTTON(shiftspin), HedrShift);
+              gdk_threads_leave();
               break;
             }
           }
