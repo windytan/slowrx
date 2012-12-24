@@ -84,17 +84,25 @@ void initPcmDevice() {
 
   gtk_combo_box_set_active(GTK_COMBO_BOX(cardcombo), 0);
 
-  if (cardnum == 0) {
-    sprintf(pcm_name,"default");
-  } else {
-    sprintf(pcm_name,"hw:%d",cardnum-1);
-  }
-
   snd_pcm_hw_params_alloca(&hwparams);
 
-  if (snd_pcm_open(&pcm_handle, pcm_name, PcmInStream, 0) < 0) {
-    fprintf(stderr, "ALSA: Error opening PCM device %s\n", pcm_name);
-    exit(EXIT_FAILURE);
+  while (true) {
+    if (cardnum == 0) {
+      sprintf(pcm_name,"default");
+    } else {
+      sprintf(pcm_name,"hw:%d",cardnum-1);
+    }
+
+    if (snd_pcm_open(&pcm_handle, pcm_name, PcmInStream, 0) < 0) {
+      fprintf(stderr, "ALSA: Error opening PCM device %s\n", pcm_name);
+      if (cardnum == 0) {
+        exit(EXIT_FAILURE);
+      } else {
+        cardnum--;
+      }
+    } else {
+      break;
+    }
   }
 
   /* Init hwparams with full configuration space */
