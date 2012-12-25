@@ -11,4 +11,4 @@ slowrx: common.h common.c slowrx.c gui.c video.c sync.c vis.c modespec.c pcm.c f
 	$(CC) $(CFLAGS) $(GFLAGS) $(OFLAGS) common.c modespec.c gui.c video.c vis.c sync.c pcm.c fsk.c slowrx.c -o slowrx -lfftw3 -lm `pkg-config --cflags --libs gtk+-3.0` -lgthread-2.0 -lpnglite -lasound
 
 clean:
-	rm -f *.o
+	rm -f slowrx
