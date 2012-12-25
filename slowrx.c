@@ -13,9 +13,12 @@
 #include <gtk/gtk.h>
 #include <pnglite.h>
 #include <pthread.h>
-#include <fftw3.h>
 
 #include <alsa/asoundlib.h>
+
+#ifdef GPL
+#include <fftw3.h>
+#endif
 
 #include "common.h"
 
@@ -153,7 +156,8 @@ void *Listen() {
     HasSync = NULL;
 
     // Add thumbnail to iconview
-    thumbbuf = gdk_pixbuf_scale_simple (RxPixbuf, 100, 100.0/ModeSpec[Mode].ImgWidth * ModeSpec[Mode].ImgHeight * ModeSpec[Mode].YScale, GDK_INTERP_HYPER);
+    thumbbuf = gdk_pixbuf_scale_simple (RxPixbuf, 100,
+        100.0/ModeSpec[Mode].ImgWidth * ModeSpec[Mode].ImgHeight * ModeSpec[Mode].YScale, GDK_INTERP_HYPER);
     gdk_threads_enter                  ();
     gtk_list_store_prepend             (savedstore, &iter);
     gtk_list_store_set                 (savedstore, &iter, 0, thumbbuf, 1, id, -1);
@@ -181,7 +185,8 @@ void *Listen() {
       png_init(0,0);
 
       GdkPixbuf *scaledpb;
-      scaledpb = gdk_pixbuf_scale_simple (RxPixbuf, ModeSpec[Mode].ImgWidth, ModeSpec[Mode].ImgHeight * ModeSpec[Mode].YScale, GDK_INTERP_HYPER);
+      scaledpb = gdk_pixbuf_scale_simple (RxPixbuf, ModeSpec[Mode].ImgWidth,
+          ModeSpec[Mode].ImgHeight * ModeSpec[Mode].YScale, GDK_INTERP_HYPER);
       pixels = gdk_pixbuf_get_pixels(scaledpb);
 
       png_open_file_write(&png, pngfilename);
@@ -207,7 +212,7 @@ int main(int argc, char *argv[]) {
 
   gtk_init (&argc, &argv);
 
-  g_thread_init (NULL);
+  //g_thread_init (NULL);
   gdk_threads_init ();
 
   createGUI();

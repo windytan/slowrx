@@ -3,7 +3,10 @@
 #include <gtk/gtk.h>
 #include <alsa/asoundlib.h>
 #include <math.h>
+
+#ifdef GPL
 #include <fftw3.h>
+#endif
 
 #include "common.h"
 
@@ -70,7 +73,7 @@ void createGUI() {
   gtk_icon_view_set_text_column (GTK_ICON_VIEW(iconview), 1);
 
   RxPixbuf   = gdk_pixbuf_new (GDK_COLORSPACE_RGB, false, 8, 320, 256);
-  gdk_pixbuf_fill(RxPixbuf, 0);
+  gdk_pixbuf_fill(RxPixbuf, 0x666666ff);
   DispPixbuf = gdk_pixbuf_scale_simple (RxPixbuf, 500, 400, GDK_INTERP_BILINEAR);
   gtk_image_set_from_pixbuf(GTK_IMAGE(RxImage), DispPixbuf);
 

@@ -6,7 +6,10 @@
 #include <gtk/gtk.h>
 
 #include <alsa/asoundlib.h>
+
+#ifdef GPL
 #include <fftw3.h>
+#endif
 
 #include "common.h"
 
@@ -79,7 +82,7 @@ void initPcmDevice() {
     printf("No sound cards found!\n");
     exit(EXIT_SUCCESS);
   } else {
-    cardnum = 2;
+    cardnum = 1;
   }
 
   gtk_combo_box_set_active(GTK_COMBO_BOX(cardcombo), 0);

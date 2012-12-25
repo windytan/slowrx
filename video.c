@@ -3,9 +3,12 @@
 #include <stdbool.h>
 #include <math.h>
 #include <string.h>
-#include <fftw3.h>
 #include <gtk/gtk.h>
 #include <alsa/asoundlib.h>
+
+#ifdef GPL
+#include <fftw3.h>
+#endif
 
 #include "common.h"
 
