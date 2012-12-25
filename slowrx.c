@@ -9,6 +9,8 @@
 #include <stdbool.h>
 #include <math.h>
 #include <time.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 #include <gtk/gtk.h>
 #include <pnglite.h>
@@ -19,6 +21,17 @@
 
 #include "common.h"
 
+void ensure_dir_exists(const char *dir) {
+  struct stat buf;
+
+  int i = stat(dir, &buf);
+  if (i != 0) {
+    if (mkdir(dir, 0777) != 0) {
+      perror("Unable to create directory for output file");
+      exit(EXIT_FAILURE);
+    }
+  }
+}
 
 void *Listen() {
 
@@ -168,6 +181,7 @@ void *Listen() {
 
       setVU(0,-100);
 
+      ensure_dir_exists("rx-lum");
       LumFile = fopen(lumfilename,"w");
       if (LumFile == NULL) {
         perror("Unable to open luma file for writing");
@@ -184,6 +198,7 @@ void *Listen() {
       scaledpb = gdk_pixbuf_scale_simple (RxPixbuf, ModeSpec[Mode].ImgWidth, ModeSpec[Mode].ImgHeight * ModeSpec[Mode].YScale, GDK_INTERP_HYPER);
       pixels = gdk_pixbuf_get_pixels(scaledpb);
 
+      ensure_dir_exists("rx");
       png_open_file_write(&png, pngfilename);
       png_set_data(&png, ModeSpec[Mode].ImgWidth, ModeSpec[Mode].ImgHeight *  ModeSpec[Mode].YScale, 8, PNG_TRUECOLOR, pixels);
       png_close_file(&png);
