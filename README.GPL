@@ -1,0 +1,3 @@
+FFTW3 is GPL. slowrx is not.
+
+For compiling to work, say make GFLAGS=-DGPL
