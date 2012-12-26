@@ -10,7 +10,7 @@
     <!--[if lt IE 9]>
     <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
     <![endif]-->
-    <title>Slowrx by windytan</title>
+    <title>slowrx by windytan</title>
   </head>
 
   <body>
@@ -18,7 +18,7 @@
       <div class="inner">
 
         <header>
-          <h1>Slowrx</h1>
+          <h1>slowrx</h1>
           <h2>A decoder for Slow-Scanning Television (SSTV).</h2>
         </header>
 
@@ -32,9 +32,9 @@
 
         <section id="main_content">
 
-<p>Slowrx is an <a href="http://en.wikipedia.org/wiki/Slow-scan%20television">SSTV</a> decoder that aims for intuitive simplicity and lack of features not needed by a shortwave listener (SWL).</p>
+<p>slowrx is an <a href="http://en.wikipedia.org/wiki/Slow-scan%20television">SSTV</a> decoder that aims for intuitive simplicity and lack of features not needed by a shortwave listener (SWL).</p>
 
-<p>Created by Oona Räisänen OH2-250 (windyoona at gmail).</p>
+<p>Written in C99 by Oona Räisänen OH2-250 (windyoona at gmail).</p>
 
 <h2>Screenshot</h2>
 
@@ -43,14 +43,16 @@
 <h2>Features</h2>
 
 <ul>
+<li>Mode detection from VIS code</li>
 <li>Support for a multitude of modes (see <code>modespec.c</code> for a list)</li>
 <li>Detect frequency-shifted signals – no need to fine-tune the radio</li>
 <li>Automatic slant correction (compensation for sound card clock error)</li>
 <li>Adaptive noise reduction</li>
-<li>Decode digital FSK ID</li>
-<li>Save received pictures as PNG</li>
-<li>Written in C99</li>
-</ul><h2>Requirements</h2>
+<li>Decodes digital FSK ID</li>
+<li>Saves received pictures as PNG</li>
+</ul>
+
+<h2>Requirements</h2>
 
 <ul>
 <li>Linux</li>
@@ -68,7 +70,7 @@
 
 <p>The program was inspired by several articles:</p>
 
-<ul>
+<ul style="font-size:85%">
 <li>Barber, JL (N7CXI) (May 2000). <a href="http://www.barberdsp.com/files/Dayton%20Paper.pdf">"Proposal for SSTV Mode Specifications"</a>. Presented at the Dayton SSTV forum, 20 May 2000.</li>
 <li>Cordesses L, Cordesses R (F2DC) (May 2003). <a href="http://lionel.cordesses.free.fr/gpages/Cordesses.pdf">"Some thoughts on 'Real-Time' SSTV Processing"</a>. <em>QEX</em> May/June 2003: 3–20.</li>
 <li>Gasior M, Gonzalez J L (May 2004). <a href="http://cdsweb.cern.ch/record/738182/files/ab-2004-023.pdf">"Improving FFT Frequency Measurement Resolution by Parabolic and Gaussian Spectrum Interpolation"</a>. <em>AIP Conf. Proc.</em> (Geneva: CERN) <strong>732</strong> (2004): 276–285.</li>
