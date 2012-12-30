@@ -9,7 +9,7 @@
     <property name="version">0.01 alpha</property>
     <property name="copyright" translatable="yes">2007–2011 windytan OH2-250</property>
     <property name="comments" translatable="yes">A shortwave listener's tool for decoding SSTV images.</property>
-    <property name="website">https://github.com/windytan/redsea</property>
+    <property name="website">https://github.com/windytan/slowrx</property>
     <property name="website_label" translatable="yes">GitHub repository</property>
     <property name="license" translatable="yes">Permission to use, copy, modify, and/or distribute this software for any
 purpose with or without fee is hereby granted, provided that the above
