@@ -13,7 +13,6 @@
 #include <sys/types.h>
 
 #include <gtk/gtk.h>
-#include <pnglite.h>
 #include <pthread.h>
 
 #include <alsa/asoundlib.h>
@@ -40,7 +39,7 @@ void *Listen() {
 
   int         Skip = 0;
   char        timestr[40], pngfilename[40], lumfilename[40], infostr[60], rctime[8];
-  guchar     *pixels, Mode=0;
+  guchar      Mode=0;
   double      Rate;
   struct tm  *timeptr = NULL;
   time_t      timet;
@@ -199,18 +198,12 @@ void *Listen() {
       fclose(LumFile);
 
       // Save the received image as PNG
-      png_t png;
-      png_init(0,0);
-
       GdkPixbuf *scaledpb;
       scaledpb = gdk_pixbuf_scale_simple (RxPixbuf, ModeSpec[Mode].ImgWidth,
           ModeSpec[Mode].ImgHeight * ModeSpec[Mode].YScale, GDK_INTERP_HYPER);
-      pixels = gdk_pixbuf_get_pixels(scaledpb);
 
       ensure_dir_exists("rx");
-      png_open_file_write(&png, pngfilename);
-      png_set_data(&png, ModeSpec[Mode].ImgWidth, ModeSpec[Mode].ImgHeight *  ModeSpec[Mode].YScale, 8, PNG_TRUECOLOR, pixels);
-      png_close_file(&png);
+      gdk_pixbuf_savev(scaledpb, pngfilename, "png", NULL, NULL, NULL);
       g_object_unref(scaledpb);
     }
     
@@ -232,7 +225,6 @@ int main(int argc, char *argv[]) {
   GString     *confpath;
   gchar       *confdata;
   gsize       *keylen=NULL;
-  int         status;
 
   gtk_init (&argc, &argv);
 
