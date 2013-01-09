@@ -56,10 +56,10 @@ void readPcm(gint numsamples) {
 void populateDeviceList() {
   int                  card;
   char                *cardname;
-  int                  cardnum, numcards, row;
+  int                  numcards, row;
 
   gdk_threads_enter();
-  gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(cardcombo), "default");
+  gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(gui.cardcombo), "default");
   gdk_threads_leave();
 
   numcards = 0;
@@ -71,9 +71,9 @@ void populateDeviceList() {
       row++;
       snd_card_get_name(card,&cardname);
       gdk_threads_enter();
-      gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(cardcombo), cardname);
+      gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(gui.cardcombo), cardname);
       if (strcmp(cardname,g_key_file_get_string(keyfile,"slowrx","device",NULL)) == 0)
-        gtk_combo_box_set_active(GTK_COMBO_BOX(cardcombo), row);
+        gtk_combo_box_set_active(GTK_COMBO_BOX(gui.cardcombo), row);
 
       gdk_threads_leave();
       numcards++;

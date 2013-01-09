@@ -15,12 +15,13 @@ void createGUI() {
   GtkBuilder *builder;
   GtkWidget  *quititem,  *aboutitem,  *prefitem;
   GtkWidget  *mainwindow, *aboutdialog, *prefdialog;
+  GtkWidget  *iconview;
 
   builder = gtk_builder_new();
   gtk_builder_add_from_file(builder, "slowrx.ui",      NULL);
   gtk_builder_add_from_file(builder, "aboutdialog.ui", NULL);
 //  gtk_builder_add_from_file(builder, "prefs.ui",       NULL);
-
+  
   mainwindow  = GTK_WIDGET(gtk_builder_get_object(builder,"mainwindow"));
   aboutdialog = GTK_WIDGET(gtk_builder_get_object(builder,"aboutdialog"));
 //  prefdialog  = GTK_WIDGET(gtk_builder_get_object(builder,"prefdialog"));
@@ -29,47 +30,38 @@ void createGUI() {
 //  prefitem    = GTK_WIDGET(gtk_builder_get_object(builder,"prefmenuitem"));
   aboutitem   = GTK_WIDGET(gtk_builder_get_object(builder,"aboutitem"));
 
-  vugrid      = GTK_WIDGET(gtk_builder_get_object(builder,"vugrid"));
-  RxImage     = GTK_WIDGET(gtk_builder_get_object(builder,"RxImage"));
-  statusbar   = GTK_WIDGET(gtk_builder_get_object(builder,"statusbar"));
-  utclabel    = GTK_WIDGET(gtk_builder_get_object(builder,"utclabel"));
-  lastmodelabel   = GTK_WIDGET(gtk_builder_get_object(builder,"lastmodelabel"));
-  cardcombo   = GTK_WIDGET(gtk_builder_get_object(builder,"cardcombo"));
-  togslant    = GTK_WIDGET(gtk_builder_get_object(builder,"TogSlant"));
-  togsave     = GTK_WIDGET(gtk_builder_get_object(builder,"TogSave"));
-  togadapt    = GTK_WIDGET(gtk_builder_get_object(builder,"TogAdapt"));
-  togrx       = GTK_WIDGET(gtk_builder_get_object(builder,"TogRx"));
-  togfsk      = GTK_WIDGET(gtk_builder_get_object(builder,"TogFSK"));
-  modecombo   = GTK_WIDGET(gtk_builder_get_object(builder,"modecombo"));
-  btnabort    = GTK_WIDGET(gtk_builder_get_object(builder,"BtnAbort"));
-  btnstart    = GTK_WIDGET(gtk_builder_get_object(builder,"BtnStart"));
-  manualframe = GTK_WIDGET(gtk_builder_get_object(builder,"ManualFrame"));
-  shiftspin   = GTK_WIDGET(gtk_builder_get_object(builder,"ShiftSpin"));
-  pwrimage    = GTK_WIDGET(gtk_builder_get_object(builder,"PowerImage"));
-  snrimage    = GTK_WIDGET(gtk_builder_get_object(builder,"SNRImage"));
-  idlabel     = GTK_WIDGET(gtk_builder_get_object(builder,"IDLabel"));
-  GtkWidget *iconview;
-  iconview    = GTK_WIDGET(gtk_builder_get_object(builder,"SavedIconView"));
-  devstatusicon    = GTK_WIDGET(gtk_builder_get_object(builder,"devstatusicon"));
+  gui.vugrid        = GTK_WIDGET(gtk_builder_get_object(builder,"vugrid"));
+  gui.RxImage       = GTK_WIDGET(gtk_builder_get_object(builder,"RxImage"));
+  gui.statusbar     = GTK_WIDGET(gtk_builder_get_object(builder,"statusbar"));
+  gui.utclabel      = GTK_WIDGET(gtk_builder_get_object(builder,"utclabel"));
+  gui.lastmodelabel = GTK_WIDGET(gtk_builder_get_object(builder,"lastmodelabel"));
+  gui.cardcombo     = GTK_WIDGET(gtk_builder_get_object(builder,"cardcombo"));
+  gui.togslant      = GTK_WIDGET(gtk_builder_get_object(builder,"TogSlant"));
+  gui.togsave       = GTK_WIDGET(gtk_builder_get_object(builder,"TogSave"));
+  gui.togadapt      = GTK_WIDGET(gtk_builder_get_object(builder,"TogAdapt"));
+  gui.togrx         = GTK_WIDGET(gtk_builder_get_object(builder,"TogRx"));
+  gui.togfsk        = GTK_WIDGET(gtk_builder_get_object(builder,"TogFSK"));
+  gui.modecombo     = GTK_WIDGET(gtk_builder_get_object(builder,"modecombo"));
+  gui.btnabort      = GTK_WIDGET(gtk_builder_get_object(builder,"BtnAbort"));
+  gui.btnstart      = GTK_WIDGET(gtk_builder_get_object(builder,"BtnStart"));
+  gui.manualframe   = GTK_WIDGET(gtk_builder_get_object(builder,"ManualFrame"));
+  gui.shiftspin     = GTK_WIDGET(gtk_builder_get_object(builder,"ShiftSpin"));
+  gui.pwrimage      = GTK_WIDGET(gtk_builder_get_object(builder,"PowerImage"));
+  gui.snrimage      = GTK_WIDGET(gtk_builder_get_object(builder,"SNRImage"));
+  gui.idlabel       = GTK_WIDGET(gtk_builder_get_object(builder,"IDLabel"));
+  gui.devstatusicon = GTK_WIDGET(gtk_builder_get_object(builder,"devstatusicon"));
+  
+  iconview          = GTK_WIDGET(gtk_builder_get_object(builder,"SavedIconView"));
 
   g_signal_connect        (quititem,    "activate",     G_CALLBACK(delete_event),        NULL);
   g_signal_connect        (mainwindow,  "delete-event", G_CALLBACK(delete_event),        NULL);
   g_signal_connect_swapped(aboutitem,   "activate",     G_CALLBACK(gtk_widget_show_all), aboutdialog);
 //  g_signal_connect_swapped(prefitem,    "activate",     G_CALLBACK(gtk_widget_show_all), prefdialog);
   g_signal_connect_swapped(aboutdialog, "close",        G_CALLBACK(gtk_widget_hide),     aboutdialog);
-  g_signal_connect_swapped(togadapt,    "toggled",      G_CALLBACK(GetAdaptive),         NULL);
-  g_signal_connect        (btnstart,    "clicked",      G_CALLBACK(ManualStart),         NULL);
-  g_signal_connect        (btnabort,    "clicked",      G_CALLBACK(AbortRx),             NULL);
-  g_signal_connect        (cardcombo,   "changed",      G_CALLBACK(changeDevices),       NULL);
-
-
-  //gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(togslant), true);
-  //gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(togsave),  true);
-  //gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(togadapt), true);
-  //gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(togrx),    true);
-  //gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(togfsk),   true);
-  //gtk_combo_box_set_active    (GTK_COMBO_BOX(modecombo),    0);
-  //gtk_widget_set_sensitive    (btnabort,                    false);
+  g_signal_connect_swapped(gui.togadapt,    "toggled",      G_CALLBACK(GetAdaptive),         NULL);
+  g_signal_connect        (gui.btnstart,    "clicked",      G_CALLBACK(ManualStart),         NULL);
+  g_signal_connect        (gui.btnabort,    "clicked",      G_CALLBACK(AbortRx),             NULL);
+  g_signal_connect        (gui.cardcombo,   "changed",      G_CALLBACK(changeDevices),       NULL);
 
   savedstore = gtk_list_store_new (2, GDK_TYPE_PIXBUF, G_TYPE_STRING);
   gtk_icon_view_set_model (GTK_ICON_VIEW(iconview), GTK_TREE_MODEL(savedstore));
@@ -79,7 +71,7 @@ void createGUI() {
   RxPixbuf   = gdk_pixbuf_new (GDK_COLORSPACE_RGB, false, 8, 320, 256);
   gdk_pixbuf_fill(RxPixbuf, 0x666666ff);
   DispPixbuf = gdk_pixbuf_scale_simple (RxPixbuf, 500, 400, GDK_INTERP_BILINEAR);
-  gtk_image_set_from_pixbuf(GTK_IMAGE(RxImage), DispPixbuf);
+  gtk_image_set_from_pixbuf(GTK_IMAGE(gui.RxImage), DispPixbuf);
 
   pixbufPWR = gdk_pixbuf_new (GDK_COLORSPACE_RGB, false, 8, 100, 20);
   pixbufSNR = gdk_pixbuf_new (GDK_COLORSPACE_RGB, false, 8, 100, 20);
@@ -136,8 +128,8 @@ void setVU (short int PcmValue, double SNRdB) {
   }
 
   gdk_threads_enter();
-  gtk_image_set_from_pixbuf(GTK_IMAGE(pwrimage), pixbufPWR);
-  gtk_image_set_from_pixbuf(GTK_IMAGE(snrimage), pixbufSNR);
+  gtk_image_set_from_pixbuf(GTK_IMAGE(gui.pwrimage), pixbufPWR);
+  gtk_image_set_from_pixbuf(GTK_IMAGE(gui.snrimage), pixbufSNR);
   gdk_threads_leave();
 
 }

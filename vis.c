@@ -40,7 +40,7 @@ guchar GetVIS () {
   printf("Waiting for header\n");
 
   gdk_threads_enter();
-  gtk_statusbar_push( GTK_STATUSBAR(statusbar), 0, "Ready" );
+  gtk_statusbar_push( GTK_STATUSBAR(gui.statusbar), 0, "Ready" );
   gdk_threads_leave();
 
   while ( true ) {
@@ -132,8 +132,8 @@ guchar GetVIS () {
               gdk_threads_leave();
             } else {
               gdk_threads_enter();
-              gtk_combo_box_set_active (GTK_COMBO_BOX(modecombo), VISmap[VIS]-1);
-              gtk_spin_button_set_value (GTK_SPIN_BUTTON(shiftspin), HedrShift);
+              gtk_combo_box_set_active (GTK_COMBO_BOX(gui.modecombo), VISmap[VIS]-1);
+              gtk_spin_button_set_value (GTK_SPIN_BUTTON(gui.shiftspin), HedrShift);
               gdk_threads_leave();
               break;
             }
@@ -143,17 +143,17 @@ guchar GetVIS () {
     }
 
     if (gotvis)
-     if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(togrx))) break;
+     if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(gui.togrx))) break;
 
     // Manual start
     if (ManualActivated) {
 
       gdk_threads_enter();
-      gtk_widget_set_sensitive( manualframe, false );
+      gtk_widget_set_sensitive( gui.manualframe, false );
       gdk_threads_leave();
 
-      selmode   = gtk_combo_box_get_active (GTK_COMBO_BOX(modecombo)) + 1;
-      HedrShift = gtk_spin_button_get_value_as_int (GTK_SPIN_BUTTON(shiftspin));
+      selmode   = gtk_combo_box_get_active (GTK_COMBO_BOX(gui.modecombo)) + 1;
+      HedrShift = gtk_spin_button_get_value_as_int (GTK_SPIN_BUTTON(gui.shiftspin));
       VIS = 0;
       for (i=0; i<0x80; i++) {
         if (VISmap[i] == selmode) {

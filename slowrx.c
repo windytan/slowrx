@@ -71,8 +71,8 @@ void *Listen() {
   while (true) {
 
     gdk_threads_enter        ();
-    gtk_widget_set_sensitive (vugrid,   true);
-    gtk_widget_set_sensitive (btnabort, false);
+    gtk_widget_set_sensitive (gui.vugrid,   true);
+    gtk_widget_set_sensitive (gui.btnabort, false);
     gdk_threads_leave        ();
 
     HedrShift  = 0;
@@ -118,51 +118,51 @@ void *Listen() {
     strftime(rctime,  sizeof(rctime)-1, "%H:%Mz", timeptr);
     snprintf(infostr, sizeof(infostr)-1, "%s, %s UTC", ModeSpec[Mode].Name, rctime);
     gdk_threads_enter        ();
-    gtk_label_set_text       (GTK_LABEL(idlabel), "");
-    gtk_widget_set_sensitive (manualframe, false);
-    gtk_widget_set_sensitive (btnabort,    true);
-    gtk_statusbar_push       (GTK_STATUSBAR(statusbar), 0, "Receiving video..." );
-    gtk_label_set_markup     (GTK_LABEL(lastmodelabel), ModeSpec[Mode].Name);
-    gtk_label_set_markup     (GTK_LABEL(utclabel), rctime);
+    gtk_label_set_text       (GTK_LABEL(gui.idlabel), "");
+    gtk_widget_set_sensitive (gui.manualframe, false);
+    gtk_widget_set_sensitive (gui.btnabort,    true);
+    gtk_statusbar_push       (GTK_STATUSBAR(gui.statusbar), 0, "Receiving video..." );
+    gtk_label_set_markup     (GTK_LABEL(gui.lastmodelabel), ModeSpec[Mode].Name);
+    gtk_label_set_markup     (GTK_LABEL(gui.utclabel), rctime);
     gdk_threads_leave        ();
     printf("  getvideo @ %.1f Hz, Skip %d, HedrShift %d Hz\n", 44100.0, 0, HedrShift);
 
     Finished = GetVideo(Mode, 44100, 0, false);
 
     gdk_threads_enter        ();
-    gtk_widget_set_sensitive (btnabort,    false);
-    gtk_widget_set_sensitive (manualframe, true);
+    gtk_widget_set_sensitive (gui.btnabort,    false);
+    gtk_widget_set_sensitive (gui.manualframe, true);
     gdk_threads_leave        ();
     
     id[0] = '\0';
 
-    if (Finished && gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(togfsk))) {
+    if (Finished && gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(gui.togfsk))) {
       gdk_threads_enter  ();
-      gtk_statusbar_push (GTK_STATUSBAR(statusbar), 0, "Receiving FSK ID..." );
+      gtk_statusbar_push (GTK_STATUSBAR(gui.statusbar), 0, "Receiving FSK ID..." );
       gdk_threads_leave  ();
       GetFSK(id);
       printf("  FSKID \"%s\"\n",id);
       gdk_threads_enter  ();
-      gtk_label_set_text (GTK_LABEL(idlabel), id);
+      gtk_label_set_text (GTK_LABEL(gui.idlabel), id);
       gdk_threads_leave  ();
     }
 
     snd_pcm_drop(pcm_handle);
 
-    if (Finished && gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(togslant))) {
+    if (Finished && gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(gui.togslant))) {
 
       // Fix slant
       setVU(0,-100);
       gdk_threads_enter        ();
-      gtk_statusbar_push       (GTK_STATUSBAR(statusbar), 0, "Calculating slant..." );
-      gtk_widget_set_sensitive (vugrid, false);
+      gtk_statusbar_push       (GTK_STATUSBAR(gui.statusbar), 0, "Calculating slant..." );
+      gtk_widget_set_sensitive (gui.vugrid, false);
       gdk_threads_leave        ();
       printf("  FindSync @ %.1f Hz\n",Rate);
       Rate = FindSync(Mode, Rate, &Skip);
    
       // Final image  
       gdk_threads_enter  ();
-      gtk_statusbar_push (GTK_STATUSBAR(statusbar), 0, "Redrawing..." );
+      gtk_statusbar_push (GTK_STATUSBAR(gui.statusbar), 0, "Redrawing..." );
       gdk_threads_leave  ();
       printf("  getvideo @ %.1f Hz, Skip %d, HedrShift %d Hz\n", Rate, Skip, HedrShift);
       GetVideo(Mode, Rate, Skip, true);
@@ -179,21 +179,19 @@ void *Listen() {
     gtk_list_store_set                 (savedstore, &iter, 0, thumbbuf, 1, id, -1);
     gdk_threads_leave                  ();
       
-    if (gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON(togsave))) {
+    if (gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON(gui.togsave))) {
 
       // Save the raw signal
       gdk_threads_enter  ();
-      gtk_statusbar_push (GTK_STATUSBAR(statusbar), 0, "Saving..." );
+      gtk_statusbar_push (GTK_STATUSBAR(gui.statusbar), 0, "Saving..." );
       gdk_threads_leave  ();
 
       setVU(0,-100);
 
       ensure_dir_exists("rx-lum");
       LumFile = fopen(lumfilename,"w");
-      if (LumFile == NULL) {
+      if (LumFile == NULL)
         perror("Unable to open luma file for writing");
-        exit(EXIT_FAILURE);
-      }
       fwrite(StoredLum,1,(ModeSpec[Mode].LineLen * ModeSpec[Mode].ImgHeight) * 44100,LumFile);
       fclose(LumFile);
 
@@ -255,7 +253,7 @@ int main(int argc, char *argv[]) {
   }
   confdata = g_key_file_to_data(keyfile,keylen,NULL);
   fprintf(ConfFile,"%s",confdata);
-//  fwrite(confdata,1,(size_t)keylen,ConfFile);
+  fwrite(confdata,1,(size_t)keylen,ConfFile);
   fclose(ConfFile);
 
   g_object_unref(RxPixbuf);

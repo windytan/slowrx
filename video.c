@@ -96,7 +96,7 @@ bool GetVideo(guchar Mode, double Rate, int Skip, bool Redraw) {
       500.0/ModeSpec[Mode].ImgWidth * ModeSpec[Mode].ImgHeight * ModeSpec[Mode].YScale, GDK_INTERP_BILINEAR);
 
   gdk_threads_enter();
-  gtk_image_set_from_pixbuf(GTK_IMAGE(RxImage), DispPixbuf);
+  gtk_image_set_from_pixbuf(GTK_IMAGE(gui.RxImage), DispPixbuf);
   gdk_threads_leave();
 
   Length        = ModeSpec[Mode].LineLen * ModeSpec[Mode].ImgHeight * 44100;
@@ -380,7 +380,7 @@ bool GetVideo(guchar Mode, double Rate, int Skip, bool Redraw) {
               500.0/ModeSpec[Mode].ImgWidth * ModeSpec[Mode].ImgHeight * ModeSpec[Mode].YScale, GDK_INTERP_BILINEAR);
 
           gdk_threads_enter();
-          gtk_image_set_from_pixbuf(GTK_IMAGE(RxImage), DispPixbuf);
+          gtk_image_set_from_pixbuf(GTK_IMAGE(gui.RxImage), DispPixbuf);
           gdk_threads_leave();
         }
       }

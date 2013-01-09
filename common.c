@@ -28,7 +28,9 @@ bool         Abort           = false;
 
 pthread_t    thread1;
 
-GtkWidget   *RxImage         = NULL;
+GuiObjs      gui;
+
+/*GtkWidget   *RxImage         = NULL;
 GtkWidget   *statusbar       = NULL;
 GtkWidget   *vugrid          = NULL;
 GtkWidget   *utclabel       = NULL;
@@ -47,7 +49,7 @@ GtkWidget   *shiftspin       = NULL;
 GtkWidget   *pwrimage        = NULL;
 GtkWidget   *snrimage        = NULL;
 GtkWidget   *idlabel         = NULL;
-GtkWidget   *devstatusicon   = NULL;
+GtkWidget   *devstatusicon   = NULL;*/
 
 GdkPixbuf   *RxPixbuf        = NULL;
 GdkPixbuf   *DispPixbuf      = NULL;
@@ -87,7 +89,7 @@ void delete_event() {
 
 // Transform the NoiseAdapt toggle state into a variable
 void GetAdaptive() {
-  Adaptive = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON(togadapt));
+  Adaptive = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON(gui.togadapt));
 }
 
 // Manual Start clicked
@@ -111,25 +113,25 @@ void changeDevices() {
 
   if (pcm_handle != NULL) snd_pcm_close(pcm_handle);
 
-  status = initPcmDevice(gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(cardcombo)));
+  status = initPcmDevice(gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(gui.cardcombo)));
 
 
   switch(status) {
     case 0:
-      gtk_image_set_from_stock(GTK_IMAGE(devstatusicon),GTK_STOCK_YES,GTK_ICON_SIZE_SMALL_TOOLBAR);
-      gtk_widget_set_tooltip_text(devstatusicon, "Device successfully opened");
+      gtk_image_set_from_stock(GTK_IMAGE(gui.devstatusicon),GTK_STOCK_YES,GTK_ICON_SIZE_SMALL_TOOLBAR);
+      gtk_widget_set_tooltip_text(gui.devstatusicon, "Device successfully opened");
       break;
     case -1:
-      gtk_image_set_from_stock(GTK_IMAGE(devstatusicon),GTK_STOCK_DIALOG_WARNING,GTK_ICON_SIZE_SMALL_TOOLBAR);
-      gtk_widget_set_tooltip_text(devstatusicon, "Device was opened, but doesn't support 44100 Hz");
+      gtk_image_set_from_stock(GTK_IMAGE(gui.devstatusicon),GTK_STOCK_DIALOG_WARNING,GTK_ICON_SIZE_SMALL_TOOLBAR);
+      gtk_widget_set_tooltip_text(gui.devstatusicon, "Device was opened, but doesn't support 44100 Hz");
       break;
     case -2:
-      gtk_image_set_from_stock(GTK_IMAGE(devstatusicon),GTK_STOCK_NO,GTK_ICON_SIZE_SMALL_TOOLBAR);
-      gtk_widget_set_tooltip_text(devstatusicon, "Failed to open device");
+      gtk_image_set_from_stock(GTK_IMAGE(gui.devstatusicon),GTK_STOCK_NO,GTK_ICON_SIZE_SMALL_TOOLBAR);
+      gtk_widget_set_tooltip_text(gui.devstatusicon, "Failed to open device");
       break;
   }
 
-  g_key_file_set_string(keyfile,"slowrx","device",gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(cardcombo)));
+  g_key_file_set_string(keyfile,"slowrx","device",gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(gui.cardcombo)));
 
   pthread_create (&thread1, NULL, Listen, NULL);
 
