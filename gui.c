@@ -19,20 +19,21 @@ void createGUI() {
   builder = gtk_builder_new();
   gtk_builder_add_from_file(builder, "slowrx.ui",      NULL);
   gtk_builder_add_from_file(builder, "aboutdialog.ui", NULL);
-  gtk_builder_add_from_file(builder, "prefs.ui",       NULL);
+//  gtk_builder_add_from_file(builder, "prefs.ui",       NULL);
 
   mainwindow  = GTK_WIDGET(gtk_builder_get_object(builder,"mainwindow"));
   aboutdialog = GTK_WIDGET(gtk_builder_get_object(builder,"aboutdialog"));
-  prefdialog  = GTK_WIDGET(gtk_builder_get_object(builder,"prefdialog"));
+//  prefdialog  = GTK_WIDGET(gtk_builder_get_object(builder,"prefdialog"));
 
   quititem    = GTK_WIDGET(gtk_builder_get_object(builder,"quititem"));
-  prefitem    = GTK_WIDGET(gtk_builder_get_object(builder,"prefmenuitem"));
+//  prefitem    = GTK_WIDGET(gtk_builder_get_object(builder,"prefmenuitem"));
   aboutitem   = GTK_WIDGET(gtk_builder_get_object(builder,"aboutitem"));
 
   vugrid      = GTK_WIDGET(gtk_builder_get_object(builder,"vugrid"));
   RxImage     = GTK_WIDGET(gtk_builder_get_object(builder,"RxImage"));
   statusbar   = GTK_WIDGET(gtk_builder_get_object(builder,"statusbar"));
-  infolabel   = GTK_WIDGET(gtk_builder_get_object(builder,"infolabel"));
+  utclabel    = GTK_WIDGET(gtk_builder_get_object(builder,"utclabel"));
+  lastmodelabel   = GTK_WIDGET(gtk_builder_get_object(builder,"lastmodelabel"));
   cardcombo   = GTK_WIDGET(gtk_builder_get_object(builder,"cardcombo"));
   togslant    = GTK_WIDGET(gtk_builder_get_object(builder,"TogSlant"));
   togsave     = GTK_WIDGET(gtk_builder_get_object(builder,"TogSave"));
@@ -49,23 +50,26 @@ void createGUI() {
   idlabel     = GTK_WIDGET(gtk_builder_get_object(builder,"IDLabel"));
   GtkWidget *iconview;
   iconview    = GTK_WIDGET(gtk_builder_get_object(builder,"SavedIconView"));
+  devstatusicon    = GTK_WIDGET(gtk_builder_get_object(builder,"devstatusicon"));
 
   g_signal_connect        (quititem,    "activate",     G_CALLBACK(delete_event),        NULL);
   g_signal_connect        (mainwindow,  "delete-event", G_CALLBACK(delete_event),        NULL);
   g_signal_connect_swapped(aboutitem,   "activate",     G_CALLBACK(gtk_widget_show_all), aboutdialog);
-  g_signal_connect_swapped(prefitem,    "activate",     G_CALLBACK(gtk_widget_show_all), prefdialog);
+//  g_signal_connect_swapped(prefitem,    "activate",     G_CALLBACK(gtk_widget_show_all), prefdialog);
   g_signal_connect_swapped(aboutdialog, "close",        G_CALLBACK(gtk_widget_hide),     aboutdialog);
   g_signal_connect_swapped(togadapt,    "toggled",      G_CALLBACK(GetAdaptive),         NULL);
   g_signal_connect        (btnstart,    "clicked",      G_CALLBACK(ManualStart),         NULL);
   g_signal_connect        (btnabort,    "clicked",      G_CALLBACK(AbortRx),             NULL);
+  g_signal_connect        (cardcombo,   "changed",      G_CALLBACK(changeDevices),       NULL);
 
-  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(togslant), true);
-  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(togsave),  true);
-  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(togadapt), true);
-  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(togrx),    true);
-  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(togfsk),   true);
-  gtk_combo_box_set_active    (GTK_COMBO_BOX(modecombo),    0);
-  gtk_widget_set_sensitive    (btnabort,                    false);
+
+  //gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(togslant), true);
+  //gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(togsave),  true);
+  //gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(togadapt), true);
+  //gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(togrx),    true);
+  //gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(togfsk),   true);
+  //gtk_combo_box_set_active    (GTK_COMBO_BOX(modecombo),    0);
+  //gtk_widget_set_sensitive    (btnabort,                    false);
 
   savedstore = gtk_list_store_new (2, GDK_TYPE_PIXBUF, G_TYPE_STRING);
   gtk_icon_view_set_model (GTK_ICON_VIEW(iconview), GTK_TREE_MODEL(savedstore));

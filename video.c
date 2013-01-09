@@ -5,6 +5,7 @@
 #include <string.h>
 #include <gtk/gtk.h>
 #include <alsa/asoundlib.h>
+#include <samplerate.h>
 
 #ifdef GPL
 #include <fftw3.h>
@@ -115,7 +116,7 @@ bool GetVideo(guchar Mode, double Rate, int Skip, bool Redraw) {
 
       /*** Read ahead from sound card ***/
 
-      if (PcmPointer >= BUFLEN-1024) readPcm(2048);
+      if (PcmPointer == 0 || PcmPointer >= BUFLEN-1024) readPcm(2048);
      
 
       /*** Store the sync band for later adjustments ***/

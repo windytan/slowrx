@@ -20,10 +20,13 @@ extern bool       ManualActivated;
 extern bool       Abort;
 extern bool      *HasSync;
 
+extern pthread_t thread1;
 extern GtkWidget *RxImage;
 extern GtkWidget *statusbar;
 extern GtkWidget *vugrid;
 extern GtkWidget *infolabel;
+extern GtkWidget *utclabel;
+extern GtkWidget *lastmodelabel;
 extern GtkWidget *cardcombo;
 extern GtkWidget *modecombo;
 extern GtkWidget *togslant;
@@ -38,6 +41,7 @@ extern GtkWidget *shiftspin;
 extern GtkWidget *pwrimage;
 extern GtkWidget *snrimage;
 extern GtkWidget *idlabel;
+extern GtkWidget *devstatusicon;
 
 extern GdkPixbuf *pixbufPWR;
 extern GdkPixbuf *pixbufSNR;
@@ -45,6 +49,8 @@ extern GdkPixbuf *RxPixbuf;
 extern GdkPixbuf *DispPixbuf;
 
 extern GtkListStore *savedstore;
+
+extern GKeyFile  *keyfile;
 
 extern snd_pcm_t *pcm_handle;
 
@@ -91,12 +97,15 @@ void     setVU         (short int PcmValue, double SNRdB);
 guchar   GetVIS        ();
 double   FindSync      (guchar Mode, double Rate, int *Skip);
 double   deg2rad       (double Deg);
-void     initPcmDevice ();
+int      initPcmDevice ();
 void     delete_event  ();
 void     GetAdaptive   ();
 void     ManualStart   ();
 void     AbortRx       ();
 void     GetFSK        (char *dest);
 void     readPcm       (gint numsamples);
+void     *Listen       ();
+void     changeDevices ();
+void     populateDeviceList ();
 
 #endif

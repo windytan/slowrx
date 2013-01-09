@@ -45,6 +45,8 @@ guchar GetVIS () {
 
   while ( true ) {
 
+    if (Abort) return(0);
+
     // Read 10 ms from sound card
     readPcm(441);
 
@@ -126,7 +128,7 @@ guchar GetVIS () {
               snprintf(infostr, sizeof(infostr)-1, "How to decode image with VIS %d (%02Xh)?", VIS, VIS);
               gotvis = false;
               gdk_threads_enter();
-              gtk_label_set_markup(GTK_LABEL(infolabel), infostr);
+//              gtk_label_set_markup(GTK_LABEL(infolabel), infostr);
               gdk_threads_leave();
             } else {
               gdk_threads_enter();

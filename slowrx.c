@@ -81,9 +81,12 @@ void *Listen() {
     Rate       = 44100;
     snd_pcm_prepare(pcm_handle);
     snd_pcm_start  (pcm_handle);
+    Abort      = false;
 
     // Wait for VIS
     Mode = GetVIS();
+
+    if (Abort) pthread_exit(NULL);
 
     if (Mode == 0) exit(EXIT_FAILURE);
 
@@ -113,14 +116,15 @@ void *Listen() {
     }
   
     // Get video
-    strftime(rctime,  sizeof(rctime)-1, "%H:%M", timeptr);
+    strftime(rctime,  sizeof(rctime)-1, "%H:%Mz", timeptr);
     snprintf(infostr, sizeof(infostr)-1, "%s, %s UTC", ModeSpec[Mode].Name, rctime);
     gdk_threads_enter        ();
     gtk_label_set_text       (GTK_LABEL(idlabel), "");
     gtk_widget_set_sensitive (manualframe, false);
     gtk_widget_set_sensitive (btnabort,    true);
     gtk_statusbar_push       (GTK_STATUSBAR(statusbar), 0, "Receiving video..." );
-    gtk_label_set_markup     (GTK_LABEL(infolabel), infostr);
+    gtk_label_set_markup     (GTK_LABEL(lastmodelabel), ModeSpec[Mode].Name);
+    gtk_label_set_markup     (GTK_LABEL(utclabel), rctime);
     gdk_threads_leave        ();
     printf("  getvideo @ %.1f Hz, Skip %d, HedrShift %d Hz\n", 44100.0, 0, HedrShift);
 
@@ -223,24 +227,47 @@ void *Listen() {
 
 int main(int argc, char *argv[]) {
 
-  pthread_t thread1;
+  FILE        *ConfFile;
+  const gchar *confdir;
+  GString     *confpath;
+  gchar       *confdata;
+  gsize       *keylen=NULL;
+  int         status;
 
   gtk_init (&argc, &argv);
 
-  //g_thread_init (NULL);
   gdk_threads_init ();
 
-  createGUI();
-  initPcmDevice();
+  // Load config
+  confdir  = g_get_user_config_dir();
+  confpath = g_string_new(confdir);
+  g_string_append(confpath, "/slowrx.conf");
 
-  pthread_create (&thread1, NULL, Listen, NULL);
+  keyfile = g_key_file_new();
+  if (g_key_file_load_from_file(keyfile, confpath->str, G_KEY_FILE_KEEP_COMMENTS, NULL)) {
+
+  } else {
+    printf("No valid config file found\n");
+    g_key_file_load_from_data(keyfile, "[slowrx]\ndevice=default", -1, G_KEY_FILE_NONE, NULL);
+  }
+
+  createGUI();
+  populateDeviceList();
 
   gtk_main();
 
+  // Save config
+  ConfFile = fopen(confpath->str,"w");
+  if (ConfFile == NULL) {
+    perror("Unable to open config file for writing");
+  }
+  confdata = g_key_file_to_data(keyfile,keylen,NULL);
+  fprintf(ConfFile,"%s",confdata);
+//  fwrite(confdata,1,(size_t)keylen,ConfFile);
+  fclose(ConfFile);
+
   g_object_unref(RxPixbuf);
   free(StoredLum);
-
-  printf("Clean exit\n");
 
   return (EXIT_SUCCESS);
 }

@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <gtk/gtk.h>
 #include <alsa/asoundlib.h>
+#include <samplerate.h>
 
 #ifdef GPL
 #include <fftw3.h>
