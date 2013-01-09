@@ -30,27 +30,6 @@ pthread_t    thread1;
 
 GuiObjs      gui;
 
-/*GtkWidget   *RxImage         = NULL;
-GtkWidget   *statusbar       = NULL;
-GtkWidget   *vugrid          = NULL;
-GtkWidget   *utclabel       = NULL;
-GtkWidget   *lastmodelabel       = NULL;
-GtkWidget   *cardcombo       = NULL;
-GtkWidget   *modecombo       = NULL;
-GtkWidget   *togslant        = NULL;
-GtkWidget   *togsave         = NULL;
-GtkWidget   *togadapt        = NULL;
-GtkWidget   *togrx           = NULL;
-GtkWidget   *togfsk          = NULL;
-GtkWidget   *btnabort        = NULL;
-GtkWidget   *btnstart        = NULL;
-GtkWidget   *manualframe     = NULL;
-GtkWidget   *shiftspin       = NULL;
-GtkWidget   *pwrimage        = NULL;
-GtkWidget   *snrimage        = NULL;
-GtkWidget   *idlabel         = NULL;
-GtkWidget   *devstatusicon   = NULL;*/
-
 GdkPixbuf   *RxPixbuf        = NULL;
 GdkPixbuf   *DispPixbuf      = NULL;
 GdkPixbuf   *pixbufPWR       = NULL;
@@ -135,4 +114,8 @@ void changeDevices() {
 
   pthread_create (&thread1, NULL, Listen, NULL);
 
+}
+
+void setNewRxDir() {
+  g_key_file_set_string(keyfile,"slowrx","rxdir",gtk_file_chooser_get_uri(GTK_FILE_CHOOSER(gui.picdir_button)));
 }

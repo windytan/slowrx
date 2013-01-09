@@ -13,21 +13,18 @@
 void createGUI() {
 
   GtkBuilder *builder;
-  GtkWidget  *quititem,  *aboutitem,  *prefitem;
-  GtkWidget  *mainwindow, *aboutdialog, *prefdialog;
+  GtkWidget  *quititem,  *aboutitem;
+  GtkWidget  *mainwindow, *aboutdialog;
   GtkWidget  *iconview;
 
   builder = gtk_builder_new();
   gtk_builder_add_from_file(builder, "slowrx.ui",      NULL);
   gtk_builder_add_from_file(builder, "aboutdialog.ui", NULL);
-//  gtk_builder_add_from_file(builder, "prefs.ui",       NULL);
   
   mainwindow  = GTK_WIDGET(gtk_builder_get_object(builder,"mainwindow"));
   aboutdialog = GTK_WIDGET(gtk_builder_get_object(builder,"aboutdialog"));
-//  prefdialog  = GTK_WIDGET(gtk_builder_get_object(builder,"prefdialog"));
 
   quititem    = GTK_WIDGET(gtk_builder_get_object(builder,"quititem"));
-//  prefitem    = GTK_WIDGET(gtk_builder_get_object(builder,"prefmenuitem"));
   aboutitem   = GTK_WIDGET(gtk_builder_get_object(builder,"aboutitem"));
 
   gui.vugrid        = GTK_WIDGET(gtk_builder_get_object(builder,"vugrid"));
@@ -50,6 +47,7 @@ void createGUI() {
   gui.snrimage      = GTK_WIDGET(gtk_builder_get_object(builder,"SNRImage"));
   gui.idlabel       = GTK_WIDGET(gtk_builder_get_object(builder,"IDLabel"));
   gui.devstatusicon = GTK_WIDGET(gtk_builder_get_object(builder,"devstatusicon"));
+  gui.picdir_button = GTK_WIDGET(gtk_builder_get_object(builder,"picdir_button"));
   
   iconview          = GTK_WIDGET(gtk_builder_get_object(builder,"SavedIconView"));
 
@@ -62,6 +60,7 @@ void createGUI() {
   g_signal_connect        (gui.btnstart,    "clicked",      G_CALLBACK(ManualStart),         NULL);
   g_signal_connect        (gui.btnabort,    "clicked",      G_CALLBACK(AbortRx),             NULL);
   g_signal_connect        (gui.cardcombo,   "changed",      G_CALLBACK(changeDevices),       NULL);
+  g_signal_connect        (gui.picdir_button,"current-folder-changed",    G_CALLBACK(setNewRxDir),         NULL);
 
   savedstore = gtk_list_store_new (2, GDK_TYPE_PIXBUF, G_TYPE_STRING);
   gtk_icon_view_set_model (GTK_ICON_VIEW(iconview), GTK_TREE_MODEL(savedstore));
@@ -75,6 +74,11 @@ void createGUI() {
 
   pixbufPWR = gdk_pixbuf_new (GDK_COLORSPACE_RGB, false, 8, 100, 20);
   pixbufSNR = gdk_pixbuf_new (GDK_COLORSPACE_RGB, false, 8, 100, 20);
+
+  gtk_combo_box_set_active(GTK_COMBO_BOX(gui.modecombo), 0);
+
+  if (g_key_file_get_string(keyfile,"slowrx","rxdir",NULL) != NULL)
+    gtk_file_chooser_add_shortcut_folder(GTK_FILE_CHOOSER(gui.picdir_button), g_filename_from_uri(g_key_file_get_string(keyfile,"slowrx","rxdir",NULL),NULL,NULL),NULL );
 
   setVU(0, -100);
 

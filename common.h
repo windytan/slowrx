@@ -45,6 +45,7 @@ struct _GuiObjs {
   GtkWidget *snrimage;
   GtkWidget *idlabel;
   GtkWidget *devstatusicon;
+  GtkWidget *picdir_button;
 };
 extern GuiObjs   gui;
 
@@ -112,5 +113,6 @@ void     readPcm       (gint numsamples);
 void     *Listen       ();
 void     changeDevices ();
 void     populateDeviceList ();
+void     setNewRxDir   ();
 
 #endif

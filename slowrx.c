@@ -38,12 +38,13 @@ void ensure_dir_exists(const char *dir) {
 void *Listen() {
 
   int         Skip = 0;
-  char        timestr[40], pngfilename[40], lumfilename[40], infostr[60], rctime[8];
+  char        timestr[40], rctime[8];
+  GString    *pngfilename;
+
   guchar      Mode=0;
   double      Rate;
   struct tm  *timeptr = NULL;
   time_t      timet;
-  FILE       *LumFile;
   bool        Finished;
   GdkPixbuf  *thumbbuf;
   char        id[20];
@@ -95,9 +96,6 @@ void *Listen() {
     timet = time(NULL);
     timeptr = gmtime(&timet);
     strftime(timestr, sizeof(timestr)-1,"%Y%m%d-%H%M%Sz", timeptr);
-    snprintf(pngfilename, sizeof(timestr)-1, "rx/%s_%s.png", timestr, ModeSpec[Mode].ShortName);
-    snprintf(lumfilename, sizeof(timestr)-1, "rx-lum/%s_%s-lum", timestr, ModeSpec[Mode].ShortName);
-    printf("  \"%s\"\n", pngfilename);
     
 
     // Allocate space for cached Lum
@@ -116,7 +114,6 @@ void *Listen() {
   
     // Get video
     strftime(rctime,  sizeof(rctime)-1, "%H:%Mz", timeptr);
-    snprintf(infostr, sizeof(infostr)-1, "%s, %s UTC", ModeSpec[Mode].Name, rctime);
     gdk_threads_enter        ();
     gtk_label_set_text       (GTK_LABEL(gui.idlabel), "");
     gtk_widget_set_sensitive (gui.manualframe, false);
@@ -180,29 +177,33 @@ void *Listen() {
     gdk_threads_leave                  ();
       
     if (gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON(gui.togsave))) {
+    
+      pngfilename = g_string_new(g_filename_from_uri(gtk_file_chooser_get_uri(GTK_FILE_CHOOSER(gui.picdir_button)), NULL, NULL));
+      g_string_append_printf(pngfilename, "/%s_%s.png", timestr, ModeSpec[Mode].ShortName);
+      printf("  \"%s\"\n", pngfilename->str);
 
-      // Save the raw signal
       gdk_threads_enter  ();
       gtk_statusbar_push (GTK_STATUSBAR(gui.statusbar), 0, "Saving..." );
       gdk_threads_leave  ();
 
       setVU(0,-100);
 
-      ensure_dir_exists("rx-lum");
+      /*ensure_dir_exists("rx-lum");
       LumFile = fopen(lumfilename,"w");
       if (LumFile == NULL)
         perror("Unable to open luma file for writing");
       fwrite(StoredLum,1,(ModeSpec[Mode].LineLen * ModeSpec[Mode].ImgHeight) * 44100,LumFile);
-      fclose(LumFile);
+      fclose(LumFile);*/
 
       // Save the received image as PNG
       GdkPixbuf *scaledpb;
       scaledpb = gdk_pixbuf_scale_simple (RxPixbuf, ModeSpec[Mode].ImgWidth,
           ModeSpec[Mode].ImgHeight * ModeSpec[Mode].YScale, GDK_INTERP_HYPER);
 
-      ensure_dir_exists("rx");
-      gdk_pixbuf_savev(scaledpb, pngfilename, "png", NULL, NULL, NULL);
+      ensure_dir_exists(g_filename_from_uri(gtk_file_chooser_get_uri(GTK_FILE_CHOOSER(gui.picdir_button)), NULL, NULL));
+      gdk_pixbuf_savev(scaledpb, pngfilename->str, "png", NULL, NULL, NULL);
       g_object_unref(scaledpb);
+      g_string_free(pngfilename, true);
     }
     
     free(StoredLum);

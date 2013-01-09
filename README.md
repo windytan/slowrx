@@ -23,7 +23,6 @@ Requirements
 * Alsa
 * Gtk+ 3.4
 * FFTW 3
-* pnglite
 
 And, obviously:
 
