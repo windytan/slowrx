@@ -148,6 +148,7 @@ guchar GetVIS () {
 
       gdk_threads_enter();
       gtk_widget_set_sensitive( gui.manualframe, false );
+      gtk_widget_set_sensitive( gui.cardcombo,   false );
       gdk_threads_leave();
 
       selmode   = gtk_combo_box_get_active (GTK_COMBO_BOX(gui.modecombo)) + 1;

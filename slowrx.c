@@ -115,6 +115,7 @@ void *Listen() {
     gdk_threads_enter        ();
     gtk_label_set_text       (GTK_LABEL(gui.idlabel), "");
     gtk_widget_set_sensitive (gui.manualframe, false);
+    gtk_widget_set_sensitive (gui.cardcombo,   false);
     gtk_widget_set_sensitive (gui.btnabort,    true);
     gtk_statusbar_push       (GTK_STATUSBAR(gui.statusbar), 0, "Receiving video..." );
     gtk_label_set_markup     (GTK_LABEL(gui.lastmodelabel), ModeSpec[Mode].Name);
@@ -127,6 +128,7 @@ void *Listen() {
     gdk_threads_enter        ();
     gtk_widget_set_sensitive (gui.btnabort,    false);
     gtk_widget_set_sensitive (gui.manualframe, true);
+    gtk_widget_set_sensitive (gui.cardcombo,   true);
     gdk_threads_leave        ();
     
     id[0] = '\0';
