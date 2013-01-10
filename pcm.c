@@ -7,9 +7,7 @@
 
 #include <alsa/asoundlib.h>
 
-#ifdef GPL
 #include <fftw3.h>
-#endif
 
 #include "common.h"
 

@@ -5,9 +5,7 @@
 #include <alsa/asoundlib.h>
 #include <samplerate.h>
 
-#ifdef GPL
 #include <fftw3.h>
-#endif
 
 #include "common.h"
 

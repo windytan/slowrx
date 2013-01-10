@@ -4,9 +4,7 @@
 #include <alsa/asoundlib.h>
 #include <math.h>
 
-#ifdef GPL
 #include <fftw3.h>
-#endif
 
 #include "common.h"
 
