@@ -12,19 +12,19 @@ void createGUI() {
 
   GtkBuilder *builder;
   GtkWidget  *quititem,  *aboutitem;
-  GtkWidget  *mainwindow, *aboutdialog;
+  GtkWidget  *aboutdialog;
   GtkWidget  *iconview;
 
   builder = gtk_builder_new();
   gtk_builder_add_from_file(builder, "slowrx.ui",      NULL);
   gtk_builder_add_from_file(builder, "aboutdialog.ui", NULL);
   
-  mainwindow  = GTK_WIDGET(gtk_builder_get_object(builder,"mainwindow"));
   aboutdialog = GTK_WIDGET(gtk_builder_get_object(builder,"aboutdialog"));
 
   quititem    = GTK_WIDGET(gtk_builder_get_object(builder,"quititem"));
   aboutitem   = GTK_WIDGET(gtk_builder_get_object(builder,"aboutitem"));
-
+  
+  gui.mainwindow    = GTK_WIDGET(gtk_builder_get_object(builder,"mainwindow"));
   gui.vugrid        = GTK_WIDGET(gtk_builder_get_object(builder,"vugrid"));
   gui.RxImage       = GTK_WIDGET(gtk_builder_get_object(builder,"RxImage"));
   gui.statusbar     = GTK_WIDGET(gtk_builder_get_object(builder,"statusbar"));
@@ -45,12 +45,13 @@ void createGUI() {
   gui.snrimage      = GTK_WIDGET(gtk_builder_get_object(builder,"SNRImage"));
   gui.idlabel       = GTK_WIDGET(gtk_builder_get_object(builder,"IDLabel"));
   gui.devstatusicon = GTK_WIDGET(gtk_builder_get_object(builder,"devstatusicon"));
-  gui.picdir_button = GTK_WIDGET(gtk_builder_get_object(builder,"picdir_button"));
+  gui.browsebtn     = GTK_WIDGET(gtk_builder_get_object(builder,"browsebtn"));
+  gui.picdirentry   = GTK_WIDGET(gtk_builder_get_object(builder,"picdirentry"));
   
   iconview          = GTK_WIDGET(gtk_builder_get_object(builder,"SavedIconView"));
 
   g_signal_connect        (quititem,    "activate",     G_CALLBACK(delete_event),        NULL);
-  g_signal_connect        (mainwindow,  "delete-event", G_CALLBACK(delete_event),        NULL);
+  g_signal_connect        (gui.mainwindow,"delete-event",G_CALLBACK(delete_event),       NULL);
   g_signal_connect_swapped(aboutitem,   "activate",     G_CALLBACK(gtk_widget_show_all), aboutdialog);
 //  g_signal_connect_swapped(prefitem,    "activate",     G_CALLBACK(gtk_widget_show_all), prefdialog);
   g_signal_connect_swapped(aboutdialog, "close",        G_CALLBACK(gtk_widget_hide),     aboutdialog);
@@ -58,7 +59,7 @@ void createGUI() {
   g_signal_connect        (gui.btnstart,    "clicked",      G_CALLBACK(ManualStart),         NULL);
   g_signal_connect        (gui.btnabort,    "clicked",      G_CALLBACK(AbortRx),             NULL);
   g_signal_connect        (gui.cardcombo,   "changed",      G_CALLBACK(changeDevices),       NULL);
-  g_signal_connect        (gui.picdir_button,"current-folder-changed",    G_CALLBACK(setNewRxDir),         NULL);
+  g_signal_connect        (gui.browsebtn,   "clicked",      G_CALLBACK(chooseDir),           NULL);
 
   savedstore = gtk_list_store_new (2, GDK_TYPE_PIXBUF, G_TYPE_STRING);
   gtk_icon_view_set_model (GTK_ICON_VIEW(iconview), GTK_TREE_MODEL(savedstore));
@@ -75,12 +76,16 @@ void createGUI() {
 
   gtk_combo_box_set_active(GTK_COMBO_BOX(gui.modecombo), 0);
 
-  if (g_key_file_get_string(keyfile,"slowrx","rxdir",NULL) != NULL)
-    gtk_file_chooser_add_shortcut_folder(GTK_FILE_CHOOSER(gui.picdir_button), g_filename_from_uri(g_key_file_get_string(keyfile,"slowrx","rxdir",NULL),NULL,NULL),NULL );
+  if (g_key_file_get_string(keyfile,"slowrx","rxdir",NULL) != NULL) {
+    gtk_entry_set_text(GTK_ENTRY(gui.picdirentry),g_key_file_get_string(keyfile,"slowrx","rxdir",NULL));
+  } else {
+    g_key_file_set_string(keyfile,"slowrx","rxdir",g_get_home_dir());
+    gtk_entry_set_text(GTK_ENTRY(gui.picdirentry),g_key_file_get_string(keyfile,"slowrx","rxdir",NULL));
+  }
 
   setVU(0, -100);
 
-  gtk_widget_show_all  (mainwindow);
+  gtk_widget_show_all  (gui.mainwindow);
 
 }
 
@@ -134,4 +139,22 @@ void setVU (short int PcmValue, double SNRdB) {
   gtk_image_set_from_pixbuf(GTK_IMAGE(gui.snrimage), pixbufSNR);
   gdk_threads_leave();
 
+}
+
+void chooseDir() {
+  GtkWidget *dialog;
+  dialog = gtk_file_chooser_dialog_new ("Select folder",
+                                      GTK_WINDOW(gui.mainwindow),
+                                      GTK_FILE_CHOOSER_ACTION_SELECT_FOLDER,
+                                      GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL,
+                                      GTK_STOCK_OPEN, GTK_RESPONSE_ACCEPT,
+                                      NULL);
+  
+  if (gtk_dialog_run (GTK_DIALOG (dialog)) == GTK_RESPONSE_ACCEPT) {
+    g_key_file_set_string(keyfile,"slowrx","rxdir",gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog)));
+    gtk_entry_set_text(GTK_ENTRY(gui.picdirentry),gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog)));
+    gtk_widget_destroy (dialog);
+  }
+
+  gtk_widget_destroy (dialog);
 }

@@ -113,7 +113,3 @@ void changeDevices() {
   pthread_create (&thread1, NULL, Listen, NULL);
 
 }
-
-void setNewRxDir() {
-  g_key_file_set_string(keyfile,"slowrx","rxdir",gtk_file_chooser_get_uri(GTK_FILE_CHOOSER(gui.picdir_button)));
-}

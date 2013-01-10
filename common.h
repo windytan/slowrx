@@ -24,6 +24,7 @@ extern pthread_t thread1;
 
 typedef struct _GuiObjs GuiObjs;
 struct _GuiObjs {
+  GtkWidget *mainwindow;
   GtkWidget *RxImage;
   GtkWidget *statusbar;
   GtkWidget *vugrid;
@@ -45,7 +46,8 @@ struct _GuiObjs {
   GtkWidget *snrimage;
   GtkWidget *idlabel;
   GtkWidget *devstatusicon;
-  GtkWidget *picdir_button;
+  GtkWidget *picdirentry;
+  GtkWidget *browsebtn;
 };
 extern GuiObjs   gui;
 
@@ -114,5 +116,6 @@ void     *Listen       ();
 void     changeDevices ();
 void     populateDeviceList ();
 void     setNewRxDir   ();
+void     chooseDir     ();
 
 #endif

@@ -176,7 +176,7 @@ void *Listen() {
       
     if (gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON(gui.togsave))) {
     
-      pngfilename = g_string_new(g_filename_from_uri(gtk_file_chooser_get_uri(GTK_FILE_CHOOSER(gui.picdir_button)), NULL, NULL));
+      pngfilename = g_string_new(g_key_file_get_string(keyfile,"slowrx","rxdir",NULL));
       g_string_append_printf(pngfilename, "/%s_%s.png", timestr, ModeSpec[Mode].ShortName);
       printf("  \"%s\"\n", pngfilename->str);
 
@@ -198,7 +198,7 @@ void *Listen() {
       scaledpb = gdk_pixbuf_scale_simple (RxPixbuf, ModeSpec[Mode].ImgWidth,
           ModeSpec[Mode].ImgHeight * ModeSpec[Mode].YScale, GDK_INTERP_HYPER);
 
-      ensure_dir_exists(g_filename_from_uri(gtk_file_chooser_get_uri(GTK_FILE_CHOOSER(gui.picdir_button)), NULL, NULL));
+      ensure_dir_exists(g_key_file_get_string(keyfile,"slowrx","rxdir",NULL));
       gdk_pixbuf_savev(scaledpb, pngfilename->str, "png", NULL, NULL, NULL);
       g_object_unref(scaledpb);
       g_string_free(pngfilename, true);

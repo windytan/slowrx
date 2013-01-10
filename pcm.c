@@ -123,7 +123,7 @@ int initPcmDevice(char *wanteddevname) {
     return(-2);
   }
 
-  printf("%s\n",g_filename_from_uri(gtk_file_chooser_get_uri(GTK_FILE_CHOOSER(gui.picdir_button)), NULL, NULL));
+  //printf("%s\n",g_filename_from_uri(gtk_file_chooser_get_uri(GTK_FILE_CHOOSER(gui.picdir_button)), NULL, NULL));
 
   if (strcmp(wanteddevname,"default") == 0) {
     sprintf(pcm_name,"default");

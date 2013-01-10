@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
   <!-- interface-requires gtk+ 3.0 -->
+  <object class="GtkAction" id="action1"/>
   <object class="GtkAdjustment" id="ShiftAdj">
     <property name="lower">-700</property>
     <property name="upper">1400</property>
@@ -763,9 +764,9 @@
                   </object>
                   <packing>
                     <property name="left_attach">2</property>
-                    <property name="top_attach">0</property>
+                    <property name="top_attach">1</property>
                     <property name="width">1</property>
-                    <property name="height">3</property>
+                    <property name="height">2</property>
                   </packing>
                 </child>
                 <child>
@@ -844,7 +845,6 @@
                       <object class="GtkFrame" id="picdir_frame">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
-                        <property name="halign">start</property>
                         <property name="hexpand">True</property>
                         <property name="label_xalign">0</property>
                         <property name="shadow_type">in</property>
@@ -857,15 +857,41 @@
                             <property name="left_padding">12</property>
                             <property name="right_padding">10</property>
                             <child>
-                              <object class="GtkFileChooserButton" id="picdir_button">
+                              <object class="GtkBox" id="box5">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
-                                <property name="tooltip_text" translatable="yes">Where to save received pictures as PNG</property>
-                                <property name="valign">start</property>
-                                <property name="orientation">vertical</property>
-                                <property name="action">select-folder</property>
-                                <property name="preview_widget_active">False</property>
-                                <property name="title" translatable="yes">Select folder</property>
+                                <child>
+                                  <object class="GtkEntry" id="picdirentry">
+                                    <property name="width_request">300</property>
+                                    <property name="visible">True</property>
+                                    <property name="can_focus">True</property>
+                                    <property name="hexpand">True</property>
+                                    <property name="editable">False</property>
+                                    <property name="invisible_char">•</property>
+                                  </object>
+                                  <packing>
+                                    <property name="expand">False</property>
+                                    <property name="fill">True</property>
+                                    <property name="position">0</property>
+                                  </packing>
+                                </child>
+                                <child>
+                                  <object class="GtkButton" id="browsebtn">
+                                    <property name="label" translatable="yes">Browse...</property>
+                                    <property name="use_action_appearance">False</property>
+                                    <property name="related_action">action1</property>
+                                    <property name="visible">True</property>
+                                    <property name="can_focus">True</property>
+                                    <property name="receives_default">True</property>
+                                    <property name="image_position">top</property>
+                                    <property name="always_show_image">True</property>
+                                  </object>
+                                  <packing>
+                                    <property name="expand">False</property>
+                                    <property name="fill">False</property>
+                                    <property name="position">1</property>
+                                  </packing>
+                                </child>
                               </object>
                             </child>
                           </object>
@@ -889,9 +915,12 @@
                   <packing>
                     <property name="left_attach">0</property>
                     <property name="top_attach">0</property>
-                    <property name="width">3</property>
+                    <property name="width">2</property>
                     <property name="height">1</property>
                   </packing>
+                </child>
+                <child>
+                  <placeholder/>
                 </child>
               </object>
             </child>
