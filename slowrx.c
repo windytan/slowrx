@@ -232,7 +232,7 @@ int main(int argc, char *argv[]) {
   // Load config
   confdir  = g_get_user_config_dir();
   confpath = g_string_new(confdir);
-  g_string_append(confpath, "/slowrx.conf");
+  g_string_append(confpath, "/slowrx.ini");
 
   keyfile = g_key_file_new();
   if (g_key_file_load_from_file(keyfile, confpath->str, G_KEY_FILE_KEEP_COMMENTS, NULL)) {
