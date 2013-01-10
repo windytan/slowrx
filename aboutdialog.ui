@@ -4,10 +4,12 @@
   <object class="GtkAboutDialog" id="aboutdialog">
     <property name="can_focus">False</property>
     <property name="border_width">5</property>
+    <property name="resizable">False</property>
     <property name="type_hint">dialog</property>
+    <property name="has_resize_grip">False</property>
     <property name="program_name">slowrx</property>
     <property name="version">0.01 alpha</property>
-    <property name="copyright" translatable="yes">2007–2013 windytan OH2-250</property>
+    <property name="copyright" translatable="yes">2007–2013 Oona Räisänen (windyoona at gmail)</property>
     <property name="comments" translatable="yes">A shortwave listener's tool for decoding SSTV images.</property>
     <property name="website">https://windytan.github.com/slowrx/</property>
     <property name="website_label" translatable="yes">GitHub page</property>
@@ -22,6 +24,7 @@ ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
 WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
 ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.</property>
+    <property name="license_type">custom</property>
     <child internal-child="vbox">
       <object class="GtkBox" id="aboutdialog-vbox1">
         <property name="can_focus">False</property>

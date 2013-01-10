@@ -12,19 +12,17 @@ void createGUI() {
 
   GtkBuilder *builder;
   GtkWidget  *quititem,  *aboutitem;
-  GtkWidget  *aboutdialog;
   GtkWidget  *iconview;
 
   builder = gtk_builder_new();
   gtk_builder_add_from_file(builder, "slowrx.ui",      NULL);
   gtk_builder_add_from_file(builder, "aboutdialog.ui", NULL);
   
-  aboutdialog = GTK_WIDGET(gtk_builder_get_object(builder,"aboutdialog"));
-
   quititem    = GTK_WIDGET(gtk_builder_get_object(builder,"quititem"));
   aboutitem   = GTK_WIDGET(gtk_builder_get_object(builder,"aboutitem"));
   
   gui.mainwindow    = GTK_WIDGET(gtk_builder_get_object(builder,"mainwindow"));
+  gui.aboutdialog   = GTK_WIDGET(gtk_builder_get_object(builder,"aboutdialog"));
   gui.vugrid        = GTK_WIDGET(gtk_builder_get_object(builder,"vugrid"));
   gui.RxImage       = GTK_WIDGET(gtk_builder_get_object(builder,"RxImage"));
   gui.statusbar     = GTK_WIDGET(gtk_builder_get_object(builder,"statusbar"));
@@ -52,9 +50,7 @@ void createGUI() {
 
   g_signal_connect        (quititem,    "activate",     G_CALLBACK(delete_event),        NULL);
   g_signal_connect        (gui.mainwindow,"delete-event",G_CALLBACK(delete_event),       NULL);
-  g_signal_connect_swapped(aboutitem,   "activate",     G_CALLBACK(gtk_widget_show_all), aboutdialog);
-//  g_signal_connect_swapped(prefitem,    "activate",     G_CALLBACK(gtk_widget_show_all), prefdialog);
-  g_signal_connect_swapped(aboutdialog, "close",        G_CALLBACK(gtk_widget_hide),     aboutdialog);
+  g_signal_connect        (aboutitem,   "activate",     G_CALLBACK(show_aboutdialog),    NULL);
   g_signal_connect_swapped(gui.togadapt,    "toggled",      G_CALLBACK(GetAdaptive),         NULL);
   g_signal_connect        (gui.btnstart,    "clicked",      G_CALLBACK(ManualStart),         NULL);
   g_signal_connect        (gui.btnabort,    "clicked",      G_CALLBACK(AbortRx),             NULL);
@@ -157,4 +153,9 @@ void chooseDir() {
   }
 
   gtk_widget_destroy (dialog);
+}
+
+void show_aboutdialog() {
+  gtk_dialog_run(GTK_DIALOG(gui.aboutdialog));
+  gtk_widget_hide(gui.aboutdialog);
 }
