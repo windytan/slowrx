@@ -16,8 +16,6 @@ extern int        MaxPcm;
 extern double    *out;
 extern gint16    *PcmBuffer;
 extern int        PcmPointer;
-extern int        PWRdBthresh[];
-extern int        SNRdBthresh[];
 extern guchar    *StoredLum;
 extern pthread_t  thread1;
 extern guchar     VISmap[];

@@ -83,10 +83,11 @@ void createGUI() {
 
 // Draw signal level meters according to given values
 void setVU (short int PcmValue, double SNRdB) {
-  int x,y;
-  int PWRdB = (int)round(10 * log10(pow(PcmValue/32767.0,2)));
-  guchar *pixelsPWR, *pixelsSNR, *pPWR, *pSNR;
+  int          x,y;
+  int          PWRdB = (int)round(10 * log10(pow(PcmValue/32767.0,2)));
+  guchar       *pixelsPWR, *pixelsSNR, *pPWR, *pSNR;
   unsigned int rowstridePWR,rowstrideSNR;
+  int          SNRdBthresh[10] = {30, 15, 10,   5,   3,   0,  -3,  -5,  -10, -15};
 
   rowstridePWR = gdk_pixbuf_get_rowstride (pixbuf_PWR);
   pixelsPWR    = gdk_pixbuf_get_pixels    (pixbuf_PWR);
@@ -100,17 +101,19 @@ void setVU (short int PcmValue, double SNRdB) {
       pPWR = pixelsPWR + y * rowstridePWR + (99-x) * 3;
       pSNR = pixelsSNR + y * rowstrideSNR + (99-x) * 3;
 
-      if (y > 1 && y < 18 && x % 10 > 1 && x % 10 < 8 && x % 2 == 0 && y % 2 == 0) {
+      if (y > 1 && y < 18 &&
+          x % 10 > 1 && x % 10 < 9 &&
+          x % 2 == 0 && y % 2 == 0) {
 
-        if (PWRdB >= PWRdBthresh[x/10]) {
-          pPWR[0] = 0x59;
+        if (PWRdB >= -0.0075*pow(x,2)-3) {
+          pPWR[0] = 0x89;
           pPWR[1] = 0xfe;
           pPWR[2] = 0xf4;
         } else {
           pPWR[0] = pPWR[1] = pPWR[2] = 0x80;
         }
 
-        if (SNRdB >= SNRdBthresh[x/10]) {        
+        if (SNRdB >= -0.6*x+40) {
           pSNR[0] = 0xef;
           pSNR[1] = 0xe4;
           pSNR[2] = 0x34;
