@@ -70,9 +70,9 @@ void *Listen() {
   while (true) {
 
     gdk_threads_enter        ();
-    gtk_widget_set_sensitive (gui.vugrid,   true);
-    gtk_widget_set_sensitive (gui.btnabort, false);
-    gtk_widget_set_sensitive (gui.btnclear, true);
+    gtk_widget_set_sensitive (gui.grid_vu,      true);
+    gtk_widget_set_sensitive (gui.button_abort, false);
+    gtk_widget_set_sensitive (gui.button_clear, true);
     gdk_threads_leave        ();
 
     HedrShift  = 0;
@@ -117,47 +117,47 @@ void *Listen() {
     // Get video
     strftime(rctime,  sizeof(rctime)-1, "%H:%Mz", timeptr);
     gdk_threads_enter        ();
-    gtk_label_set_text       (GTK_LABEL(gui.idlabel), "");
-    gtk_widget_set_sensitive (gui.manualframe, false);
-    gtk_widget_set_sensitive (gui.cardcombo,   false);
-    gtk_widget_set_sensitive (gui.btnabort,    true);
-    gtk_widget_set_sensitive (gui.btnclear,    false);
+    gtk_label_set_text       (GTK_LABEL(gui.label_fskid), "");
+    gtk_widget_set_sensitive (gui.frame_manual, false);
+    gtk_widget_set_sensitive (gui.combo_card,   false);
+    gtk_widget_set_sensitive (gui.button_abort, true);
+    gtk_widget_set_sensitive (gui.button_clear, false);
     gtk_statusbar_push       (GTK_STATUSBAR(gui.statusbar), 0, "Receiving video..." );
-    gtk_label_set_markup     (GTK_LABEL(gui.lastmodelabel), ModeSpec[Mode].Name);
-    gtk_label_set_markup     (GTK_LABEL(gui.utclabel), rctime);
+    gtk_label_set_markup     (GTK_LABEL(gui.label_lastmode), ModeSpec[Mode].Name);
+    gtk_label_set_markup     (GTK_LABEL(gui.label_utc), rctime);
     gdk_threads_leave        ();
     printf("  getvideo @ %.1f Hz, Skip %d, HedrShift %+d Hz\n", 44100.0, 0, HedrShift);
 
     Finished = GetVideo(Mode, 44100, 0, false);
 
     gdk_threads_enter        ();
-    gtk_widget_set_sensitive (gui.btnabort,    false);
-    gtk_widget_set_sensitive (gui.manualframe, true);
-    gtk_widget_set_sensitive (gui.cardcombo,   true);
+    gtk_widget_set_sensitive (gui.button_abort, false);
+    gtk_widget_set_sensitive (gui.frame_manual, true);
+    gtk_widget_set_sensitive (gui.combo_card,   true);
     gdk_threads_leave        ();
     
     id[0] = '\0';
 
-    if (Finished && gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(gui.togfsk))) {
+    if (Finished && gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(gui.tog_fsk))) {
       gdk_threads_enter  ();
       gtk_statusbar_push (GTK_STATUSBAR(gui.statusbar), 0, "Receiving FSK ID..." );
       gdk_threads_leave  ();
       GetFSK(id);
       printf("  FSKID \"%s\"\n",id);
       gdk_threads_enter  ();
-      gtk_label_set_text (GTK_LABEL(gui.idlabel), id);
+      gtk_label_set_text (GTK_LABEL(gui.label_fskid), id);
       gdk_threads_leave  ();
     }
 
     snd_pcm_drop(pcm_handle);
 
-    if (Finished && gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(gui.togslant))) {
+    if (Finished && gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(gui.tog_slant))) {
 
       // Fix slant
       setVU(0,-100);
       gdk_threads_enter        ();
       gtk_statusbar_push       (GTK_STATUSBAR(gui.statusbar), 0, "Calculating slant..." );
-      gtk_widget_set_sensitive (gui.vugrid, false);
+      gtk_widget_set_sensitive (gui.grid_vu, false);
       gdk_threads_leave        ();
       printf("  FindSync @ %.1f Hz\n",Rate);
       Rate = FindSync(Mode, Rate, &Skip);
@@ -181,7 +181,7 @@ void *Listen() {
     gtk_list_store_set                 (savedstore, &iter, 0, thumbbuf, 1, id, -1);
     gdk_threads_leave                  ();
       
-    if (gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON(gui.togsave))) {
+    if (gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON(gui.tog_save))) {
     
       pngfilename = g_string_new(g_key_file_get_string(keyfile,"slowrx","rxdir",NULL));
       g_string_append_printf(pngfilename, "/%s_%s.png", timestr, ModeSpec[Mode].ShortName);

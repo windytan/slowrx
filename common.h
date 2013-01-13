@@ -5,52 +5,53 @@
 #define MAXSLANT 150
 #define BUFLEN   4096
 
-extern guchar     VISmap[];
+extern bool       Abort;
+extern bool       Adaptive;
+extern bool       BufferDrop;
+extern bool      *HasSync;
+extern gshort     HedrShift;
+extern double    *in;
+extern bool       ManualActivated;
+extern int        MaxPcm;
+extern double    *out;
+extern gint16    *PcmBuffer;
 extern int        PcmPointer;
 extern int        PWRdBthresh[];
 extern int        SNRdBthresh[];
-extern int        MaxPcm;
-extern gint16    *PcmBuffer;
 extern guchar    *StoredLum;
-extern double    *in;
-extern double    *out;
-extern gshort     HedrShift;
-extern bool       Adaptive;
-extern bool       ManualActivated;
-extern bool       Abort;
-extern bool       BufferDrop;
-extern bool      *HasSync;
-
-extern pthread_t thread1;
+extern pthread_t  thread1;
+extern guchar     VISmap[];
 
 typedef struct _GuiObjs GuiObjs;
 struct _GuiObjs {
-  GtkWidget *mainwindow;
-  GtkWidget *RxImage;
+  GtkWidget *button_abort;
+  GtkWidget *button_browse;
+  GtkWidget *button_clear;
+  GtkWidget *button_start;
+  GtkWidget *combo_card;
+  GtkWidget *combo_mode;
+  GtkWidget *entry_picdir;
+  GtkWidget *frame_manual;
+  GtkWidget *grid_vu;
+  GtkWidget *iconview;
+  GtkWidget *image_devstatus;
+  GtkWidget *image_pwr;
+  GtkWidget *image_rx;
+  GtkWidget *image_snr;
+  GtkWidget *label_fskid;
+  GtkWidget *label_lastmode;
+  GtkWidget *label_utc;
+  GtkWidget *menuitem_about;
+  GtkWidget *menuitem_quit;
+  GtkWidget *spin_shift;
   GtkWidget *statusbar;
-  GtkWidget *vugrid;
-  GtkWidget *infolabel;
-  GtkWidget *utclabel;
-  GtkWidget *lastmodelabel;
-  GtkWidget *cardcombo;
-  GtkWidget *modecombo;
-  GtkWidget *togslant;
-  GtkWidget *togsave;
-  GtkWidget *togadapt;
-  GtkWidget *togrx;
-  GtkWidget *togfsk;
-  GtkWidget *btnabort;
-  GtkWidget *btnstart;
-  GtkWidget *manualframe;
-  GtkWidget *shiftspin;
-  GtkWidget *pwrimage;
-  GtkWidget *snrimage;
-  GtkWidget *idlabel;
-  GtkWidget *devstatusicon;
-  GtkWidget *picdirentry;
-  GtkWidget *browsebtn;
-  GtkWidget *aboutdialog;
-  GtkWidget *btnclear;
+  GtkWidget *tog_adapt;
+  GtkWidget *tog_fsk;
+  GtkWidget *tog_rx;
+  GtkWidget *tog_save;
+  GtkWidget *tog_slant;
+  GtkWidget *window_about;
+  GtkWidget *window_main;
 };
 extern GuiObjs   gui;
 
@@ -100,27 +101,27 @@ typedef struct ModeSpecDef {
 
 extern ModeSpecDef ModeSpec[];
 
-void     createGUI     ();
-bool     GetVideo      (guchar Mode, double Rate, int Skip, bool Redraw);
-guint    GetBin        (double Freq, guint FFTLen);
-guchar   clip          (double a);
-void     setVU         (short int PcmValue, double SNRdB);
-guchar   GetVIS        ();
-double   FindSync      (guchar Mode, double Rate, int *Skip);
-double   deg2rad       (double Deg);
-int      initPcmDevice ();
-void     delete_event  ();
-void     GetAdaptive   ();
-void     ManualStart   ();
 void     AbortRx       ();
-void     GetFSK        (char *dest);
-void     readPcm       (gint numsamples);
-void     *Listen       ();
 void     changeDevices ();
-void     populateDeviceList ();
-void     setNewRxDir   ();
 void     chooseDir     ();
-void     show_aboutdialog();
 void     clearPix      ();
+guchar   clip          (double a);
+void     createGUI     ();
+double   deg2rad       (double Deg);
+void     delete_event  ();
+double   FindSync      (guchar Mode, double Rate, int *Skip);
+void     GetAdaptive   ();
+void     GetFSK        (char *dest);
+bool     GetVideo      (guchar Mode, double Rate, int Skip, bool Redraw);
+guchar   GetVIS        ();
+guint    GetBin        (double Freq, guint FFTLen);
+int      initPcmDevice ();
+void     *Listen       ();
+void     ManualStart   ();
+void     populateDeviceList ();
+void     readPcm       (gint numsamples);
+void     setNewRxDir   ();
+void     setVU         (short int PcmValue, double SNRdB);
+void     show_window_about();
 
 #endif

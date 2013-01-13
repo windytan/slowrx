@@ -29,7 +29,7 @@ void readPcm(gint numsamples) {
     if      (samplesread == -EPIPE)    printf("ALSA: buffer overrun\n");
     else if (samplesread < 0) {
       printf("ALSA error %d (%s)\n", samplesread, snd_strerror(samplesread));
-      gtk_widget_set_tooltip_text(gui.devstatusicon, "ALSA error");
+      gtk_widget_set_tooltip_text(gui.image_devstatus, "ALSA error");
       Abort = true;
       pthread_exit(NULL);
     }
@@ -38,8 +38,8 @@ void readPcm(gint numsamples) {
     // On first appearance of error, update the status icon
     if (!BufferDrop) {
       gdk_threads_enter();
-      gtk_image_set_from_stock(GTK_IMAGE(gui.devstatusicon),GTK_STOCK_DIALOG_WARNING,GTK_ICON_SIZE_SMALL_TOOLBAR);
-      gtk_widget_set_tooltip_text(gui.devstatusicon, "Device is dropping samples");
+      gtk_image_set_from_stock(GTK_IMAGE(gui.image_devstatus),GTK_STOCK_DIALOG_WARNING,GTK_ICON_SIZE_SMALL_TOOLBAR);
+      gtk_widget_set_tooltip_text(gui.image_devstatus, "Device is dropping samples");
       gdk_threads_leave();
       BufferDrop = true;
     }
@@ -70,7 +70,7 @@ void populateDeviceList() {
   int                  numcards, row;
 
   gdk_threads_enter();
-  gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(gui.cardcombo), "default");
+  gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(gui.combo_card), "default");
   gdk_threads_leave();
 
   numcards = 0;
@@ -82,9 +82,9 @@ void populateDeviceList() {
       row++;
       snd_card_get_name(card,&cardname);
       gdk_threads_enter();
-      gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(gui.cardcombo), cardname);
+      gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(gui.combo_card), cardname);
       if (strcmp(cardname,g_key_file_get_string(keyfile,"slowrx","device",NULL)) == 0)
-        gtk_combo_box_set_active(GTK_COMBO_BOX(gui.cardcombo), row);
+        gtk_combo_box_set_active(GTK_COMBO_BOX(gui.combo_card), row);
 
       gdk_threads_leave();
       numcards++;
