@@ -56,10 +56,10 @@ struct _GuiObjs {
 };
 extern GuiObjs   gui;
 
-extern GdkPixbuf *pixbufPWR;
-extern GdkPixbuf *pixbufSNR;
-extern GdkPixbuf *RxPixbuf;
-extern GdkPixbuf *DispPixbuf;
+extern GdkPixbuf *pixbuf_PWR;
+extern GdkPixbuf *pixbuf_SNR;
+extern GdkPixbuf *pixbuf_rx;
+extern GdkPixbuf *pixbuf_disp;
 
 extern GtkListStore *savedstore;
 
@@ -102,27 +102,27 @@ typedef struct ModeSpecDef {
 
 extern ModeSpecDef ModeSpec[];
 
-void     evt_AbortRx       ();
-void     evt_changeDevices ();
-void     evt_chooseDir     ();
-void     evt_clearPix      ();
 guchar   clip          (double a);
 void     createGUI     ();
 double   deg2rad       (double Deg);
-void     evt_deletewindow  ();
 double   FindSync      (guchar Mode, double Rate, int *Skip);
-void     evt_GetAdaptive   ();
 void     GetFSK        (char *dest);
 bool     GetVideo      (guchar Mode, double Rate, int Skip, bool Redraw);
 guchar   GetVIS        ();
 guint    GetBin        (double Freq, guint FFTLen);
 int      initPcmDevice ();
 void     *Listen       ();
-void     evt_ManualStart   ();
 void     populateDeviceList ();
 void     readPcm       (gint numsamples);
-void     setNewRxDir   ();
 void     setVU         (short int PcmValue, double SNRdB);
-void     evt_show_about();
+
+void     evt_AbortRx       ();
+void     evt_changeDevices ();
+void     evt_chooseDir     ();
+void     evt_clearPix      ();
+void     evt_deletewindow  ();
+void     evt_GetAdaptive   ();
+void     evt_ManualStart   ();
+void     evt_show_about    ();
 
 #endif

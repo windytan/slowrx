@@ -29,10 +29,10 @@ pthread_t    thread1;
 
 GuiObjs      gui;
 
-GdkPixbuf   *RxPixbuf        = NULL;
-GdkPixbuf   *DispPixbuf      = NULL;
-GdkPixbuf   *pixbufPWR       = NULL;
-GdkPixbuf   *pixbufSNR       = NULL;
+GdkPixbuf   *pixbuf_rx        = NULL;
+GdkPixbuf   *pixbuf_disp      = NULL;
+GdkPixbuf   *pixbuf_PWR       = NULL;
+GdkPixbuf   *pixbuf_SNR       = NULL;
 
 GtkListStore *savedstore     = NULL;
 
@@ -122,8 +122,8 @@ void evt_changeDevices() {
 
 // Clear received picture & metadata
 void evt_clearPix() {
-  gdk_pixbuf_fill (DispPixbuf, 0);
-  gtk_image_set_from_pixbuf(GTK_IMAGE(gui.image_rx), DispPixbuf);
+  gdk_pixbuf_fill (pixbuf_disp, 0);
+  gtk_image_set_from_pixbuf(GTK_IMAGE(gui.image_rx), pixbuf_disp);
   gtk_label_set_markup (GTK_LABEL(gui.label_fskid), "");
   gtk_label_set_markup (GTK_LABEL(gui.label_utc), "");
   gtk_label_set_markup (GTK_LABEL(gui.label_lastmode), "");

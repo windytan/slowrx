@@ -174,7 +174,7 @@ void *Listen() {
     HasSync = NULL;
 
     // Add thumbnail to iconview
-    thumbbuf = gdk_pixbuf_scale_simple (RxPixbuf, 100,
+    thumbbuf = gdk_pixbuf_scale_simple (pixbuf_rx, 100,
         100.0/ModeSpec[Mode].ImgWidth * ModeSpec[Mode].ImgHeight * ModeSpec[Mode].YScale, GDK_INTERP_HYPER);
     gdk_threads_enter                  ();
     gtk_list_store_prepend             (savedstore, &iter);
@@ -202,7 +202,7 @@ void *Listen() {
 
       // Save the received image as PNG
       GdkPixbuf *scaledpb;
-      scaledpb = gdk_pixbuf_scale_simple (RxPixbuf, ModeSpec[Mode].ImgWidth,
+      scaledpb = gdk_pixbuf_scale_simple (pixbuf_rx, ModeSpec[Mode].ImgWidth,
           ModeSpec[Mode].ImgHeight * ModeSpec[Mode].YScale, GDK_INTERP_HYPER);
 
       ensure_dir_exists(g_key_file_get_string(keyfile,"slowrx","rxdir",NULL));
@@ -262,7 +262,7 @@ int main(int argc, char *argv[]) {
   fwrite(confdata,1,(size_t)keylen,ConfFile);
   fclose(ConfFile);
 
-  g_object_unref(RxPixbuf);
+  g_object_unref(pixbuf_rx);
   free(StoredLum);
 
   return (EXIT_SUCCESS);

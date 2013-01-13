@@ -58,13 +58,13 @@ void createGUI() {
 
   savedstore = GTK_LIST_STORE(gtk_icon_view_get_model(GTK_ICON_VIEW(gui.iconview)));
 
-  RxPixbuf   = gdk_pixbuf_new (GDK_COLORSPACE_RGB, false, 8, 320, 256);
-  gdk_pixbuf_fill(RxPixbuf, 0x000000ff);
-  DispPixbuf = gdk_pixbuf_scale_simple (RxPixbuf, 500, 400, GDK_INTERP_BILINEAR);
-  gtk_image_set_from_pixbuf(GTK_IMAGE(gui.image_rx), DispPixbuf);
+  pixbuf_rx   = gdk_pixbuf_new (GDK_COLORSPACE_RGB, false, 8, 320, 256);
+  gdk_pixbuf_fill(pixbuf_rx, 0x000000ff);
+  pixbuf_disp = gdk_pixbuf_scale_simple (pixbuf_rx, 500, 400, GDK_INTERP_BILINEAR);
+  gtk_image_set_from_pixbuf(GTK_IMAGE(gui.image_rx), pixbuf_disp);
 
-  pixbufPWR = gdk_pixbuf_new (GDK_COLORSPACE_RGB, false, 8, 100, 20);
-  pixbufSNR = gdk_pixbuf_new (GDK_COLORSPACE_RGB, false, 8, 100, 20);
+  pixbuf_PWR = gdk_pixbuf_new (GDK_COLORSPACE_RGB, false, 8, 100, 20);
+  pixbuf_SNR = gdk_pixbuf_new (GDK_COLORSPACE_RGB, false, 8, 100, 20);
 
   gtk_combo_box_set_active(GTK_COMBO_BOX(gui.combo_mode), 0);
 
@@ -88,11 +88,11 @@ void setVU (short int PcmValue, double SNRdB) {
   guchar *pixelsPWR, *pixelsSNR, *pPWR, *pSNR;
   unsigned int rowstridePWR,rowstrideSNR;
 
-  rowstridePWR = gdk_pixbuf_get_rowstride (pixbufPWR);
-  pixelsPWR    = gdk_pixbuf_get_pixels    (pixbufPWR);
+  rowstridePWR = gdk_pixbuf_get_rowstride (pixbuf_PWR);
+  pixelsPWR    = gdk_pixbuf_get_pixels    (pixbuf_PWR);
   
-  rowstrideSNR = gdk_pixbuf_get_rowstride (pixbufSNR);
-  pixelsSNR    = gdk_pixbuf_get_pixels    (pixbufSNR);
+  rowstrideSNR = gdk_pixbuf_get_rowstride (pixbuf_SNR);
+  pixelsSNR    = gdk_pixbuf_get_pixels    (pixbuf_SNR);
 
   for (y=0; y<20; y++) {
     for (x=0; x<100; x++) {
@@ -127,8 +127,8 @@ void setVU (short int PcmValue, double SNRdB) {
   }
 
   gdk_threads_enter();
-  gtk_image_set_from_pixbuf(GTK_IMAGE(gui.image_pwr), pixbufPWR);
-  gtk_image_set_from_pixbuf(GTK_IMAGE(gui.image_snr), pixbufSNR);
+  gtk_image_set_from_pixbuf(GTK_IMAGE(gui.image_pwr), pixbuf_PWR);
+  gtk_image_set_from_pixbuf(GTK_IMAGE(gui.image_snr), pixbuf_SNR);
   gdk_threads_leave();
 
 }

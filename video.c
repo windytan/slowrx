@@ -80,21 +80,21 @@ bool GetVideo(guchar Mode, double Rate, int Skip, bool Redraw) {
 
   // Initialize pixbuffer
   if (!Redraw) {
-    g_object_unref(RxPixbuf);
-    RxPixbuf = gdk_pixbuf_new (GDK_COLORSPACE_RGB, false, 8, ModeSpec[Mode].ImgWidth, ModeSpec[Mode].ImgHeight);
-    gdk_pixbuf_fill(RxPixbuf, 0);
+    g_object_unref(pixbuf_rx);
+    pixbuf_rx = gdk_pixbuf_new (GDK_COLORSPACE_RGB, false, 8, ModeSpec[Mode].ImgWidth, ModeSpec[Mode].ImgHeight);
+    gdk_pixbuf_fill(pixbuf_rx, 0);
   }
 
-  int     rowstride = gdk_pixbuf_get_rowstride (RxPixbuf);
+  int     rowstride = gdk_pixbuf_get_rowstride (pixbuf_rx);
   guchar *pixels, *p;
-  pixels = gdk_pixbuf_get_pixels(RxPixbuf);
+  pixels = gdk_pixbuf_get_pixels(pixbuf_rx);
           
-  g_object_unref(DispPixbuf);
-  DispPixbuf = gdk_pixbuf_scale_simple(RxPixbuf, 500,
+  g_object_unref(pixbuf_disp);
+  pixbuf_disp = gdk_pixbuf_scale_simple(pixbuf_rx, 500,
       500.0/ModeSpec[Mode].ImgWidth * ModeSpec[Mode].ImgHeight * ModeSpec[Mode].YScale, GDK_INTERP_BILINEAR);
 
   gdk_threads_enter();
-  gtk_image_set_from_pixbuf(GTK_IMAGE(gui.image_rx), DispPixbuf);
+  gtk_image_set_from_pixbuf(GTK_IMAGE(gui.image_rx), pixbuf_disp);
   gdk_threads_leave();
 
   Length        = ModeSpec[Mode].LineLen * ModeSpec[Mode].ImgHeight * 44100;
@@ -373,12 +373,12 @@ bool GetVideo(guchar Mode, double Rate, int Skip, bool Redraw) {
 
         if (!Redraw || LineNum % 5 == 0 || LineNum == ModeSpec[Mode].ImgHeight-1) {
           // Scale and update image
-          g_object_unref(DispPixbuf);
-          DispPixbuf = gdk_pixbuf_scale_simple(RxPixbuf, 500,
+          g_object_unref(pixbuf_disp);
+          pixbuf_disp = gdk_pixbuf_scale_simple(pixbuf_rx, 500,
               500.0/ModeSpec[Mode].ImgWidth * ModeSpec[Mode].ImgHeight * ModeSpec[Mode].YScale, GDK_INTERP_BILINEAR);
 
           gdk_threads_enter();
-          gtk_image_set_from_pixbuf(GTK_IMAGE(gui.image_rx), DispPixbuf);
+          gtk_image_set_from_pixbuf(GTK_IMAGE(gui.image_rx), pixbuf_disp);
           gdk_threads_leave();
         }
       }
