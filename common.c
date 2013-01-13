@@ -65,27 +65,27 @@ double deg2rad (double Deg) {
 
 
 // Quit
-void delete_event() {
+void evt_deletewindow() {
   gtk_main_quit ();
 }
 
 // Transform the NoiseAdapt toggle state into a variable
-void GetAdaptive() {
+void evt_GetAdaptive() {
   Adaptive = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON(gui.tog_adapt));
 }
 
 // Manual Start clicked
-void ManualStart() {
+void evt_ManualStart() {
   ManualActivated = true;
 }
 
 // Abort clicked during rx
-void AbortRx() {
+void evt_AbortRx() {
   Abort = true;
 }
 
 // Another device selected from list
-void changeDevices() {
+void evt_changeDevices() {
 
   int status;
 
@@ -121,7 +121,7 @@ void changeDevices() {
 }
 
 // Clear received picture & metadata
-void clearPix() {
+void evt_clearPix() {
   gdk_pixbuf_fill (DispPixbuf, 0);
   gtk_image_set_from_pixbuf(GTK_IMAGE(gui.image_rx), DispPixbuf);
   gtk_label_set_markup (GTK_LABEL(gui.label_fskid), "");

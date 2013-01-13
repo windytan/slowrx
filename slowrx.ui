@@ -2,7 +2,7 @@
 <interface>
   <!-- interface-requires gtk+ 3.0 -->
   <object class="GtkAction" id="action1"/>
-  <object class="GtkAdjustment" id="ShiftAdj">
+  <object class="GtkAdjustment" id="adjust_shift">
     <property name="lower">-700</property>
     <property name="upper">1400</property>
     <property name="step_increment">10</property>
@@ -179,7 +179,7 @@
                                                 <property name="left_padding">10</property>
                                                 <property name="right_padding">10</property>
                                                 <child>
-                                                  <object class="GtkLabel" id="IDLabel">
+                                                  <object class="GtkLabel" id="label_fskid">
                                                     <property name="width_request">80</property>
                                                     <property name="visible">True</property>
                                                     <property name="can_focus">False</property>
@@ -324,7 +324,7 @@
                             <property name="valign">start</property>
                             <property name="spacing">10</property>
                             <child>
-                              <object class="GtkFrame" id="OptsFrame">
+                              <object class="GtkFrame" id="frame_rxcontrol">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
                                 <property name="valign">start</property>
@@ -344,7 +344,7 @@
                                         <property name="can_focus">False</property>
                                         <property name="column_homogeneous">True</property>
                                         <child>
-                                          <object class="GtkToggleButton" id="TogSlant">
+                                          <object class="GtkToggleButton" id="tog_slant">
                                             <property name="label" translatable="yes">AutoSlant</property>
                                             <property name="visible">True</property>
                                             <property name="can_focus">True</property>
@@ -364,7 +364,7 @@
                                           </packing>
                                         </child>
                                         <child>
-                                          <object class="GtkToggleButton" id="TogSave">
+                                          <object class="GtkToggleButton" id="tog_save">
                                             <property name="label" translatable="yes">AutoSave</property>
                                             <property name="visible">True</property>
                                             <property name="can_focus">True</property>
@@ -384,7 +384,7 @@
                                           </packing>
                                         </child>
                                         <child>
-                                          <object class="GtkToggleButton" id="TogAdapt">
+                                          <object class="GtkToggleButton" id="tog_adapt">
                                             <property name="label" translatable="yes">NoiseAdapt</property>
                                             <property name="visible">True</property>
                                             <property name="can_focus">True</property>
@@ -404,7 +404,7 @@
                                           </packing>
                                         </child>
                                         <child>
-                                          <object class="GtkButton" id="BtnAbort">
+                                          <object class="GtkButton" id="button_abort">
                                             <property name="label" translatable="yes">Abort</property>
                                             <property name="visible">True</property>
                                             <property name="sensitive">False</property>
@@ -423,7 +423,7 @@
                                           </packing>
                                         </child>
                                         <child>
-                                          <object class="GtkToggleButton" id="TogRx">
+                                          <object class="GtkToggleButton" id="tog_rx">
                                             <property name="label" translatable="yes">AutoStart</property>
                                             <property name="visible">True</property>
                                             <property name="can_focus">True</property>
@@ -457,7 +457,7 @@
                                           </packing>
                                         </child>
                                         <child>
-                                          <object class="GtkToggleButton" id="TogFSK">
+                                          <object class="GtkToggleButton" id="tog_fsk">
                                             <property name="label" translatable="yes">FSKID</property>
                                             <property name="visible">True</property>
                                             <property name="can_focus">True</property>
@@ -477,7 +477,7 @@
                                           </packing>
                                         </child>
                                         <child>
-                                          <object class="GtkButton" id="BtnClear">
+                                          <object class="GtkButton" id="button_clear">
                                             <property name="label" translatable="yes">Clear</property>
                                             <property name="visible">True</property>
                                             <property name="sensitive">False</property>
@@ -528,7 +528,7 @@
                               </packing>
                             </child>
                             <child>
-                              <object class="GtkFrame" id="SlantFrame">
+                              <object class="GtkFrame" id="frame_slant">
                                 <property name="visible">True</property>
                                 <property name="sensitive">False</property>
                                 <property name="can_focus">False</property>
@@ -543,7 +543,7 @@
                                     <property name="left_padding">10</property>
                                     <property name="right_padding">10</property>
                                     <child>
-                                      <object class="GtkToggleButton" id="EdgeToggle">
+                                      <object class="GtkToggleButton" id="tog_setedge">
                                         <property name="label" translatable="yes">Set left edge</property>
                                         <property name="visible">True</property>
                                         <property name="can_focus">True</property>
@@ -568,7 +568,7 @@
                               </packing>
                             </child>
                             <child>
-                              <object class="GtkFrame" id="ManualFrame">
+                              <object class="GtkFrame" id="frame_manual">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
                                 <property name="valign">start</property>
@@ -650,7 +650,7 @@
                                               </packing>
                                             </child>
                                             <child>
-                                              <object class="GtkSpinButton" id="ShiftSpin">
+                                              <object class="GtkSpinButton" id="spin_shift">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
                                                 <property name="has_tooltip">True</property>
@@ -659,7 +659,7 @@
                                                 <property name="has_frame">False</property>
                                                 <property name="invisible_char">•</property>
                                                 <property name="invisible_char_set">True</property>
-                                                <property name="adjustment">ShiftAdj</property>
+                                                <property name="adjustment">adjust_shift</property>
                                                 <property name="snap_to_ticks">True</property>
                                                 <property name="numeric">True</property>
                                               </object>
@@ -677,7 +677,7 @@
                                           </packing>
                                         </child>
                                         <child>
-                                          <object class="GtkButton" id="BtnStart">
+                                          <object class="GtkButton" id="button_start">
                                             <property name="label" translatable="yes">Start</property>
                                             <property name="visible">True</property>
                                             <property name="can_focus">True</property>
@@ -713,7 +713,7 @@
                               </packing>
                             </child>
                             <child>
-                              <object class="GtkFrame" id="LevelFrame">
+                              <object class="GtkFrame" id="frame_levels">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
                                 <property name="label_xalign">0</property>
@@ -759,7 +759,7 @@
                                           </packing>
                                         </child>
                                         <child>
-                                          <object class="GtkImage" id="PowerImage">
+                                          <object class="GtkImage" id="image_pwr">
                                             <property name="width_request">100</property>
                                             <property name="height_request">20</property>
                                             <property name="visible">True</property>
@@ -774,7 +774,7 @@
                                           </packing>
                                         </child>
                                         <child>
-                                          <object class="GtkImage" id="SNRImage">
+                                          <object class="GtkImage" id="image_snr">
                                             <property name="width_request">100</property>
                                             <property name="height_request">20</property>
                                             <property name="visible">True</property>

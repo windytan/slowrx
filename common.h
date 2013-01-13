@@ -49,6 +49,7 @@ struct _GuiObjs {
   GtkWidget *tog_fsk;
   GtkWidget *tog_rx;
   GtkWidget *tog_save;
+  GtkWidget *tog_setedge;
   GtkWidget *tog_slant;
   GtkWidget *window_about;
   GtkWidget *window_main;
@@ -101,27 +102,27 @@ typedef struct ModeSpecDef {
 
 extern ModeSpecDef ModeSpec[];
 
-void     AbortRx       ();
-void     changeDevices ();
-void     chooseDir     ();
-void     clearPix      ();
+void     evt_AbortRx       ();
+void     evt_changeDevices ();
+void     evt_chooseDir     ();
+void     evt_clearPix      ();
 guchar   clip          (double a);
 void     createGUI     ();
 double   deg2rad       (double Deg);
-void     delete_event  ();
+void     evt_deletewindow  ();
 double   FindSync      (guchar Mode, double Rate, int *Skip);
-void     GetAdaptive   ();
+void     evt_GetAdaptive   ();
 void     GetFSK        (char *dest);
 bool     GetVideo      (guchar Mode, double Rate, int Skip, bool Redraw);
 guchar   GetVIS        ();
 guint    GetBin        (double Freq, guint FFTLen);
 int      initPcmDevice ();
 void     *Listen       ();
-void     ManualStart   ();
+void     evt_ManualStart   ();
 void     populateDeviceList ();
 void     readPcm       (gint numsamples);
 void     setNewRxDir   ();
 void     setVU         (short int PcmValue, double SNRdB);
-void     show_window_about();
+void     evt_show_about();
 
 #endif
