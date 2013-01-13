@@ -25,12 +25,22 @@ void readPcm(gint numsamples) {
   samplesread = snd_pcm_readi(pcm_handle, tmp, (PcmPointer == 0 ? BUFLEN : numsamples));
 
   if (samplesread < numsamples) {
+    
     if      (samplesread == -EPIPE)    printf("ALSA: buffer overrun\n");
     else if (samplesread == -EBADFD)   printf("ALSA: PCM is not in the right state\n");
     else if (samplesread == -ESTRPIPE) printf("ALSA: a suspend event occurred\n");
     else if (samplesread < 0)          printf("ALSA error %d\n", samplesread);
     else                               printf("Can't read %d samples\n", numsamples);
-    exit(EXIT_FAILURE);
+    
+    // On first appearance of error, update the status icon
+    if (!BufferDrop) {
+      gdk_threads_enter();
+      gtk_image_set_from_stock(GTK_IMAGE(gui.devstatusicon),GTK_STOCK_DIALOG_WARNING,GTK_ICON_SIZE_SMALL_TOOLBAR);
+      gtk_widget_set_tooltip_text(gui.devstatusicon, "Device is dropping samples");
+      gdk_threads_leave();
+      BufferDrop = true;
+    }
+
   }
 
   if (PcmPointer == 0) {
@@ -98,6 +108,8 @@ int initPcmDevice(char *wanteddevname) {
   int                  card;
   bool                 found;
   char                *cardname;
+
+  BufferDrop = false;
 
   snd_pcm_hw_params_alloca(&hwparams);
 

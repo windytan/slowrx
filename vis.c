@@ -92,8 +92,6 @@ guchar GetVIS () {
              (tone[14*3+i] > tone[0+j] - 725 && tone[14*3+i] < tone[0+j] - 675)    // 1200 Hz stop bit
            ) {
 
-          printf("Possible header @ %+.0f Hz\n",tone[0+j]-1900);
-
           // Attempt to read VIS
 
           gotvis = true;

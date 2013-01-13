@@ -23,6 +23,7 @@ int          SNRdBthresh[10] = {30, 15, 10,   5,   3,   0,  -3,  -5, -10, -15};
 bool         Adaptive        = true;
 bool         ManualActivated = false;
 bool         Abort           = false;
+bool         BufferDrop      = false;
 
 pthread_t    thread1;
 
@@ -84,6 +85,7 @@ void changeDevices() {
 
   int status;
 
+  BufferDrop = false;
   Abort = true;
 
   pthread_join(thread1, NULL);

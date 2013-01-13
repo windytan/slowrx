@@ -18,6 +18,7 @@ extern gshort     HedrShift;
 extern bool       Adaptive;
 extern bool       ManualActivated;
 extern bool       Abort;
+extern bool       BufferDrop;
 extern bool      *HasSync;
 
 extern pthread_t thread1;
