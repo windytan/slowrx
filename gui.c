@@ -45,17 +45,19 @@ void createGUI() {
   gui.devstatusicon = GTK_WIDGET(gtk_builder_get_object(builder,"devstatusicon"));
   gui.browsebtn     = GTK_WIDGET(gtk_builder_get_object(builder,"browsebtn"));
   gui.picdirentry   = GTK_WIDGET(gtk_builder_get_object(builder,"picdirentry"));
+  gui.btnclear      = GTK_WIDGET(gtk_builder_get_object(builder,"BtnClear"));
   
   iconview          = GTK_WIDGET(gtk_builder_get_object(builder,"SavedIconView"));
 
-  g_signal_connect        (quititem,    "activate",     G_CALLBACK(delete_event),        NULL);
-  g_signal_connect        (gui.mainwindow,"delete-event",G_CALLBACK(delete_event),       NULL);
-  g_signal_connect        (aboutitem,   "activate",     G_CALLBACK(show_aboutdialog),    NULL);
-  g_signal_connect_swapped(gui.togadapt,    "toggled",      G_CALLBACK(GetAdaptive),         NULL);
-  g_signal_connect        (gui.btnstart,    "clicked",      G_CALLBACK(ManualStart),         NULL);
-  g_signal_connect        (gui.btnabort,    "clicked",      G_CALLBACK(AbortRx),             NULL);
-  g_signal_connect        (gui.cardcombo,   "changed",      G_CALLBACK(changeDevices),       NULL);
-  g_signal_connect        (gui.browsebtn,   "clicked",      G_CALLBACK(chooseDir),           NULL);
+  g_signal_connect        (quititem,       "activate",     G_CALLBACK(delete_event),       NULL);
+  g_signal_connect        (gui.mainwindow, "delete-event", G_CALLBACK(delete_event),       NULL);
+  g_signal_connect        (aboutitem,      "activate",     G_CALLBACK(show_aboutdialog),   NULL);
+  g_signal_connect_swapped(gui.togadapt,   "toggled",      G_CALLBACK(GetAdaptive),        NULL);
+  g_signal_connect        (gui.btnstart,   "clicked",      G_CALLBACK(ManualStart),        NULL);
+  g_signal_connect        (gui.btnabort,   "clicked",      G_CALLBACK(AbortRx),            NULL);
+  g_signal_connect        (gui.cardcombo,  "changed",      G_CALLBACK(changeDevices),      NULL);
+  g_signal_connect        (gui.browsebtn,  "clicked",      G_CALLBACK(chooseDir),          NULL);
+  g_signal_connect        (gui.btnclear,   "clicked",      G_CALLBACK(clearPix),           NULL);
 
   savedstore = GTK_LIST_STORE(gtk_icon_view_get_model(GTK_ICON_VIEW(iconview)));
 

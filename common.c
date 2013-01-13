@@ -105,7 +105,7 @@ void changeDevices() {
       gtk_widget_set_tooltip_text(gui.devstatusicon, "Device was opened, but doesn't support 44100 Hz");
       break;
     case -2:
-      gtk_image_set_from_stock(GTK_IMAGE(gui.devstatusicon),GTK_STOCK_NO,GTK_ICON_SIZE_SMALL_TOOLBAR);
+      gtk_image_set_from_stock(GTK_IMAGE(gui.devstatusicon),GTK_STOCK_DIALOG_ERROR,GTK_ICON_SIZE_SMALL_TOOLBAR);
       gtk_widget_set_tooltip_text(gui.devstatusicon, "Failed to open device");
       break;
   }
@@ -114,4 +114,13 @@ void changeDevices() {
 
   pthread_create (&thread1, NULL, Listen, NULL);
 
+}
+
+// Clear received picture & metadata
+void clearPix() {
+  gdk_pixbuf_fill (DispPixbuf, 0);
+  gtk_image_set_from_pixbuf(GTK_IMAGE(gui.RxImage), DispPixbuf);
+  gtk_label_set_markup (GTK_LABEL(gui.idlabel), "");
+  gtk_label_set_markup (GTK_LABEL(gui.utclabel), "");
+  gtk_label_set_markup (GTK_LABEL(gui.lastmodelabel), "");
 }

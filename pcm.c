@@ -27,9 +27,12 @@ void readPcm(gint numsamples) {
   if (samplesread < numsamples) {
     
     if      (samplesread == -EPIPE)    printf("ALSA: buffer overrun\n");
-    else if (samplesread == -EBADFD)   printf("ALSA: PCM is not in the right state\n");
-    else if (samplesread == -ESTRPIPE) printf("ALSA: a suspend event occurred\n");
-    else if (samplesread < 0)          printf("ALSA error %d\n", samplesread);
+    else if (samplesread < 0) {
+      printf("ALSA error %d (%s)\n", samplesread, snd_strerror(samplesread));
+      gtk_widget_set_tooltip_text(gui.devstatusicon, "ALSA error");
+      Abort = true;
+      pthread_exit(NULL);
+    }
     else                               printf("Can't read %d samples\n", numsamples);
     
     // On first appearance of error, update the status icon

@@ -72,6 +72,7 @@ void *Listen() {
     gdk_threads_enter        ();
     gtk_widget_set_sensitive (gui.vugrid,   true);
     gtk_widget_set_sensitive (gui.btnabort, false);
+    gtk_widget_set_sensitive (gui.btnclear, true);
     gdk_threads_leave        ();
 
     HedrShift  = 0;
@@ -81,12 +82,15 @@ void *Listen() {
     snd_pcm_start  (pcm_handle);
     Abort      = false;
 
-    // Wait for VIS
-    Mode = GetVIS();
+    do {
 
-    if (Abort) pthread_exit(NULL);
+      // Wait for VIS
+      Mode = GetVIS();
 
-    if (Mode == 0) exit(EXIT_FAILURE);
+      // Stop listening on ALSA error
+      if (Abort) pthread_exit(NULL);
+
+    } while (Mode == 0);
 
     printf("  ==== %s ====\n", ModeSpec[Mode].Name);
 
@@ -117,6 +121,7 @@ void *Listen() {
     gtk_widget_set_sensitive (gui.manualframe, false);
     gtk_widget_set_sensitive (gui.cardcombo,   false);
     gtk_widget_set_sensitive (gui.btnabort,    true);
+    gtk_widget_set_sensitive (gui.btnclear,    false);
     gtk_statusbar_push       (GTK_STATUSBAR(gui.statusbar), 0, "Receiving video..." );
     gtk_label_set_markup     (GTK_LABEL(gui.lastmodelabel), ModeSpec[Mode].Name);
     gtk_label_set_markup     (GTK_LABEL(gui.utclabel), rctime);
@@ -247,7 +252,7 @@ int main(int argc, char *argv[]) {
 
   gtk_main();
 
-  // Save config
+  // Save config on exit
   ConfFile = fopen(confpath->str,"w");
   if (ConfFile == NULL) {
     perror("Unable to open config file for writing");

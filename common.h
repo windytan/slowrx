@@ -50,6 +50,7 @@ struct _GuiObjs {
   GtkWidget *picdirentry;
   GtkWidget *browsebtn;
   GtkWidget *aboutdialog;
+  GtkWidget *btnclear;
 };
 extern GuiObjs   gui;
 
@@ -120,5 +121,6 @@ void     populateDeviceList ();
 void     setNewRxDir   ();
 void     chooseDir     ();
 void     show_aboutdialog();
+void     clearPix      ();
 
 #endif

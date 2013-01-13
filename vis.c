@@ -180,5 +180,3 @@ guchar GetVIS () {
   else                        printf("  No VIS found\n");
   return 0;
 }
-
-
