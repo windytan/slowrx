@@ -24,7 +24,6 @@ guchar GetVIS () {
   //gushort    MaxPcm = 0;
   guint      FFTLen = 2048, i=0, j=0, k=0, MaxBin = 0;
   double     Power[2048] = {0}, HedrBuf[100] = {0}, tone[100] = {0}, Hann[882] = {0};
-  char       infostr[60] = {0};
   bool       gotvis = false;
   guchar     Bit[8] = {0}, ParityBit = 0;
 
@@ -110,7 +109,7 @@ guchar GetVIS () {
                  (Bit[5] << 5) + (Bit[6] << 6);
             ParityBit = Bit[7];
 
-            printf("  VIS %d (%02Xh) @ %d Hz\n", VIS, VIS, HedrShift);
+            printf("  VIS %d (%02Xh) @ %+d Hz\n", VIS, VIS, HedrShift);
 
             Parity = Bit[0] ^ Bit[1] ^ Bit[2] ^ Bit[3] ^ Bit[4] ^ Bit[5] ^ Bit[6];
 
@@ -121,11 +120,7 @@ guchar GetVIS () {
               gotvis = false;
             } else if (VISmap[VIS] == UNKNOWN) {
               printf("  Unknown VIS\n");
-              snprintf(infostr, sizeof(infostr)-1, "How to decode image with VIS %d (%02Xh)?", VIS, VIS);
               gotvis = false;
-              gdk_threads_enter();
-//              gtk_label_set_markup(GTK_LABEL(infolabel), infostr);
-              gdk_threads_leave();
             } else {
               gdk_threads_enter();
               gtk_combo_box_set_active (GTK_COMBO_BOX(gui.modecombo), VISmap[VIS]-1);

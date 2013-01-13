@@ -57,13 +57,10 @@ void createGUI() {
   g_signal_connect        (gui.cardcombo,   "changed",      G_CALLBACK(changeDevices),       NULL);
   g_signal_connect        (gui.browsebtn,   "clicked",      G_CALLBACK(chooseDir),           NULL);
 
-  savedstore = gtk_list_store_new (2, GDK_TYPE_PIXBUF, G_TYPE_STRING);
-  gtk_icon_view_set_model (GTK_ICON_VIEW(iconview), GTK_TREE_MODEL(savedstore));
-  gtk_icon_view_set_pixbuf_column (GTK_ICON_VIEW(iconview), 0);
-  gtk_icon_view_set_text_column (GTK_ICON_VIEW(iconview), 1);
+  savedstore = GTK_LIST_STORE(gtk_icon_view_get_model(GTK_ICON_VIEW(iconview)));
 
   RxPixbuf   = gdk_pixbuf_new (GDK_COLORSPACE_RGB, false, 8, 320, 256);
-  gdk_pixbuf_fill(RxPixbuf, 0x666666ff);
+  gdk_pixbuf_fill(RxPixbuf, 0x000000ff);
   DispPixbuf = gdk_pixbuf_scale_simple (RxPixbuf, 500, 400, GDK_INTERP_BILINEAR);
   gtk_image_set_from_pixbuf(GTK_IMAGE(gui.RxImage), DispPixbuf);
 

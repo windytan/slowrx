@@ -121,7 +121,7 @@ void *Listen() {
     gtk_label_set_markup     (GTK_LABEL(gui.lastmodelabel), ModeSpec[Mode].Name);
     gtk_label_set_markup     (GTK_LABEL(gui.utclabel), rctime);
     gdk_threads_leave        ();
-    printf("  getvideo @ %.1f Hz, Skip %d, HedrShift %d Hz\n", 44100.0, 0, HedrShift);
+    printf("  getvideo @ %.1f Hz, Skip %d, HedrShift %+d Hz\n", 44100.0, 0, HedrShift);
 
     Finished = GetVideo(Mode, 44100, 0, false);
 
@@ -161,7 +161,7 @@ void *Listen() {
       gdk_threads_enter  ();
       gtk_statusbar_push (GTK_STATUSBAR(gui.statusbar), 0, "Redrawing..." );
       gdk_threads_leave  ();
-      printf("  getvideo @ %.1f Hz, Skip %d, HedrShift %d Hz\n", Rate, Skip, HedrShift);
+      printf("  getvideo @ %.1f Hz, Skip %d, HedrShift %+d Hz\n", Rate, Skip, HedrShift);
       GetVideo(Mode, Rate, Skip, true);
     }
 
@@ -180,7 +180,7 @@ void *Listen() {
     
       pngfilename = g_string_new(g_key_file_get_string(keyfile,"slowrx","rxdir",NULL));
       g_string_append_printf(pngfilename, "/%s_%s.png", timestr, ModeSpec[Mode].ShortName);
-      printf("  \"%s\"\n", pngfilename->str);
+      printf("  Saving to %s\n", pngfilename->str);
 
       gdk_threads_enter  ();
       gtk_statusbar_push (GTK_STATUSBAR(gui.statusbar), 0, "Saving..." );

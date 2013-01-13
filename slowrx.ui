@@ -933,20 +933,30 @@
                           <object class="GtkScrolledWindow" id="scrolledwindow1">
                             <property name="visible">True</property>
                             <property name="can_focus">True</property>
-                            <property name="hscrollbar_policy">never</property>
-                            <property name="vscrollbar_policy">always</property>
                             <property name="shadow_type">in</property>
                             <child>
                               <object class="GtkIconView" id="SavedIconView">
-                                <property name="width_request">110</property>
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
+                                <property name="hscroll_policy">natural</property>
                                 <property name="vscroll_policy">natural</property>
                                 <property name="selection_mode">none</property>
-                                <property name="columns">1</property>
-                                <property name="row_spacing">0</property>
-                                <property name="column_spacing">0</property>
+                                <property name="model">savedstore</property>
                                 <property name="item_padding">0</property>
+                                <child>
+                                  <object class="GtkCellRendererPixbuf" id="pbrenderer1"/>
+                                  <attributes>
+                                    <attribute name="pixbuf">0</attribute>
+                                  </attributes>
+                                </child>
+                                <child>
+                                  <object class="GtkCellRendererText" id="textrenderer1">
+                                    <property name="alignment">center</property>
+                                  </object>
+                                  <attributes>
+                                    <attribute name="text">1</attribute>
+                                  </attributes>
+                                </child>
                               </object>
                             </child>
                           </object>
@@ -1008,5 +1018,13 @@
         </child>
       </object>
     </child>
+  </object>
+  <object class="GtkListStore" id="savedstore">
+    <columns>
+      <!-- column-name GdkPixbuf1 -->
+      <column type="GdkPixbuf"/>
+      <!-- column-name gchararray1 -->
+      <column type="gchararray"/>
+    </columns>
   </object>
 </interface>
