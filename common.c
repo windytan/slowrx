@@ -58,6 +58,11 @@ double deg2rad (double Deg) {
   return (Deg / 180) * M_PI;
 }
 
+// Convert radians -> degrees
+double rad2deg (double rad) {
+  return (180 / M_PI) * rad;
+}
+
 
 /*** Gtk+ event handlers ***/
 
@@ -125,4 +130,29 @@ void evt_clearPix() {
   gtk_label_set_markup (GTK_LABEL(gui.label_fskid), "");
   gtk_label_set_markup (GTK_LABEL(gui.label_utc), "");
   gtk_label_set_markup (GTK_LABEL(gui.label_lastmode), "");
+}
+
+// Manual slant adjust
+void evt_clickimg(GtkWidget *widget, GdkEventButton* event, GdkWindowEdge edge) {
+  static double prevx=0,prevy=0;
+  static bool   secondpress=false;
+  double        dx,dy,a;
+
+  if (event->type == GDK_BUTTON_PRESS && event->button == 1 && gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON(gui.tog_setedge))) {
+    if (secondpress) {
+      printf(":) %.1f,%.1f -> %.1f,%.1f\n",prevx,prevy,event->x,event->y);
+      dx = event->x - prevx;
+      dy = event->y - prevy;
+      a  = rad2deg(M_PI/2 - asin(dx/sqrt(pow(dx,2) + pow(dy,2))));
+      if (event->y < prevy) a = fabs(a-180);
+      printf("%.3f\n",a);
+
+      secondpress=false;
+      gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON(gui.tog_setedge),false);
+    } else {
+      prevx = event->x;
+      prevy = event->y;
+      secondpress = true;
+    }
+  }
 }

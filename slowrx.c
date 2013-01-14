@@ -108,7 +108,7 @@ void *Listen() {
     }
 
     // Allocate space for sync signal
-    HasSync = calloc((int)(ModeSpec[Mode].LineLen * ModeSpec[Mode].ImgHeight / 1.5e-3 +1), sizeof(bool));
+    HasSync = calloc((int)(ModeSpec[Mode].LineLen * ModeSpec[Mode].ImgHeight / SYNCPIXLEN +1), sizeof(bool));
     if (HasSync == NULL) {
       perror("Listen: Unable to allocate memory for sync signal");
       exit(EXIT_FAILURE);
@@ -119,9 +119,11 @@ void *Listen() {
     gdk_threads_enter        ();
     gtk_label_set_text       (GTK_LABEL(gui.label_fskid), "");
     gtk_widget_set_sensitive (gui.frame_manual, false);
+    gtk_widget_set_sensitive (gui.frame_slant,  false);
     gtk_widget_set_sensitive (gui.combo_card,   false);
     gtk_widget_set_sensitive (gui.button_abort, true);
     gtk_widget_set_sensitive (gui.button_clear, false);
+    gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON(gui.tog_setedge), false);
     gtk_statusbar_push       (GTK_STATUSBAR(gui.statusbar), 0, "Receiving video..." );
     gtk_label_set_markup     (GTK_LABEL(gui.label_lastmode), ModeSpec[Mode].Name);
     gtk_label_set_markup     (GTK_LABEL(gui.label_utc), rctime);
@@ -132,8 +134,6 @@ void *Listen() {
 
     gdk_threads_enter        ();
     gtk_widget_set_sensitive (gui.button_abort, false);
-    gtk_widget_set_sensitive (gui.frame_manual, true);
-    gtk_widget_set_sensitive (gui.combo_card,   true);
     gdk_threads_leave        ();
     
     id[0] = '\0';
@@ -213,6 +213,12 @@ void *Listen() {
     
     free(StoredLum);
     StoredLum = NULL;
+    
+    gdk_threads_enter        ();
+    gtk_widget_set_sensitive (gui.frame_slant,  true);
+    gtk_widget_set_sensitive (gui.frame_manual, true);
+    gtk_widget_set_sensitive (gui.combo_card,   true);
+    gdk_threads_leave        ();
     
   }
 }

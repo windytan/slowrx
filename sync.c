@@ -19,25 +19,26 @@
 double FindSync (guchar Mode, double Rate, int *Skip) {
 
   int      LineWidth = ModeSpec[Mode].LineLen / ModeSpec[Mode].SyncLen * 4;
-  int      x,y,xmid,x0;
+  int      x,y;
   int      q, d, qMost, dMost, s;
-  gushort  xAcc[700] = {0}, xmax;
+  gushort  xAcc[700] = {0};
   gushort  lines[600][(MAXSLANT-MINSLANT)*2];
   gushort  cy, cx, Retries = 0;
   bool     SyncImg[700][630] = {{false}};
   double   t=0, slantAngle;
-
+  double   ConvoFilter[8] = { 1,1,1,1,-1,-1,-1,-1 };
+  double   convd, maxconvd=0;
+  int      xmax=0;
 
   // Repeat until slant < 0.5° or until we give up
   while (true) {
 
     // Draw the 2D sync signal at current rate
-
+    
     for (y=0; y<ModeSpec[Mode].ImgHeight; y++) {
       for (x=0; x<LineWidth; x++) {
         t = (y + 1.0*x/LineWidth) * ModeSpec[Mode].LineLen;
-        // Center sync pulse horizontally
-        if (y>0 || x>=LineWidth/2) SyncImg[x][y] = HasSync[ (int)( (t-ModeSpec[Mode].LineLen/2) / 1.5e-3 * Rate/44100) ];
+        SyncImg[x][y] = HasSync[ (int)( t / SYNCPIXLEN * Rate/44100) ];
       }
     }
 
@@ -93,35 +94,37 @@ double FindSync (guchar Mode, double Rate, int *Skip) {
     Retries ++;
   }
   
-  // find abscissa at higher resolution
+  // accumulate a 1-dim array of the position of the sync pulse
   memset(xAcc, 0, sizeof(xAcc[0]) * 700);
-  xmax = 0;
- 
   for (y=0; y<ModeSpec[Mode].ImgHeight; y++) {
     for (x=0; x<700; x++) { 
       t = y * ModeSpec[Mode].LineLen + x/700.0 * ModeSpec[Mode].LineLen;
-      xAcc[x] += HasSync[ (int)(t / 1.5e-3 * Rate/44100) ];
-      if (xAcc[x] > xAcc[xmax]) xmax = x;
+      xAcc[x] += HasSync[ (int)(t / SYNCPIXLEN * Rate/44100) ];
     }
   }
 
-  // find center of sync pulse
-  x0 = -1;
-  xmid=-1;
-  for (x=0;x<700;x++) {
-    if (xAcc[x] >= xAcc[xmax]*0.5 && x0==-1) x0 = x;
-    if (x0 != -1 && xAcc[x] <  xAcc[xmax]*0.5) {
-      xmid = (x + x0) / 2;
-      break;
+  // find falling edge of the sync pulse by 8-point convolution
+  for (x=0;x<700-8;x++) {
+    convd = 0;
+    for (int i=0;i<8;i++) convd += xAcc[x+i] * ConvoFilter[i];
+    if (convd > maxconvd) {
+      maxconvd = convd;
+      xmax = x;
     }
   }
 
-  // skip until the start of the sync pulse
-  s = (xmid / 700.0 * ModeSpec[Mode].LineLen - ModeSpec[Mode].SyncLen/2) * Rate;
+  // If pulse is on the right side, it just probably slipped out the left edge
+  if (xmax > 350) xmax -= 350;
 
-  // Scottie modes don't start lines with the sync pulse
-  if (Mode == S1 || Mode == S2 || Mode == SDX)
-    s -= 2 * (ModeSpec[Mode].SeparatorLen + ModeSpec[Mode].PixelLen*ModeSpec[Mode].ImgWidth) * Rate;
+  // Skip until the start of the line.
+  // (Scottie modes don't start lines with sync)
+  if (Mode == S1 || Mode == S2 || Mode == SDX) {
+    s = (xmax / 700.0 * ModeSpec[Mode].LineLen - ModeSpec[Mode].SyncLen -
+        2*ModeSpec[Mode].SeparatorLen - 2*ModeSpec[Mode].PixelLen*ModeSpec[Mode].ImgWidth)
+        * Rate;
+  } else {
+    s = (xmax / 700.0 * ModeSpec[Mode].LineLen - ModeSpec[Mode].SyncLen) * Rate;
+  }
 
   *Skip = s;
   

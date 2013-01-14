@@ -23,7 +23,9 @@ void createGUI() {
   gui.combo_card      = GTK_WIDGET(gtk_builder_get_object(builder,"combo_card"));
   gui.combo_mode      = GTK_WIDGET(gtk_builder_get_object(builder,"combo_mode"));
   gui.entry_picdir    = GTK_WIDGET(gtk_builder_get_object(builder,"entry_picdir"));
+  gui.eventbox_img    = GTK_WIDGET(gtk_builder_get_object(builder,"eventbox_img"));
   gui.frame_manual    = GTK_WIDGET(gtk_builder_get_object(builder,"frame_manual"));
+  gui.frame_slant     = GTK_WIDGET(gtk_builder_get_object(builder,"frame_slant"));
   gui.grid_vu         = GTK_WIDGET(gtk_builder_get_object(builder,"grid_vu"));
   gui.iconview        = GTK_WIDGET(gtk_builder_get_object(builder,"SavedIconView"));
   gui.image_devstatus = GTK_WIDGET(gtk_builder_get_object(builder,"image_devstatus"));
@@ -51,6 +53,7 @@ void createGUI() {
   g_signal_connect        (gui.button_clear,  "clicked",      G_CALLBACK(evt_clearPix),      NULL);
   g_signal_connect        (gui.button_start,  "clicked",      G_CALLBACK(evt_ManualStart),   NULL);
   g_signal_connect        (gui.combo_card,    "changed",      G_CALLBACK(evt_changeDevices), NULL);
+  g_signal_connect        (gui.eventbox_img,  "button-press-event",G_CALLBACK(evt_clickimg),     NULL);
   g_signal_connect        (gui.menuitem_quit, "activate",     G_CALLBACK(evt_deletewindow),  NULL);
   g_signal_connect        (gui.menuitem_about,"activate",     G_CALLBACK(evt_show_about),    NULL);
   g_signal_connect_swapped(gui.tog_adapt,     "toggled",      G_CALLBACK(evt_GetAdaptive),   NULL);
@@ -87,7 +90,6 @@ void setVU (short int PcmValue, double SNRdB) {
   int          PWRdB = (int)round(10 * log10(pow(PcmValue/32767.0,2)));
   guchar       *pixelsPWR, *pixelsSNR, *pPWR, *pSNR;
   unsigned int rowstridePWR,rowstrideSNR;
-  int          SNRdBthresh[10] = {30, 15, 10,   5,   3,   0,  -3,  -5,  -10, -15};
 
   rowstridePWR = gdk_pixbuf_get_rowstride (pixbuf_PWR);
   pixelsPWR    = gdk_pixbuf_get_pixels    (pixbuf_PWR);
@@ -101,9 +103,7 @@ void setVU (short int PcmValue, double SNRdB) {
       pPWR = pixelsPWR + y * rowstridePWR + (99-x) * 3;
       pSNR = pixelsSNR + y * rowstrideSNR + (99-x) * 3;
 
-      if (y > 1 && y < 18 &&
-          x % 10 > 1 && x % 10 < 9 &&
-          x % 2 == 0 && y % 2 == 0) {
+      if (y > 1 && y < 18 && x % 2 == 0) {
 
         if (PWRdB >= -0.0075*pow(x,2)-3) {
           pPWR[0] = 0x89;

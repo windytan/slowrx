@@ -171,10 +171,10 @@ guchar GetVIS () {
   PcmPointer += 20e-3 * 44100;
 
   // In case of Scottie, skip first sync pulse
-  if (VISmap[VIS] == S1 || VISmap[VIS] == S2 || VISmap[VIS] == SDX) {
-    readPcm(9e-3 * 44100);
-    PcmPointer += 9e-3 * 44100;
-  }
+  /*if (VISmap[VIS] == S1 || VISmap[VIS] == S2 || VISmap[VIS] == SDX) {
+    readPcm(ModeSpec[VISmap[VIS]].SyncLen * 44100);
+    PcmPointer += ModeSpec[VISmap[VIS]].SyncLen * 44100;
+  }*/
 
   if (VISmap[VIS] != UNKNOWN) return VISmap[VIS];
   else                        printf("  No VIS found\n");

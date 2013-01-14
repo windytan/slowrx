@@ -99,7 +99,7 @@ bool GetVideo(guchar Mode, double Rate, int Skip, bool Redraw) {
 
   Length        = ModeSpec[Mode].LineLen * ModeSpec[Mode].ImgHeight * 44100;
   SyncTargetBin = GetBin(1200+HedrShift, FFTLen);
-  LopassBin     = GetBin(3000, FFTLen);
+  LopassBin     = GetBin(5000, FFTLen);
   Abort         = false;
   SyncSampleNum = 0;
 
@@ -132,19 +132,22 @@ bool GetVideo(guchar Mode, double Rate, int Skip, bool Redraw) {
         fftw_execute(Plan1024);
 
         for (i=0;i<LopassBin;i++) {
-          Praw += pow(out[i], 2) + pow(out[FFTLen-i], 2);
-          if (i >= SyncTargetBin-1 && i <= SyncTargetBin+1) Psync += pow(out[i], 2) + pow(out[FFTLen-i], 2);
+          if (i >= GetBin(1500+HedrShift, FFTLen) && i <= GetBin(2300+HedrShift, FFTLen))
+              Praw += pow(out[i], 2) + pow(out[FFTLen-i], 2);
+
+          if (i >= SyncTargetBin-1 && i <= SyncTargetBin+1)
+            Psync += (pow(out[i], 2) + pow(out[FFTLen-i], 2)) * (1- .5*abs(SyncTargetBin-i));
         }
 
-        Praw  /= (FFTLen/2.0) * ( LopassBin/(FFTLen/2.0));
-        Psync /= 3.0;
+        Praw  /= (GetBin(2300+HedrShift, FFTLen) - GetBin(1500+HedrShift, FFTLen));
+        Psync /= 2.0;
 
         // If there is more than twice the amount of power per Hz in the
-        // sync band than in the rest of the band, we have a sync signal here
+        // sync band than in the video band, we have a sync signal here
         if (Psync > 2*Praw)  HasSync[SyncSampleNum] = true;
         else                 HasSync[SyncSampleNum] = false;
 
-        NextSyncTime += 1.5e-3;
+        NextSyncTime += SYNCPIXLEN;
         SyncSampleNum ++;
 
       }

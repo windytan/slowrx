@@ -4,6 +4,7 @@
 #define MINSLANT 30
 #define MAXSLANT 150
 #define BUFLEN   4096
+#define SYNCPIXLEN 1.5e-3
 
 extern bool       Abort;
 extern bool       Adaptive;
@@ -29,7 +30,9 @@ struct _GuiObjs {
   GtkWidget *combo_card;
   GtkWidget *combo_mode;
   GtkWidget *entry_picdir;
+  GtkWidget *eventbox_img;
   GtkWidget *frame_manual;
+  GtkWidget *frame_slant;
   GtkWidget *grid_vu;
   GtkWidget *iconview;
   GtkWidget *image_devstatus;
@@ -118,6 +121,7 @@ void     evt_AbortRx       ();
 void     evt_changeDevices ();
 void     evt_chooseDir     ();
 void     evt_clearPix      ();
+void     evt_clickimg      ();
 void     evt_deletewindow  ();
 void     evt_GetAdaptive   ();
 void     evt_ManualStart   ();

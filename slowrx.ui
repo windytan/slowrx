@@ -8,6 +8,14 @@
     <property name="step_increment">10</property>
     <property name="page_increment">100</property>
   </object>
+  <object class="GtkListStore" id="savedstore">
+    <columns>
+      <!-- column-name GdkPixbuf1 -->
+      <column type="GdkPixbuf"/>
+      <!-- column-name gchararray1 -->
+      <column type="gchararray"/>
+    </columns>
+  </object>
   <object class="GtkWindow" id="window_main">
     <property name="can_focus">False</property>
     <property name="title" translatable="yes">slowrx</property>
@@ -145,12 +153,20 @@
                                     <property name="can_focus">False</property>
                                     <property name="orientation">vertical</property>
                                     <child>
-                                      <object class="GtkImage" id="image_rx">
-                                        <property name="width_request">500</property>
-                                        <property name="height_request">375</property>
+                                      <object class="GtkEventBox" id="eventbox_img">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
-                                        <property name="stock">gtk-missing-image</property>
+                                        <property name="events">GDK_BUTTON_PRESS_MASK | GDK_STRUCTURE_MASK</property>
+                                        <property name="visible_window">False</property>
+                                        <child>
+                                          <object class="GtkImage" id="image_rx">
+                                            <property name="width_request">500</property>
+                                            <property name="height_request">375</property>
+                                            <property name="visible">True</property>
+                                            <property name="can_focus">False</property>
+                                            <property name="stock">gtk-missing-image</property>
+                                          </object>
+                                        </child>
                                       </object>
                                       <packing>
                                         <property name="expand">False</property>
@@ -478,7 +494,7 @@
                                         </child>
                                         <child>
                                           <object class="GtkButton" id="button_clear">
-                                            <property name="label" translatable="yes">Clear</property>
+                                            <property name="label" translatable="yes">Clear image</property>
                                             <property name="visible">True</property>
                                             <property name="sensitive">False</property>
                                             <property name="can_focus">True</property>
@@ -530,7 +546,6 @@
                             <child>
                               <object class="GtkFrame" id="frame_slant">
                                 <property name="visible">True</property>
-                                <property name="sensitive">False</property>
                                 <property name="can_focus">False</property>
                                 <property name="label_xalign">0</property>
                                 <property name="shadow_type">in</property>
@@ -1101,13 +1116,5 @@
         </child>
       </object>
     </child>
-  </object>
-  <object class="GtkListStore" id="savedstore">
-    <columns>
-      <!-- column-name GdkPixbuf1 -->
-      <column type="GdkPixbuf"/>
-      <!-- column-name gchararray1 -->
-      <column type="gchararray"/>
-    </columns>
   </object>
 </interface>
