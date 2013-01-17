@@ -29,3 +29,13 @@ And, obviously:
 * shortwave radio with SSB
 * computer with sound card
 * means of getting sound from one to the other
+
+Compiling
+---------
+
+`make`
+
+Running
+-------
+
+`./slowrx`
