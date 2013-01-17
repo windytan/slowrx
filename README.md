@@ -1,7 +1,7 @@
 slowrx
 ======
 
-Slowrx is an SSTV decoder for Linux that aims for intuitive simplicity and lack of features not needed by a shortwave listener.
+Slowrx is an SSTV decoder for Linux.
 
 Created by Oona Räisänen / OH2-250 (windyoona at gmail).
 
@@ -10,7 +10,7 @@ Features
 
 * Support for a multitude of modes (see `modespec.c` for a list)
 * Detect frequency-shifted signals – no need to fine-tune the radio
-* Automatic slant correction (compensation for sound card clock error)
+* Automatic slant correction (compensation for sound card clock error), also manual adjustments are simple
 * Adaptive noise reduction
 * Decode digital FSK ID
 * Save received pictures as PNG
