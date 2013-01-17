@@ -36,7 +36,7 @@
  *             <http://www.tima.com/~djones/line.txt>
  */
 
-ModeSpecDef ModeSpec[] = {
+_ModeSpec ModeSpec[] = {
 
   [M1] = {  // N7CXI, 2000
     .Name         = "Martin M1",

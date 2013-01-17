@@ -546,6 +546,7 @@
                             <child>
                               <object class="GtkFrame" id="frame_slant">
                                 <property name="visible">True</property>
+                                <property name="sensitive">False</property>
                                 <property name="can_focus">False</property>
                                 <property name="label_xalign">0</property>
                                 <property name="shadow_type">in</property>
@@ -571,7 +572,7 @@
                                   <object class="GtkLabel" id="label3">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
-                                    <property name="label" translatable="yes">Manual resync</property>
+                                    <property name="label" translatable="yes">Manual slant adj.</property>
                                     <property name="use_markup">True</property>
                                   </object>
                                 </child>

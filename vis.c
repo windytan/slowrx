@@ -37,12 +37,12 @@ guchar GetVIS () {
   printf("Waiting for header\n");
 
   gdk_threads_enter();
-  gtk_statusbar_push( GTK_STATUSBAR(gui.statusbar), 0, "Ready" );
+  gtk_statusbar_push( GTK_STATUSBAR(gui.statusbar), 0, "Listening" );
   gdk_threads_leave();
 
   while ( true ) {
 
-    if (Abort) return(0);
+    if (Abort || ManualResync) return(0);
 
     // Read 10 ms from sound card
     readPcm(441);
@@ -77,10 +77,10 @@ guchar GetVIS () {
 
     // Is there a pattern that looks like (the end of) a calibration header + VIS?
     // Tolerance ±25 Hz
-    HedrShift = 0;
+    CurrentPic.HedrShift = 0;
     gotvis    = false;
     for (i = 0; i < 3; i++) {
-      if (HedrShift != 0) break;
+      if (CurrentPic.HedrShift != 0) break;
       for (j = 0; j < 3; j++) {
         if ( (tone[1*3+i]  > tone[0+j] - 25  && tone[1*3+i]  < tone[0+j] + 25)  && // 1900 Hz leader
              (tone[2*3+i]  > tone[0+j] - 25  && tone[2*3+i]  < tone[0+j] + 25)  && // 1900 Hz leader
@@ -103,13 +103,13 @@ guchar GetVIS () {
             }
           }
           if (gotvis) {
-            HedrShift = tone[0+j] - 1900;
+            CurrentPic.HedrShift = tone[0+j] - 1900;
 
             VIS = Bit[0] + (Bit[1] << 1) + (Bit[2] << 2) + (Bit[3] << 3) + (Bit[4] << 4) +
                  (Bit[5] << 5) + (Bit[6] << 6);
             ParityBit = Bit[7];
 
-            printf("  VIS %d (%02Xh) @ %+d Hz\n", VIS, VIS, HedrShift);
+            printf("  VIS %d (%02Xh) @ %+d Hz\n", VIS, VIS, CurrentPic.HedrShift);
 
             Parity = Bit[0] ^ Bit[1] ^ Bit[2] ^ Bit[3] ^ Bit[4] ^ Bit[5] ^ Bit[6];
 
@@ -124,7 +124,7 @@ guchar GetVIS () {
             } else {
               gdk_threads_enter();
               gtk_combo_box_set_active (GTK_COMBO_BOX(gui.combo_mode), VISmap[VIS]-1);
-              gtk_spin_button_set_value (GTK_SPIN_BUTTON(gui.spin_shift), HedrShift);
+              gtk_spin_button_set_value (GTK_SPIN_BUTTON(gui.spin_shift), CurrentPic.HedrShift);
               gdk_threads_leave();
               break;
             }
@@ -145,7 +145,7 @@ guchar GetVIS () {
       gdk_threads_leave();
 
       selmode   = gtk_combo_box_get_active (GTK_COMBO_BOX(gui.combo_mode)) + 1;
-      HedrShift = gtk_spin_button_get_value_as_int (GTK_SPIN_BUTTON(gui.spin_shift));
+      CurrentPic.HedrShift = gtk_spin_button_get_value_as_int (GTK_SPIN_BUTTON(gui.spin_shift));
       VIS = 0;
       for (i=0; i<0x80; i++) {
         if (VISmap[i] == selmode) {
@@ -169,12 +169,6 @@ guchar GetVIS () {
   // Skip the rest of the stop bit
   readPcm(20e-3 * 44100);
   PcmPointer += 20e-3 * 44100;
-
-  // In case of Scottie, skip first sync pulse
-  /*if (VISmap[VIS] == S1 || VISmap[VIS] == S2 || VISmap[VIS] == SDX) {
-    readPcm(ModeSpec[VISmap[VIS]].SyncLen * 44100);
-    PcmPointer += ModeSpec[VISmap[VIS]].SyncLen * 44100;
-  }*/
 
   if (VISmap[VIS] != UNKNOWN) return VISmap[VIS];
   else                        printf("  No VIS found\n");

@@ -98,7 +98,7 @@ bool GetVideo(guchar Mode, double Rate, int Skip, bool Redraw) {
   gdk_threads_leave();
 
   Length        = ModeSpec[Mode].LineLen * ModeSpec[Mode].ImgHeight * 44100;
-  SyncTargetBin = GetBin(1200+HedrShift, FFTLen);
+  SyncTargetBin = GetBin(1200+CurrentPic.HedrShift, FFTLen);
   LopassBin     = GetBin(5000, FFTLen);
   Abort         = false;
   SyncSampleNum = 0;
@@ -132,14 +132,14 @@ bool GetVideo(guchar Mode, double Rate, int Skip, bool Redraw) {
         fftw_execute(Plan1024);
 
         for (i=0;i<LopassBin;i++) {
-          if (i >= GetBin(1500+HedrShift, FFTLen) && i <= GetBin(2300+HedrShift, FFTLen))
+          if (i >= GetBin(1500+CurrentPic.HedrShift, FFTLen) && i <= GetBin(2300+CurrentPic.HedrShift, FFTLen))
               Praw += pow(out[i], 2) + pow(out[FFTLen-i], 2);
 
           if (i >= SyncTargetBin-1 && i <= SyncTargetBin+1)
             Psync += (pow(out[i], 2) + pow(out[FFTLen-i], 2)) * (1- .5*abs(SyncTargetBin-i));
         }
 
-        Praw  /= (GetBin(2300+HedrShift, FFTLen) - GetBin(1500+HedrShift, FFTLen));
+        Praw  /= (GetBin(2300+CurrentPic.HedrShift, FFTLen) - GetBin(1500+CurrentPic.HedrShift, FFTLen));
         Psync /= 2.0;
 
         // If there is more than twice the amount of power per Hz in the
@@ -166,16 +166,16 @@ bool GetVideo(guchar Mode, double Rate, int Skip, bool Redraw) {
         // Calculate video-plus-noise power (1500-2300 Hz)
 
         Pvideo_plus_noise = 0;
-        for (n = GetBin(1500+HedrShift, FFTLen); n <= GetBin(2300+HedrShift, FFTLen); n++)
+        for (n = GetBin(1500+CurrentPic.HedrShift, FFTLen); n <= GetBin(2300+CurrentPic.HedrShift, FFTLen); n++)
           Pvideo_plus_noise += pow(out[n], 2) + pow(out[FFTLen - n], 2);
 
         // Calculate noise-only power (400-800 Hz + 2700-3400 Hz)
 
         Pnoise_only = 0;
-        for (n = GetBin(400+HedrShift,  FFTLen); n <= GetBin(800+HedrShift, FFTLen);  n++)
+        for (n = GetBin(400+CurrentPic.HedrShift,  FFTLen); n <= GetBin(800+CurrentPic.HedrShift, FFTLen);  n++)
           Pnoise_only += pow(out[n], 2) + pow(out[FFTLen - n], 2);
 
-        for (n = GetBin(2700+HedrShift, FFTLen); n <= GetBin(3400+HedrShift, FFTLen); n++)
+        for (n = GetBin(2700+CurrentPic.HedrShift, FFTLen); n <= GetBin(3400+CurrentPic.HedrShift, FFTLen); n++)
           Pnoise_only += pow(out[n], 2) + pow(out[FFTLen - n], 2);
 
         // Bandwidths
@@ -231,7 +231,7 @@ bool GetVideo(guchar Mode, double Rate, int Skip, bool Redraw) {
         MaxBin = 0;
           
         // Find the bin with most power
-        for (n = GetBin(1500 + HedrShift, FFTLen) - 1; n <= GetBin(2300 + HedrShift, FFTLen) + 1; n++) {
+        for (n = GetBin(1500 + CurrentPic.HedrShift, FFTLen) - 1; n <= GetBin(2300 + CurrentPic.HedrShift, FFTLen) + 1; n++) {
 
           Power[n] = pow(out[n],2) + pow(out[FFTLen - n], 2);
           if (MaxBin == 0 || Power[n] > Power[MaxBin]) MaxBin = n;
@@ -239,7 +239,7 @@ bool GetVideo(guchar Mode, double Rate, int Skip, bool Redraw) {
         }
 
         // Find the peak frequency by Gaussian interpolation
-        if (MaxBin > GetBin(1500 + HedrShift, FFTLen) - 1 && MaxBin < GetBin(2300 + HedrShift, FFTLen) + 1) {
+        if (MaxBin > GetBin(1500 + CurrentPic.HedrShift, FFTLen) - 1 && MaxBin < GetBin(2300 + CurrentPic.HedrShift, FFTLen) + 1) {
           Freq = MaxBin +            (log( Power[MaxBin + 1] / Power[MaxBin - 1] )) /
                            (2 * log( pow(Power[MaxBin], 2) / (Power[MaxBin + 1] * Power[MaxBin - 1])));
           // In Hertz
@@ -247,7 +247,7 @@ bool GetVideo(guchar Mode, double Rate, int Skip, bool Redraw) {
           InterpFreq = Freq;
         } else {
           // Clip if out of bounds
-          Freq = ( (MaxBin > GetBin(1900 + HedrShift, FFTLen)) ? 2300 : 1500 ) + HedrShift;
+          Freq = ( (MaxBin > GetBin(1900 + CurrentPic.HedrShift, FFTLen)) ? 2300 : 1500 ) + CurrentPic.HedrShift;
         }
 
         NextFFTtime += 0.3e-3;
@@ -258,7 +258,7 @@ bool GetVideo(guchar Mode, double Rate, int Skip, bool Redraw) {
       InterpFreq = PrevFreq + (t - NextFFTtime + 0.6e-3) * ((Freq - PrevFreq) / 0.3e-3);
 
       // Calculate luminency & store for later use
-      StoredLum[SampleNum] = clip((InterpFreq - (1500 + HedrShift)) / 3.1372549);
+      StoredLum[SampleNum] = clip((InterpFreq - (1500 + CurrentPic.HedrShift)) / 3.1372549);
 
     }
 

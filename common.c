@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <math.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 #include <gtk/gtk.h>
 #include <alsa/asoundlib.h>
@@ -10,31 +12,33 @@
 
 #include "common.h"
 
+bool         Abort           = false;
+bool         Adaptive        = true;
+bool         BufferDrop      = false;
+double      *in              = NULL;
+bool        *HasSync         = NULL;
+gshort       HedrShift       = 0;
+bool         ManualActivated = false;
+bool         ManualResync    = false;
+int          MaxPcm          = 0;
+double      *out             = NULL;
 gint16      *PcmBuffer       = NULL;
 int          PcmPointer      = 0;
-int          MaxPcm          = 0;
 guchar      *StoredLum       = NULL;
-bool        *HasSync         = NULL;
-double      *in              = NULL;
-double      *out             = NULL;
-gshort       HedrShift       = 0;
-bool         Adaptive        = true;
-bool         ManualActivated = false;
-bool         Abort           = false;
-bool         BufferDrop      = false;
 
 pthread_t    thread1;
 
 GuiObjs      gui;
+PicMeta      CurrentPic;
 
-GdkPixbuf   *pixbuf_rx        = NULL;
-GdkPixbuf   *pixbuf_disp      = NULL;
-GdkPixbuf   *pixbuf_PWR       = NULL;
-GdkPixbuf   *pixbuf_SNR       = NULL;
+GdkPixbuf   *pixbuf_rx       = NULL;
+GdkPixbuf   *pixbuf_disp     = NULL;
+GdkPixbuf   *pixbuf_PWR      = NULL;
+GdkPixbuf   *pixbuf_SNR      = NULL;
 
 GtkListStore *savedstore     = NULL;
 
-GKeyFile    *keyfile         = NULL;
+GKeyFile    *config          = NULL;
 
 snd_pcm_t   *pcm_handle      = NULL;
 
@@ -61,6 +65,36 @@ double deg2rad (double Deg) {
 // Convert radians -> degrees
 double rad2deg (double rad) {
   return (180 / M_PI) * rad;
+}
+
+void ensure_dir_exists(const char *dir) {
+  struct stat buf;
+
+  int i = stat(dir, &buf);
+  if (i != 0) {
+    if (mkdir(dir, 0777) != 0) {
+      perror("Unable to create directory for output file");
+      exit(EXIT_FAILURE);
+    }
+  }
+}
+
+// Save current picture as PNG
+void saveCurrentPic() {
+  GdkPixbuf *scaledpb;
+  GString   *pngfilename;
+
+  pngfilename = g_string_new(g_key_file_get_string(config,"slowrx","rxdir",NULL));
+  g_string_append_printf(pngfilename, "/%s_%s.png", CurrentPic.timestr, ModeSpec[CurrentPic.Mode].ShortName);
+  printf("  Saving to %s\n", pngfilename->str);
+
+  scaledpb = gdk_pixbuf_scale_simple (pixbuf_rx, ModeSpec[CurrentPic.Mode].ImgWidth,
+    ModeSpec[CurrentPic.Mode].ImgHeight * ModeSpec[CurrentPic.Mode].YScale, GDK_INTERP_HYPER);
+
+  ensure_dir_exists(g_key_file_get_string(config,"slowrx","rxdir",NULL));
+  gdk_pixbuf_savev(scaledpb, pngfilename->str, "png", NULL, NULL, NULL);
+  g_object_unref(scaledpb);
+  g_string_free(pngfilename, true);
 }
 
 
@@ -117,7 +151,7 @@ void evt_changeDevices() {
       break;
   }
 
-  g_key_file_set_string(keyfile,"slowrx","device",gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(gui.combo_card)));
+  g_key_file_set_string(config,"slowrx","device",gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(gui.combo_card)));
 
   pthread_create (&thread1, NULL, Listen, NULL);
 
@@ -134,25 +168,50 @@ void evt_clearPix() {
 
 // Manual slant adjust
 void evt_clickimg(GtkWidget *widget, GdkEventButton* event, GdkWindowEdge edge) {
-  static double prevx=0,prevy=0;
+  static double prevx=0,prevy=0,newrate;
   static bool   secondpress=false;
-  double        dx,dy,a;
+  double        x,y,dx,dy,xic;
+
+  (void)widget;
+  (void)edge;
 
   if (event->type == GDK_BUTTON_PRESS && event->button == 1 && gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON(gui.tog_setedge))) {
-    if (secondpress) {
-      printf(":) %.1f,%.1f -> %.1f,%.1f\n",prevx,prevy,event->x,event->y);
-      dx = event->x - prevx;
-      dy = event->y - prevy;
-      a  = rad2deg(M_PI/2 - asin(dx/sqrt(pow(dx,2) + pow(dy,2))));
-      if (event->y < prevy) a = fabs(a-180);
-      printf("%.3f\n",a);
 
+    x = event->x * (ModeSpec[CurrentPic.Mode].ImgWidth / 500.0);
+    y = event->y * (ModeSpec[CurrentPic.Mode].ImgWidth / 500.0) / ModeSpec[CurrentPic.Mode].YScale;
+
+    if (secondpress) {
       secondpress=false;
+
+      dx = x - prevx;
+      dy = y - prevy;
+
       gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON(gui.tog_setedge),false);
+
+      // Adjust sample rate, if in sensible limits
+      newrate = CurrentPic.Rate + CurrentPic.Rate * (dx * ModeSpec[CurrentPic.Mode].PixelLen) / (dy * ModeSpec[CurrentPic.Mode].YScale * ModeSpec[CurrentPic.Mode].LineLen);
+      if (newrate > 32000 && newrate < 56000) {
+        CurrentPic.Rate = newrate;
+
+        // Find x-intercept and adjust skip
+        xic = fmod( (x - (y / (dy/dx))), ModeSpec[CurrentPic.Mode].ImgWidth);
+        if (xic < 0) xic = ModeSpec[CurrentPic.Mode].ImgWidth - xic;
+        CurrentPic.Skip = fmod(CurrentPic.Skip + xic * ModeSpec[CurrentPic.Mode].PixelLen * CurrentPic.Rate,
+          ModeSpec[CurrentPic.Mode].LineLen * CurrentPic.Rate);
+        if (CurrentPic.Skip > ModeSpec[CurrentPic.Mode].LineLen * CurrentPic.Rate / 2.0)
+          CurrentPic.Skip -= ModeSpec[CurrentPic.Mode].LineLen * CurrentPic.Rate;
+
+        // Signal the listener to exit from GetVIS() and re-process the pic
+        ManualResync = true;
+      }
+
     } else {
-      prevx = event->x;
-      prevy = event->y;
       secondpress = true;
+      prevx = x;
+      prevy = y;
     }
+  } else {
+    secondpress=false;
+    gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON(gui.tog_setedge), false);
   }
 }

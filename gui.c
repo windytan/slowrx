@@ -71,11 +71,11 @@ void createGUI() {
 
   gtk_combo_box_set_active(GTK_COMBO_BOX(gui.combo_mode), 0);
 
-  if (g_key_file_get_string(keyfile,"slowrx","rxdir",NULL) != NULL) {
-    gtk_entry_set_text(GTK_ENTRY(gui.entry_picdir),g_key_file_get_string(keyfile,"slowrx","rxdir",NULL));
+  if (g_key_file_get_string(config,"slowrx","rxdir",NULL) != NULL) {
+    gtk_entry_set_text(GTK_ENTRY(gui.entry_picdir),g_key_file_get_string(config,"slowrx","rxdir",NULL));
   } else {
-    g_key_file_set_string(keyfile,"slowrx","rxdir",g_get_home_dir());
-    gtk_entry_set_text(GTK_ENTRY(gui.entry_picdir),g_key_file_get_string(keyfile,"slowrx","rxdir",NULL));
+    g_key_file_set_string(config,"slowrx","rxdir",g_get_home_dir());
+    gtk_entry_set_text(GTK_ENTRY(gui.entry_picdir),g_key_file_get_string(config,"slowrx","rxdir",NULL));
   }
 
   setVU(0, -100);
@@ -146,7 +146,7 @@ void evt_chooseDir() {
                                       NULL);
   
   if (gtk_dialog_run (GTK_DIALOG (dialog)) == GTK_RESPONSE_ACCEPT) {
-    g_key_file_set_string(keyfile,"slowrx","rxdir",gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog)));
+    g_key_file_set_string(config,"slowrx","rxdir",gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog)));
     gtk_entry_set_text(GTK_ENTRY(gui.entry_picdir),gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog)));
   }
 

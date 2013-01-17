@@ -10,9 +10,9 @@ extern bool       Abort;
 extern bool       Adaptive;
 extern bool       BufferDrop;
 extern bool      *HasSync;
-extern gshort     HedrShift;
 extern double    *in;
 extern bool       ManualActivated;
+extern bool       ManualResync;
 extern int        MaxPcm;
 extern double    *out;
 extern gint16    *PcmBuffer;
@@ -64,12 +64,24 @@ extern GdkPixbuf *pixbuf_disp;
 
 extern GtkListStore *savedstore;
 
-extern GKeyFile  *keyfile;
+extern GKeyFile  *config;
 
 extern snd_pcm_t *pcm_handle;
 
 extern fftw_plan  Plan1024;
 extern fftw_plan  Plan2048;
+
+typedef struct _PicMeta PicMeta;
+struct _PicMeta {
+  gshort HedrShift;
+  guchar Mode;
+  double Rate;
+  int    Skip;
+  GdkPixbuf *thumbbuf;
+  char   timestr[40];
+};
+
+extern PicMeta CurrentPic;
 
 // SSTV modes
 enum {
@@ -87,7 +99,7 @@ enum {
   GBR, RGB, YUV, BW
 };
 
-typedef struct ModeSpecDef {
+typedef struct ModeSpec {
   char   *Name;
   char   *ShortName;
   double  SyncLen;
@@ -99,9 +111,9 @@ typedef struct ModeSpecDef {
   gushort ImgHeight;
   guchar  YScale;
   guchar  ColorEnc;
-} ModeSpecDef;
+} _ModeSpec;
 
-extern ModeSpecDef ModeSpec[];
+extern _ModeSpec ModeSpec[];
 
 guchar   clip          (double a);
 void     createGUI     ();
@@ -115,6 +127,7 @@ int      initPcmDevice ();
 void     *Listen       ();
 void     populateDeviceList ();
 void     readPcm       (gint numsamples);
+void     saveCurrentPic();
 void     setVU         (short int PcmValue, double SNRdB);
 
 void     evt_AbortRx       ();

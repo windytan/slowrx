@@ -21,51 +21,17 @@
 
 #include "common.h"
 
-void ensure_dir_exists(const char *dir) {
-  struct stat buf;
-
-  int i = stat(dir, &buf);
-  if (i != 0) {
-    if (mkdir(dir, 0777) != 0) {
-      perror("Unable to create directory for output file");
-      exit(EXIT_FAILURE);
-    }
-  }
-}
-
+// The thread that listens to VIS headers and calls decoders etc
 void *Listen() {
 
-  int         Skip = 0;
-  char        timestr[40], rctime[8];
-  GString    *pngfilename;
+  char        rctime[8];
 
   guchar      Mode=0;
-  double      Rate;
   struct tm  *timeptr = NULL;
   time_t      timet;
   bool        Finished;
-  GdkPixbuf  *thumbbuf;
   char        id[20];
   GtkTreeIter iter;
-
-  /** Prepare FFT **/
-  in = fftw_malloc(sizeof(double) * 2048);
-  if (in == NULL) {
-    perror("GetVideo: Unable to allocate memory for FFT");
-    exit(EXIT_FAILURE);
-  }
-  out = fftw_malloc(sizeof(double) * 2048);
-  if (out == NULL) {
-    perror("GetVideo: Unable to allocate memory for FFT");
-    fftw_free(in);
-    exit(EXIT_FAILURE);
-  }
-  memset(in,  0, sizeof(double) * 2048);
-  memset(out, 0, sizeof(double) * 2048);
-
-  Plan1024 = fftw_plan_r2r_1d(1024, in, out, FFTW_FORWARD, FFTW_ESTIMATE);
-  Plan2048 = fftw_plan_r2r_1d(2048, in, out, FFTW_FORWARD, FFTW_ESTIMATE);
-
 
   while (true) {
 
@@ -75,12 +41,10 @@ void *Listen() {
     gtk_widget_set_sensitive (gui.button_clear, true);
     gdk_threads_leave        ();
 
-    HedrShift  = 0;
     PcmPointer = 0;
-    Rate       = 44100;
     snd_pcm_prepare(pcm_handle);
     snd_pcm_start  (pcm_handle);
-    Abort      = false;
+    Abort = false;
 
     do {
 
@@ -90,25 +54,44 @@ void *Listen() {
       // Stop listening on ALSA error
       if (Abort) pthread_exit(NULL);
 
+      // If manual resync was requested, redraw image
+      if (ManualResync) {
+        ManualResync = false;
+        snd_pcm_drop(pcm_handle);
+        printf("getvideo at %.2f skip %d\n",CurrentPic.Rate,CurrentPic.Skip);
+        GetVideo(CurrentPic.Mode, CurrentPic.Rate, CurrentPic.Skip, true);
+        if (gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON(gui.tog_save)))
+          saveCurrentPic();
+        PcmPointer = 0;
+        snd_pcm_prepare(pcm_handle);
+        snd_pcm_start  (pcm_handle);
+      }
+
     } while (Mode == 0);
 
-    printf("  ==== %s ====\n", ModeSpec[Mode].Name);
+    // Start reception
+    
+    CurrentPic.Rate = 44100;
+    CurrentPic.Mode = Mode;
+
+    printf("  ==== %s ====\n", ModeSpec[CurrentPic.Mode].Name);
 
     // Store time of reception
     timet = time(NULL);
     timeptr = gmtime(&timet);
-    strftime(timestr, sizeof(timestr)-1,"%Y%m%d-%H%M%Sz", timeptr);
+    strftime(CurrentPic.timestr, sizeof(CurrentPic.timestr)-1,"%Y%m%d-%H%M%Sz", timeptr);
     
 
     // Allocate space for cached Lum
-    StoredLum = calloc( (int)(ModeSpec[Mode].LineLen * ModeSpec[Mode].ImgHeight + 1) * 44100, sizeof(guchar));
+    free(StoredLum);
+    StoredLum = calloc( (int)(ModeSpec[CurrentPic.Mode].LineLen * ModeSpec[CurrentPic.Mode].ImgHeight + 1) * 44100, sizeof(guchar));
     if (StoredLum == NULL) {
       perror("Listen: Unable to allocate memory for Lum");
       exit(EXIT_FAILURE);
     }
 
     // Allocate space for sync signal
-    HasSync = calloc((int)(ModeSpec[Mode].LineLen * ModeSpec[Mode].ImgHeight / SYNCPIXLEN +1), sizeof(bool));
+    HasSync = calloc((int)(ModeSpec[CurrentPic.Mode].LineLen * ModeSpec[CurrentPic.Mode].ImgHeight / SYNCPIXLEN +1), sizeof(bool));
     if (HasSync == NULL) {
       perror("Listen: Unable to allocate memory for sync signal");
       exit(EXIT_FAILURE);
@@ -125,12 +108,12 @@ void *Listen() {
     gtk_widget_set_sensitive (gui.button_clear, false);
     gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON(gui.tog_setedge), false);
     gtk_statusbar_push       (GTK_STATUSBAR(gui.statusbar), 0, "Receiving video..." );
-    gtk_label_set_markup     (GTK_LABEL(gui.label_lastmode), ModeSpec[Mode].Name);
+    gtk_label_set_markup     (GTK_LABEL(gui.label_lastmode), ModeSpec[CurrentPic.Mode].Name);
     gtk_label_set_markup     (GTK_LABEL(gui.label_utc), rctime);
     gdk_threads_leave        ();
-    printf("  getvideo @ %.1f Hz, Skip %d, HedrShift %+d Hz\n", 44100.0, 0, HedrShift);
+    printf("  getvideo @ %.1f Hz, Skip %d, HedrShift %+d Hz\n", 44100.0, 0, CurrentPic.HedrShift);
 
-    Finished = GetVideo(Mode, 44100, 0, false);
+    Finished = GetVideo(CurrentPic.Mode, 44100, 0, false);
 
     gdk_threads_enter        ();
     gtk_widget_set_sensitive (gui.button_abort, false);
@@ -159,38 +142,28 @@ void *Listen() {
       gtk_statusbar_push       (GTK_STATUSBAR(gui.statusbar), 0, "Calculating slant..." );
       gtk_widget_set_sensitive (gui.grid_vu, false);
       gdk_threads_leave        ();
-      printf("  FindSync @ %.1f Hz\n",Rate);
-      Rate = FindSync(Mode, Rate, &Skip);
+      printf("  FindSync @ %.1f Hz\n",CurrentPic.Rate);
+      CurrentPic.Rate = FindSync(CurrentPic.Mode, CurrentPic.Rate, &CurrentPic.Skip);
    
       // Final image  
-      gdk_threads_enter  ();
-      gtk_statusbar_push (GTK_STATUSBAR(gui.statusbar), 0, "Redrawing..." );
-      gdk_threads_leave  ();
-      printf("  getvideo @ %.1f Hz, Skip %d, HedrShift %+d Hz\n", Rate, Skip, HedrShift);
-      GetVideo(Mode, Rate, Skip, true);
+      printf("  getvideo @ %.1f Hz, Skip %d, HedrShift %+d Hz\n", CurrentPic.Rate, CurrentPic.Skip, CurrentPic.HedrShift);
+      GetVideo(CurrentPic.Mode, CurrentPic.Rate, CurrentPic.Skip, true);
     }
 
     free (HasSync);
     HasSync = NULL;
 
     // Add thumbnail to iconview
-    thumbbuf = gdk_pixbuf_scale_simple (pixbuf_rx, 100,
-        100.0/ModeSpec[Mode].ImgWidth * ModeSpec[Mode].ImgHeight * ModeSpec[Mode].YScale, GDK_INTERP_HYPER);
+    CurrentPic.thumbbuf = gdk_pixbuf_scale_simple (pixbuf_rx, 100,
+        100.0/ModeSpec[CurrentPic.Mode].ImgWidth * ModeSpec[CurrentPic.Mode].ImgHeight * ModeSpec[CurrentPic.Mode].YScale, GDK_INTERP_HYPER);
     gdk_threads_enter                  ();
     gtk_list_store_prepend             (savedstore, &iter);
-    gtk_list_store_set                 (savedstore, &iter, 0, thumbbuf, 1, id, -1);
+    gtk_list_store_set                 (savedstore, &iter, 0, CurrentPic.thumbbuf, 1, id, -1);
     gdk_threads_leave                  ();
-      
+    
+    // Save PNG
     if (gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON(gui.tog_save))) {
     
-      pngfilename = g_string_new(g_key_file_get_string(keyfile,"slowrx","rxdir",NULL));
-      g_string_append_printf(pngfilename, "/%s_%s.png", timestr, ModeSpec[Mode].ShortName);
-      printf("  Saving to %s\n", pngfilename->str);
-
-      gdk_threads_enter  ();
-      gtk_statusbar_push (GTK_STATUSBAR(gui.statusbar), 0, "Saving..." );
-      gdk_threads_leave  ();
-
       setVU(0,-100);
 
       /*ensure_dir_exists("rx-lum");
@@ -200,20 +173,9 @@ void *Listen() {
       fwrite(StoredLum,1,(ModeSpec[Mode].LineLen * ModeSpec[Mode].ImgHeight) * 44100,LumFile);
       fclose(LumFile);*/
 
-      // Save the received image as PNG
-      GdkPixbuf *scaledpb;
-      scaledpb = gdk_pixbuf_scale_simple (pixbuf_rx, ModeSpec[Mode].ImgWidth,
-          ModeSpec[Mode].ImgHeight * ModeSpec[Mode].YScale, GDK_INTERP_HYPER);
-
-      ensure_dir_exists(g_key_file_get_string(keyfile,"slowrx","rxdir",NULL));
-      gdk_pixbuf_savev(scaledpb, pngfilename->str, "png", NULL, NULL, NULL);
-      g_object_unref(scaledpb);
-      g_string_free(pngfilename, true);
+      saveCurrentPic();
     }
-    
-    free(StoredLum);
-    StoredLum = NULL;
-    
+       
     gdk_threads_enter        ();
     gtk_widget_set_sensitive (gui.frame_slant,  true);
     gtk_widget_set_sensitive (gui.frame_manual, true);
@@ -245,13 +207,31 @@ int main(int argc, char *argv[]) {
   confpath = g_string_new(confdir);
   g_string_append(confpath, "/slowrx.ini");
 
-  keyfile = g_key_file_new();
-  if (g_key_file_load_from_file(keyfile, confpath->str, G_KEY_FILE_KEEP_COMMENTS, NULL)) {
+  config = g_key_file_new();
+  if (g_key_file_load_from_file(config, confpath->str, G_KEY_FILE_KEEP_COMMENTS, NULL)) {
 
   } else {
     printf("No valid config file found\n");
-    g_key_file_load_from_data(keyfile, "[slowrx]\ndevice=default", -1, G_KEY_FILE_NONE, NULL);
+    g_key_file_load_from_data(config, "[slowrx]\ndevice=default", -1, G_KEY_FILE_NONE, NULL);
   }
+
+  // Prepare FFT
+  in = fftw_malloc(sizeof(double) * 2048);
+  if (in == NULL) {
+    perror("GetVideo: Unable to allocate memory for FFT");
+    exit(EXIT_FAILURE);
+  }
+  out = fftw_malloc(sizeof(double) * 2048);
+  if (out == NULL) {
+    perror("GetVideo: Unable to allocate memory for FFT");
+    fftw_free(in);
+    exit(EXIT_FAILURE);
+  }
+  memset(in,  0, sizeof(double) * 2048);
+  memset(out, 0, sizeof(double) * 2048);
+
+  Plan1024 = fftw_plan_r2r_1d(1024, in, out, FFTW_FORWARD, FFTW_ESTIMATE);
+  Plan2048 = fftw_plan_r2r_1d(2048, in, out, FFTW_FORWARD, FFTW_ESTIMATE);
 
   createGUI();
   populateDeviceList();
@@ -262,14 +242,17 @@ int main(int argc, char *argv[]) {
   ConfFile = fopen(confpath->str,"w");
   if (ConfFile == NULL) {
     perror("Unable to open config file for writing");
+  } else {
+    confdata = g_key_file_to_data(config,keylen,NULL);
+    fprintf(ConfFile,"%s",confdata);
+    fwrite(confdata,1,(size_t)keylen,ConfFile);
+    fclose(ConfFile);
   }
-  confdata = g_key_file_to_data(keyfile,keylen,NULL);
-  fprintf(ConfFile,"%s",confdata);
-  fwrite(confdata,1,(size_t)keylen,ConfFile);
-  fclose(ConfFile);
 
   g_object_unref(pixbuf_rx);
   free(StoredLum);
+  fftw_free(in);
+  fftw_free(out);
 
   return (EXIT_SUCCESS);
 }

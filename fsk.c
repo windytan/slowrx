@@ -54,9 +54,9 @@ void GetFSK (char *dest) {
     // FFT of last 22 ms
     fftw_execute(Plan2048);
 
-    LoBin  = GetBin(1900+HedrShift, FFTLen)-1;
-    MidBin = GetBin(2000+HedrShift, FFTLen);
-    HiBin  = GetBin(2100+HedrShift, FFTLen)+1;
+    LoBin  = GetBin(1900+CurrentPic.HedrShift, FFTLen)-1;
+    MidBin = GetBin(2000+CurrentPic.HedrShift, FFTLen);
+    HiBin  = GetBin(2100+CurrentPic.HedrShift, FFTLen)+1;
 
     LoPow = 0;
     HiPow = 0;

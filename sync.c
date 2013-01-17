@@ -79,7 +79,7 @@ double FindSync (guchar Mode, double Rate, int *Skip) {
     printf("    %.1f° (d=%d) @ %.1f Hz", slantAngle, dMost, Rate);
 
     // Adjust sample rate
-    Rate = Rate + tan(deg2rad(90 - slantAngle)) / LineWidth * Rate;
+    Rate += tan(deg2rad(90 - slantAngle)) / LineWidth * Rate;
 
     if (slantAngle > 89 && slantAngle < 91) {
       printf("            slant OK :)\n");
@@ -113,7 +113,8 @@ double FindSync (guchar Mode, double Rate, int *Skip) {
     }
   }
 
-  // If pulse is on the right side, it just probably slipped out the left edge
+  // If pulse is near the right edge of the iamge, it just probably slipped
+  // out the left edge
   if (xmax > 350) xmax -= 350;
 
   // Skip until the start of the line.
