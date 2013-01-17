@@ -20,12 +20,12 @@ double FindSync (guchar Mode, double Rate, int *Skip) {
 
   int      LineWidth = ModeSpec[Mode].LineLen / ModeSpec[Mode].SyncLen * 4;
   int      x,y;
-  int      q, d, qMost, dMost, s;
+  int      q, d, qMost, dMost;
   gushort  xAcc[700] = {0};
   gushort  lines[600][(MAXSLANT-MINSLANT)*2];
   gushort  cy, cx, Retries = 0;
   bool     SyncImg[700][630] = {{false}};
-  double   t=0, slantAngle;
+  double   t=0, slantAngle, s;
   double   ConvoFilter[8] = { 1,1,1,1,-1,-1,-1,-1 };
   double   convd, maxconvd=0;
   int      xmax=0;
@@ -113,21 +113,19 @@ double FindSync (guchar Mode, double Rate, int *Skip) {
     }
   }
 
-  // If pulse is near the right edge of the iamge, it just probably slipped
+  // If pulse is near the right edge of the image, it just probably slipped
   // out the left edge
   if (xmax > 350) xmax -= 350;
 
-  // Skip until the start of the line.
+  // Skip until the start of the line
+  s = xmax / 700.0 * ModeSpec[Mode].LineLen - ModeSpec[Mode].SyncLen;
+  
   // (Scottie modes don't start lines with sync)
-  if (Mode == S1 || Mode == S2 || Mode == SDX) {
-    s = (xmax / 700.0 * ModeSpec[Mode].LineLen - ModeSpec[Mode].SyncLen -
-        2*ModeSpec[Mode].SeparatorLen - 2*ModeSpec[Mode].PixelLen*ModeSpec[Mode].ImgWidth)
-        * Rate;
-  } else {
-    s = (xmax / 700.0 * ModeSpec[Mode].LineLen - ModeSpec[Mode].SyncLen) * Rate;
-  }
+  if (Mode == S1 || Mode == S2 || Mode == SDX)
+    s = s - ModeSpec[Mode].PixelLen * ModeSpec[Mode].ImgWidth / 2.0
+          + ModeSpec[Mode].PorchLen * 2;
 
-  *Skip = s;
+  *Skip = s * Rate;
   
   return (Rate);
 
