@@ -40,8 +40,8 @@ gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
   guchar     Channel = 0, WinIdx = 0;
     
   // Initialize Hann windows of different lengths
-  gushort HannLens[7] = { 32, 64, 96, 128, 256, 512, 1024 };
-  for (j = 0; j < 7; j++)
+  gushort HannLens[5] = { 96, 128, 256, 512, 1024 };
+  for (j = 0; j < 5; j++)
     for (i = 0; i < HannLens[j]; i++)
       Hann[j][i] = 0.5 * (1 - cos( (2 * M_PI * i) / (HannLens[j] - 1)) );
 
@@ -125,7 +125,7 @@ gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
         memset(out, 0, sizeof(out[0])*FFTLen);
        
         // Hann window
-        for (i = 0; i < 64; i++) in[i] = pcm.Buffer[pcm.WindowPtr+i-32] / 32768.0 * Hann[1][i];
+        for (i = 0; i < 96; i++) in[i] = pcm.Buffer[pcm.WindowPtr+i-32] / 32768.0 * Hann[0][i];
 
         fftw_execute(Plan1024);
 
@@ -156,7 +156,7 @@ gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
       if (t >= NextSNRtime) {
 
         // Apply Hann window
-        for (i = 0; i < FFTLen; i++) in[i] = pcm.Buffer[pcm.WindowPtr + i - FFTLen/2] / 32768.0 * Hann[6][i];
+        for (i = 0; i < FFTLen; i++) in[i] = pcm.Buffer[pcm.WindowPtr + i - FFTLen/2] / 32768.0 * Hann[4][i];
 
         // FFT
         fftw_execute(Plan1024);
@@ -205,16 +205,14 @@ gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
 
         if      (!Adaptive)  WinIdx = 0;
 
-        else if (SNR >=  30) WinIdx = 0;
-        else if (SNR >=  10) WinIdx = 1;
-        else if (SNR >=   9) WinIdx = 2;
-        else if (SNR >=   3) WinIdx = 3;
-        else if (SNR >=  -5) WinIdx = 4;
-        else if (SNR >= -10) WinIdx = 5;
-        else                 WinIdx = 6;
+        else if (SNR >=   9) WinIdx = 0;
+        else if (SNR >=   3) WinIdx = 1;
+        else if (SNR >=  -5) WinIdx = 2;
+        else if (SNR >= -10) WinIdx = 3;
+        else                 WinIdx = 4;
 
         // Minimum winlength can be doubled for Scottie DX
-        if (Mode == SDX && WinIdx < 6) WinIdx++;
+        if (Mode == SDX && WinIdx < 4) WinIdx++;
 
         WinLength = HannLens[WinIdx];
 

@@ -22,7 +22,7 @@ void GetFSK (char *dest) {
   guint      FFTLen = 2048, i=0, LoBin, HiBin, MidBin, TestNum=0, TestPtr=0;
   guchar     Bit = 0, AsciiByte = 0, BytePtr = 0, TestBits[24] = {0}, BitPtr=0;
   double     HiPow,LoPow,Hann[970];
-  gboolean       InSync = FALSE;
+  gboolean   InSync = FALSE;
 
   // Bit-reversion lookup table
   static const guchar BitRev[] = {
