@@ -125,7 +125,7 @@ gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
         memset(out, 0, sizeof(out[0])*FFTLen);
        
         // Hann window
-        for (i = 0; i < 96; i++) in[i] = pcm.Buffer[pcm.WindowPtr+i-32] / 32768.0 * Hann[0][i];
+        for (i = 0; i < 96; i++) in[i] = pcm.Buffer[pcm.WindowPtr+i-48] / 32768.0 * Hann[0][i];
 
         fftw_execute(Plan1024);
 
