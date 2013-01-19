@@ -1,5 +1,4 @@
 #include <stdlib.h>
-#include <stdbool.h>
 #include <gtk/gtk.h>
 #include <alsa/asoundlib.h>
 #include <math.h>
@@ -61,13 +60,13 @@ void createGUI() {
 
   savedstore = GTK_LIST_STORE(gtk_icon_view_get_model(GTK_ICON_VIEW(gui.iconview)));
 
-  pixbuf_rx   = gdk_pixbuf_new (GDK_COLORSPACE_RGB, false, 8, 320, 256);
+  pixbuf_rx   = gdk_pixbuf_new (GDK_COLORSPACE_RGB, FALSE, 8, 320, 256);
   gdk_pixbuf_fill(pixbuf_rx, 0x000000ff);
   pixbuf_disp = gdk_pixbuf_scale_simple (pixbuf_rx, 500, 400, GDK_INTERP_BILINEAR);
   gtk_image_set_from_pixbuf(GTK_IMAGE(gui.image_rx), pixbuf_disp);
 
-  pixbuf_PWR = gdk_pixbuf_new (GDK_COLORSPACE_RGB, false, 8, 100, 20);
-  pixbuf_SNR = gdk_pixbuf_new (GDK_COLORSPACE_RGB, false, 8, 100, 20);
+  pixbuf_PWR = gdk_pixbuf_new (GDK_COLORSPACE_RGB, FALSE, 8, 100, 20);
+  pixbuf_SNR = gdk_pixbuf_new (GDK_COLORSPACE_RGB, FALSE, 8, 100, 20);
 
   gtk_combo_box_set_active(GTK_COMBO_BOX(gui.combo_mode), 0);
 

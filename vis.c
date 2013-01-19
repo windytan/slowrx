@@ -1,5 +1,4 @@
 #include <stdlib.h>
-#include <stdbool.h>
 #include <math.h>
 #include <gtk/gtk.h>
 #include <alsa/asoundlib.h>
@@ -24,7 +23,7 @@ guchar GetVIS () {
   //gushort    pcm.PeakVal = 0;
   guint      FFTLen = 2048, i=0, j=0, k=0, MaxBin = 0;
   double     Power[2048] = {0}, HedrBuf[100] = {0}, tone[100] = {0}, Hann[882] = {0};
-  bool       gotvis = false;
+  gboolean       gotvis = FALSE;
   guchar     Bit[8] = {0}, ParityBit = 0;
 
   for (i = 0; i < FFTLen; i++) in[i]    = 0;
@@ -32,7 +31,7 @@ guchar GetVIS () {
   // Create 20ms Hann window
   for (i = 0; i < 882; i++) Hann[i] = 0.5 * (1 - cos( (2 * M_PI * (double)i) / 881 ) );
 
-  ManualActivated = false;
+  ManualActivated = FALSE;
   
   printf("Waiting for header\n");
 
@@ -40,7 +39,7 @@ guchar GetVIS () {
   gtk_statusbar_push( GTK_STATUSBAR(gui.statusbar), 0, "Listening" );
   gdk_threads_leave();
 
-  while ( true ) {
+  while ( TRUE ) {
 
     if (Abort || ManualResync) return(0);
 
@@ -78,7 +77,7 @@ guchar GetVIS () {
     // Is there a pattern that looks like (the end of) a calibration header + VIS?
     // Tolerance ±25 Hz
     CurrentPic.HedrShift = 0;
-    gotvis    = false;
+    gotvis    = FALSE;
     for (i = 0; i < 3; i++) {
       if (CurrentPic.HedrShift != 0) break;
       for (j = 0; j < 3; j++) {
@@ -93,12 +92,12 @@ guchar GetVIS () {
 
           // Attempt to read VIS
 
-          gotvis = true;
+          gotvis = TRUE;
           for (k = 0; k < 8; k++) {
             if      (tone[6*3+i+3*k] > tone[0+j] - 625 && tone[6*3+i+3*k] < tone[0+j] - 575) Bit[k] = 0;
             else if (tone[6*3+i+3*k] > tone[0+j] - 825 && tone[6*3+i+3*k] < tone[0+j] - 775) Bit[k] = 1;
             else { // erroneous bit
-              gotvis = false;
+              gotvis = FALSE;
               break;
             }
           }
@@ -117,10 +116,10 @@ guchar GetVIS () {
 
             if (Parity != ParityBit) {
               printf("  Parity fail\n");
-              gotvis = false;
+              gotvis = FALSE;
             } else if (VISmap[VIS] == UNKNOWN) {
               printf("  Unknown VIS\n");
-              gotvis = false;
+              gotvis = FALSE;
             } else {
               gdk_threads_enter();
               gtk_combo_box_set_active (GTK_COMBO_BOX(gui.combo_mode), VISmap[VIS]-1);
@@ -140,8 +139,8 @@ guchar GetVIS () {
     if (ManualActivated) {
 
       gdk_threads_enter();
-      gtk_widget_set_sensitive( gui.frame_manual, false );
-      gtk_widget_set_sensitive( gui.combo_card,   false );
+      gtk_widget_set_sensitive( gui.frame_manual, FALSE );
+      gtk_widget_set_sensitive( gui.combo_card,   FALSE );
       gdk_threads_leave();
 
       selmode   = gtk_combo_box_get_active (GTK_COMBO_BOX(gui.combo_mode)) + 1;

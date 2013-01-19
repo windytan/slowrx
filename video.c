@@ -1,6 +1,5 @@
 #include <stdlib.h>
 #include <stdio.h>
-#include <stdbool.h>
 #include <math.h>
 #include <string.h>
 #include <gtk/gtk.h>
@@ -14,10 +13,10 @@
  *  Mode:      M1, M2, S1, S2, R72, R36...
  *  Rate:      exact sampling rate used
  *  Skip:      number of PCM samples to skip at the beginning (for sync phase adjustment)
- *  Redraw:    false = Apply windowing and FFT to the signal, true = Redraw from cached FFT data
- *  returns:   true when finished, false when aborted
+ *  Redraw:    FALSE = Apply windowing and FFT to the signal, TRUE = Redraw from cached FFT data
+ *  returns:   TRUE when finished, FALSE when aborted
  */
-bool GetVideo(guchar Mode, double Rate, int Skip, bool Redraw) {
+gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
 
   guint      MaxBin = 0;
   guint      VideoPlusNoiseBins=0, ReceiverBins=0, NoiseOnlyBins=0;
@@ -80,7 +79,7 @@ bool GetVideo(guchar Mode, double Rate, int Skip, bool Redraw) {
   // Initialize pixbuffer
   if (!Redraw) {
     g_object_unref(pixbuf_rx);
-    pixbuf_rx = gdk_pixbuf_new (GDK_COLORSPACE_RGB, false, 8, ModeSpec[Mode].ImgWidth, ModeSpec[Mode].ImgHeight);
+    pixbuf_rx = gdk_pixbuf_new (GDK_COLORSPACE_RGB, FALSE, 8, ModeSpec[Mode].ImgWidth, ModeSpec[Mode].ImgHeight);
     gdk_pixbuf_fill(pixbuf_rx, 0);
   }
 
@@ -99,7 +98,7 @@ bool GetVideo(guchar Mode, double Rate, int Skip, bool Redraw) {
   Length        = ModeSpec[Mode].LineLen * ModeSpec[Mode].ImgHeight * 44100;
   SyncTargetBin = GetBin(1200+CurrentPic.HedrShift, FFTLen);
   LopassBin     = GetBin(5000, FFTLen);
-  Abort         = false;
+  Abort         = FALSE;
   SyncSampleNum = 0;
 
   // Loop through signal
@@ -143,8 +142,8 @@ bool GetVideo(guchar Mode, double Rate, int Skip, bool Redraw) {
 
         // If there is more than twice the amount of power per Hz in the
         // sync band than in the video band, we have a sync signal here
-        if (Psync > 2*Praw)  HasSync[SyncSampleNum] = true;
-        else                 HasSync[SyncSampleNum] = false;
+        if (Psync > 2*Praw)  HasSync[SyncSampleNum] = TRUE;
+        else                 HasSync[SyncSampleNum] = FALSE;
 
         NextSyncTime += SYNCPIXLEN;
         SyncSampleNum ++;
@@ -394,12 +393,12 @@ bool GetVideo(guchar Mode, double Rate, int Skip, bool Redraw) {
       pcm.PeakVal = 0;
     }
 
-    if (Abort) return false;
+    if (Abort) return FALSE;
 
     pcm.WindowPtr ++;
 
   }
 
-  return true;
+  return TRUE;
 
 }

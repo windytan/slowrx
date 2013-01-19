@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdbool.h>
 #include <string.h>
 
 #include <gtk/gtk.h>
@@ -31,7 +30,7 @@ void readPcm(gint numsamples) {
     else if (samplesread < 0) {
       printf("ALSA error %d (%s)\n", samplesread, snd_strerror(samplesread));
       gtk_widget_set_tooltip_text(gui.image_devstatus, "ALSA error");
-      Abort = true;
+      Abort = TRUE;
       pthread_exit(NULL);
     }
     else
@@ -43,7 +42,7 @@ void readPcm(gint numsamples) {
       gtk_image_set_from_stock(GTK_IMAGE(gui.image_devstatus),GTK_STOCK_DIALOG_WARNING,GTK_ICON_SIZE_SMALL_TOOLBAR);
       gtk_widget_set_tooltip_text(gui.image_devstatus, "Device is dropping samples");
       gdk_threads_leave();
-      pcm.BufferDrop = true;
+      pcm.BufferDrop = TRUE;
     }
 
   }
@@ -111,24 +110,24 @@ int initPcmDevice(char *wanteddevname) {
   char                 pcm_name[30];
   unsigned int         exact_rate = 44100;
   int                  card;
-  bool                 found;
+  gboolean                 found;
   char                *cardname;
 
-  pcm.BufferDrop = false;
+  pcm.BufferDrop = FALSE;
 
   snd_pcm_hw_params_alloca(&hwparams);
 
   card  = -1;
-  found = false;
+  found = FALSE;
   if (strcmp(wanteddevname,"default") == 0) {
-    found=true;
+    found=TRUE;
   } else {
     do {
       snd_card_next(&card);
       if (card != -1) {
         snd_card_get_name(card,&cardname);
         if (strcmp(cardname, wanteddevname) == 0) {
-          found=true;
+          found=TRUE;
           break;
         }
       }

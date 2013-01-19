@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdbool.h>
 #include <math.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -12,13 +11,13 @@
 
 #include "common.h"
 
-bool         Abort           = false;
-bool         Adaptive        = true;
+gboolean     Abort           = FALSE;
+gboolean     Adaptive        = TRUE;
 double      *in              = NULL;
-bool        *HasSync         = NULL;
+gboolean    *HasSync         = NULL;
 gshort       HedrShift       = 0;
-bool         ManualActivated = false;
-bool         ManualResync    = false;
+gboolean     ManualActivated = FALSE;
+gboolean     ManualResync    = FALSE;
 double      *out             = NULL;
 guchar      *StoredLum       = NULL;
 
@@ -89,7 +88,7 @@ void saveCurrentPic() {
   ensure_dir_exists(g_key_file_get_string(config,"slowrx","rxdir",NULL));
   gdk_pixbuf_savev(scaledpb, pngfilename->str, "png", NULL, NULL, NULL);
   g_object_unref(scaledpb);
-  g_string_free(pngfilename, true);
+  g_string_free(pngfilename, TRUE);
 }
 
 
@@ -108,12 +107,12 @@ void evt_GetAdaptive() {
 
 // Manual Start clicked
 void evt_ManualStart() {
-  ManualActivated = true;
+  ManualActivated = TRUE;
 }
 
 // Abort clicked during rx
 void evt_AbortRx() {
-  Abort = true;
+  Abort = TRUE;
 }
 
 // Another device selected from list
@@ -121,8 +120,8 @@ void evt_changeDevices() {
 
   int status;
 
-  pcm.BufferDrop = false;
-  Abort = true;
+  pcm.BufferDrop = FALSE;
+  Abort = TRUE;
 
   pthread_join(thread1, NULL);
 
@@ -164,7 +163,7 @@ void evt_clearPix() {
 // Manual slant adjust
 void evt_clickimg(GtkWidget *widget, GdkEventButton* event, GdkWindowEdge edge) {
   static double prevx=0,prevy=0,newrate;
-  static bool   secondpress=false;
+  static gboolean   secondpress=FALSE;
   double        x,y,dx,dy,xic;
 
   (void)widget;
@@ -176,12 +175,12 @@ void evt_clickimg(GtkWidget *widget, GdkEventButton* event, GdkWindowEdge edge) 
     y = event->y * (ModeSpec[CurrentPic.Mode].ImgWidth / 500.0) / ModeSpec[CurrentPic.Mode].YScale;
 
     if (secondpress) {
-      secondpress=false;
+      secondpress=FALSE;
 
       dx = x - prevx;
       dy = y - prevy;
 
-      gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON(gui.tog_setedge),false);
+      gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON(gui.tog_setedge),FALSE);
 
       // Adjust sample rate, if in sensible limits
       newrate = CurrentPic.Rate + CurrentPic.Rate * (dx * ModeSpec[CurrentPic.Mode].PixelLen) / (dy * ModeSpec[CurrentPic.Mode].YScale * ModeSpec[CurrentPic.Mode].LineLen);
@@ -197,16 +196,16 @@ void evt_clickimg(GtkWidget *widget, GdkEventButton* event, GdkWindowEdge edge) 
           CurrentPic.Skip -= ModeSpec[CurrentPic.Mode].LineLen * CurrentPic.Rate;
 
         // Signal the listener to exit from GetVIS() and re-process the pic
-        ManualResync = true;
+        ManualResync = TRUE;
       }
 
     } else {
-      secondpress = true;
+      secondpress = TRUE;
       prevx = x;
       prevy = y;
     }
   } else {
-    secondpress=false;
-    gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON(gui.tog_setedge), false);
+    secondpress=FALSE;
+    gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON(gui.tog_setedge), FALSE);
   }
 }

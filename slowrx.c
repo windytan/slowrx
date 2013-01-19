@@ -6,7 +6,6 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdbool.h>
 #include <math.h>
 #include <time.h>
 #include <sys/stat.h>
@@ -29,22 +28,22 @@ void *Listen() {
   guchar      Mode=0;
   struct tm  *timeptr = NULL;
   time_t      timet;
-  bool        Finished;
+  gboolean        Finished;
   char        id[20];
   GtkTreeIter iter;
 
-  while (true) {
+  while (TRUE) {
 
     gdk_threads_enter        ();
-    gtk_widget_set_sensitive (gui.grid_vu,      true);
-    gtk_widget_set_sensitive (gui.button_abort, false);
-    gtk_widget_set_sensitive (gui.button_clear, true);
+    gtk_widget_set_sensitive (gui.grid_vu,      TRUE);
+    gtk_widget_set_sensitive (gui.button_abort, FALSE);
+    gtk_widget_set_sensitive (gui.button_clear, TRUE);
     gdk_threads_leave        ();
 
     pcm.WindowPtr = 0;
     snd_pcm_prepare(pcm.handle);
     snd_pcm_start  (pcm.handle);
-    Abort = false;
+    Abort = FALSE;
 
     do {
 
@@ -56,10 +55,10 @@ void *Listen() {
 
       // If manual resync was requested, redraw image
       if (ManualResync) {
-        ManualResync = false;
+        ManualResync = FALSE;
         snd_pcm_drop(pcm.handle);
         printf("getvideo at %.2f skip %d\n",CurrentPic.Rate,CurrentPic.Skip);
-        GetVideo(CurrentPic.Mode, CurrentPic.Rate, CurrentPic.Skip, true);
+        GetVideo(CurrentPic.Mode, CurrentPic.Rate, CurrentPic.Skip, TRUE);
         if (gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON(gui.tog_save)))
           saveCurrentPic();
         pcm.WindowPtr = 0;
@@ -91,7 +90,7 @@ void *Listen() {
     }
 
     // Allocate space for sync signal
-    HasSync = calloc((int)(ModeSpec[CurrentPic.Mode].LineLen * ModeSpec[CurrentPic.Mode].ImgHeight / SYNCPIXLEN +1), sizeof(bool));
+    HasSync = calloc((int)(ModeSpec[CurrentPic.Mode].LineLen * ModeSpec[CurrentPic.Mode].ImgHeight / SYNCPIXLEN +1), sizeof(gboolean));
     if (HasSync == NULL) {
       perror("Listen: Unable to allocate memory for sync signal");
       exit(EXIT_FAILURE);
@@ -101,22 +100,22 @@ void *Listen() {
     strftime(rctime,  sizeof(rctime)-1, "%H:%Mz", timeptr);
     gdk_threads_enter        ();
     gtk_label_set_text       (GTK_LABEL(gui.label_fskid), "");
-    gtk_widget_set_sensitive (gui.frame_manual, false);
-    gtk_widget_set_sensitive (gui.frame_slant,  false);
-    gtk_widget_set_sensitive (gui.combo_card,   false);
-    gtk_widget_set_sensitive (gui.button_abort, true);
-    gtk_widget_set_sensitive (gui.button_clear, false);
-    gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON(gui.tog_setedge), false);
+    gtk_widget_set_sensitive (gui.frame_manual, FALSE);
+    gtk_widget_set_sensitive (gui.frame_slant,  FALSE);
+    gtk_widget_set_sensitive (gui.combo_card,   FALSE);
+    gtk_widget_set_sensitive (gui.button_abort, TRUE);
+    gtk_widget_set_sensitive (gui.button_clear, FALSE);
+    gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON(gui.tog_setedge), FALSE);
     gtk_statusbar_push       (GTK_STATUSBAR(gui.statusbar), 0, "Receiving video..." );
     gtk_label_set_markup     (GTK_LABEL(gui.label_lastmode), ModeSpec[CurrentPic.Mode].Name);
     gtk_label_set_markup     (GTK_LABEL(gui.label_utc), rctime);
     gdk_threads_leave        ();
     printf("  getvideo @ %.1f Hz, Skip %d, HedrShift %+d Hz\n", 44100.0, 0, CurrentPic.HedrShift);
 
-    Finished = GetVideo(CurrentPic.Mode, 44100, 0, false);
+    Finished = GetVideo(CurrentPic.Mode, 44100, 0, FALSE);
 
     gdk_threads_enter        ();
-    gtk_widget_set_sensitive (gui.button_abort, false);
+    gtk_widget_set_sensitive (gui.button_abort, FALSE);
     gdk_threads_leave        ();
     
     id[0] = '\0';
@@ -140,14 +139,14 @@ void *Listen() {
       setVU(0,-100);
       gdk_threads_enter        ();
       gtk_statusbar_push       (GTK_STATUSBAR(gui.statusbar), 0, "Calculating slant..." );
-      gtk_widget_set_sensitive (gui.grid_vu, false);
+      gtk_widget_set_sensitive (gui.grid_vu, FALSE);
       gdk_threads_leave        ();
       printf("  FindSync @ %.1f Hz\n",CurrentPic.Rate);
       CurrentPic.Rate = FindSync(CurrentPic.Mode, CurrentPic.Rate, &CurrentPic.Skip);
    
       // Final image  
       printf("  getvideo @ %.1f Hz, Skip %d, HedrShift %+d Hz\n", CurrentPic.Rate, CurrentPic.Skip, CurrentPic.HedrShift);
-      GetVideo(CurrentPic.Mode, CurrentPic.Rate, CurrentPic.Skip, true);
+      GetVideo(CurrentPic.Mode, CurrentPic.Rate, CurrentPic.Skip, TRUE);
     }
 
     free (HasSync);
@@ -177,9 +176,9 @@ void *Listen() {
     }
        
     gdk_threads_enter        ();
-    gtk_widget_set_sensitive (gui.frame_slant,  true);
-    gtk_widget_set_sensitive (gui.frame_manual, true);
-    gtk_widget_set_sensitive (gui.combo_card,   true);
+    gtk_widget_set_sensitive (gui.frame_slant,  TRUE);
+    gtk_widget_set_sensitive (gui.frame_manual, TRUE);
+    gtk_widget_set_sensitive (gui.combo_card,   TRUE);
     gdk_threads_leave        ();
     
   }

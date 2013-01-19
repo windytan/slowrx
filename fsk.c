@@ -1,5 +1,4 @@
 #include <stdlib.h>
-#include <stdbool.h>
 #include <math.h>
 #include <gtk/gtk.h>
 #include <alsa/asoundlib.h>
@@ -23,7 +22,7 @@ void GetFSK (char *dest) {
   guint      FFTLen = 2048, i=0, LoBin, HiBin, MidBin, TestNum=0, TestPtr=0;
   guchar     Bit = 0, AsciiByte = 0, BytePtr = 0, TestBits[24] = {0}, BitPtr=0;
   double     HiPow,LoPow,Hann[970];
-  bool       InSync = false;
+  gboolean       InSync = FALSE;
 
   // Bit-reversion lookup table
   static const guchar BitRev[] = {
@@ -41,7 +40,7 @@ void GetFSK (char *dest) {
   // Create 22ms Hann window
   for (i = 0; i < 970; i++) Hann[i] = 0.5 * (1 - cos( 2 * M_PI * i / 969.0 ) );
 
-  while ( true ) {
+  while ( TRUE ) {
 
     // Read data from DSP
     readPcm(InSync ? 970: 485);
@@ -78,7 +77,7 @@ void GetFSK (char *dest) {
       for (i=0; i<12; i++) TestNum |= TestBits[(TestPtr - (23-i*2)) % 24] << (11-i);
 
       if (BitRev[(TestNum >>  6) & 0x3f] == 0x20 && BitRev[TestNum & 0x3f] == 0x2a) {
-        InSync    = true;
+        InSync    = TRUE;
         AsciiByte = 0;
         BitPtr    = 0;
         BytePtr   = 0;

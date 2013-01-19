@@ -6,12 +6,12 @@
 #define BUFLEN   4096
 #define SYNCPIXLEN 1.5e-3
 
-extern bool       Abort;
-extern bool       Adaptive;
-extern bool      *HasSync;
+extern gboolean   Abort;
+extern gboolean   Adaptive;
+extern gboolean  *HasSync;
 extern double    *in;
-extern bool       ManualActivated;
-extern bool       ManualResync;
+extern gboolean   ManualActivated;
+extern gboolean   ManualResync;
 extern double    *out;
 extern guchar    *StoredLum;
 extern pthread_t  thread1;
@@ -23,7 +23,7 @@ struct _PcmData {
   int        PeakVal;
   gint16    *Buffer;
   int        WindowPtr;
-  bool       BufferDrop;
+  gboolean   BufferDrop;
 };
 extern PcmData pcm;
 
@@ -124,7 +124,7 @@ void     createGUI     ();
 double   deg2rad       (double Deg);
 double   FindSync      (guchar Mode, double Rate, int *Skip);
 void     GetFSK        (char *dest);
-bool     GetVideo      (guchar Mode, double Rate, int Skip, bool Redraw);
+gboolean GetVideo      (guchar Mode, double Rate, int Skip, gboolean Redraw);
 guchar   GetVIS        ();
 guint    GetBin        (double Freq, guint FFTLen);
 int      initPcmDevice ();

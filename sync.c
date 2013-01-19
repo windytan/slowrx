@@ -1,5 +1,4 @@
 #include <stdlib.h>
-#include <stdbool.h>
 #include <math.h>
 #include <string.h>
 #include <fftw3.h>
@@ -24,14 +23,14 @@ double FindSync (guchar Mode, double Rate, int *Skip) {
   gushort  xAcc[700] = {0};
   gushort  lines[600][(MAXSLANT-MINSLANT)*2];
   gushort  cy, cx, Retries = 0;
-  bool     SyncImg[700][630] = {{false}};
+  gboolean     SyncImg[700][630] = {{FALSE}};
   double   t=0, slantAngle, s;
   double   ConvoFilter[8] = { 1,1,1,1,-1,-1,-1,-1 };
   double   convd, maxconvd=0;
   int      xmax=0;
 
   // Repeat until slant < 0.5° or until we give up
-  while (true) {
+  while (TRUE) {
 
     // Draw the 2D sync signal at current rate
     
