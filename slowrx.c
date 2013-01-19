@@ -41,9 +41,9 @@ void *Listen() {
     gtk_widget_set_sensitive (gui.button_clear, true);
     gdk_threads_leave        ();
 
-    PcmPointer = 0;
-    snd_pcm_prepare(pcm_handle);
-    snd_pcm_start  (pcm_handle);
+    pcm.WindowPtr = 0;
+    snd_pcm_prepare(pcm.handle);
+    snd_pcm_start  (pcm.handle);
     Abort = false;
 
     do {
@@ -57,14 +57,14 @@ void *Listen() {
       // If manual resync was requested, redraw image
       if (ManualResync) {
         ManualResync = false;
-        snd_pcm_drop(pcm_handle);
+        snd_pcm_drop(pcm.handle);
         printf("getvideo at %.2f skip %d\n",CurrentPic.Rate,CurrentPic.Skip);
         GetVideo(CurrentPic.Mode, CurrentPic.Rate, CurrentPic.Skip, true);
         if (gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON(gui.tog_save)))
           saveCurrentPic();
-        PcmPointer = 0;
-        snd_pcm_prepare(pcm_handle);
-        snd_pcm_start  (pcm_handle);
+        pcm.WindowPtr = 0;
+        snd_pcm_prepare(pcm.handle);
+        snd_pcm_start  (pcm.handle);
       }
 
     } while (Mode == 0);
@@ -132,7 +132,7 @@ void *Listen() {
       gdk_threads_leave  ();
     }
 
-    snd_pcm_drop(pcm_handle);
+    snd_pcm_drop(pcm.handle);
 
     if (Finished && gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(gui.tog_slant))) {
 

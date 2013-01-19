@@ -21,7 +21,7 @@ guchar GetVIS () {
   int        selmode, ptr=0;
   //int        Pointer = 0;
   int        VIS = 0, Parity = 0, HedrPtr = 0;
-  //gushort    MaxPcm = 0;
+  //gushort    pcm.PeakVal = 0;
   guint      FFTLen = 2048, i=0, j=0, k=0, MaxBin = 0;
   double     Power[2048] = {0}, HedrBuf[100] = {0}, tone[100] = {0}, Hann[882] = {0};
   bool       gotvis = false;
@@ -48,7 +48,7 @@ guchar GetVIS () {
     readPcm(441);
 
     // Apply Hann window
-    for (i = 0; i < 882; i++) in[i] = PcmBuffer[PcmPointer + i - 441] / 32768.0 * Hann[i];
+    for (i = 0; i < 882; i++) in[i] = pcm.Buffer[pcm.WindowPtr + i - 441] / 32768.0 * Hann[i];
 
     // FFT of last 20 ms
     fftw_execute(Plan2048);
@@ -158,17 +158,17 @@ guchar GetVIS () {
     }
 
     if (++ptr == 25) {
-      setVU(MaxPcm, -20);
-      MaxPcm = 0;
+      setVU(pcm.PeakVal, -20);
+      pcm.PeakVal = 0;
       ptr = 0;
     }
 
-    PcmPointer += 441;
+    pcm.WindowPtr += 441;
   }
 
   // Skip the rest of the stop bit
   readPcm(20e-3 * 44100);
-  PcmPointer += 20e-3 * 44100;
+  pcm.WindowPtr += 20e-3 * 44100;
 
   if (VISmap[VIS] != UNKNOWN) return VISmap[VIS];
   else                        printf("  No VIS found\n");

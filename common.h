@@ -8,18 +8,24 @@
 
 extern bool       Abort;
 extern bool       Adaptive;
-extern bool       BufferDrop;
 extern bool      *HasSync;
 extern double    *in;
 extern bool       ManualActivated;
 extern bool       ManualResync;
-extern int        MaxPcm;
 extern double    *out;
-extern gint16    *PcmBuffer;
-extern int        PcmPointer;
 extern guchar    *StoredLum;
 extern pthread_t  thread1;
 extern guchar     VISmap[];
+
+typedef struct _PcmData PcmData;
+struct _PcmData {
+  snd_pcm_t *handle;
+  int        PeakVal;
+  gint16    *Buffer;
+  int        WindowPtr;
+  bool       BufferDrop;
+};
+extern PcmData pcm;
 
 typedef struct _GuiObjs GuiObjs;
 struct _GuiObjs {
@@ -66,7 +72,6 @@ extern GtkListStore *savedstore;
 
 extern GKeyFile  *config;
 
-extern snd_pcm_t *pcm_handle;
 
 extern fftw_plan  Plan1024;
 extern fftw_plan  Plan2048;
@@ -80,7 +85,6 @@ struct _PicMeta {
   GdkPixbuf *thumbbuf;
   char   timestr[40];
 };
-
 extern PicMeta CurrentPic;
 
 // SSTV modes

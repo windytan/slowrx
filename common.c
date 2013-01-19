@@ -14,22 +14,19 @@
 
 bool         Abort           = false;
 bool         Adaptive        = true;
-bool         BufferDrop      = false;
 double      *in              = NULL;
 bool        *HasSync         = NULL;
 gshort       HedrShift       = 0;
 bool         ManualActivated = false;
 bool         ManualResync    = false;
-int          MaxPcm          = 0;
 double      *out             = NULL;
-gint16      *PcmBuffer       = NULL;
-int          PcmPointer      = 0;
 guchar      *StoredLum       = NULL;
 
 pthread_t    thread1;
 
 GuiObjs      gui;
 PicMeta      CurrentPic;
+PcmData      pcm;
 
 GdkPixbuf   *pixbuf_rx       = NULL;
 GdkPixbuf   *pixbuf_disp     = NULL;
@@ -39,8 +36,6 @@ GdkPixbuf   *pixbuf_SNR      = NULL;
 GtkListStore *savedstore     = NULL;
 
 GKeyFile    *config          = NULL;
-
-snd_pcm_t   *pcm_handle      = NULL;
 
 fftw_plan    Plan1024        = NULL;
 fftw_plan    Plan2048        = NULL;
@@ -126,12 +121,12 @@ void evt_changeDevices() {
 
   int status;
 
-  BufferDrop = false;
+  pcm.BufferDrop = false;
   Abort = true;
 
   pthread_join(thread1, NULL);
 
-  if (pcm_handle != NULL) snd_pcm_close(pcm_handle);
+  if (pcm.handle != NULL) snd_pcm_close(pcm.handle);
 
   status = initPcmDevice(gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(gui.combo_card)));
 

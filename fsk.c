@@ -47,9 +47,9 @@ void GetFSK (char *dest) {
     readPcm(InSync ? 970: 485);
 
     // Apply Hann window
-    for (i = 0; i < 970; i++) in[i] = PcmBuffer[PcmPointer+i- 485] * Hann[i];
+    for (i = 0; i < 970; i++) in[i] = pcm.Buffer[pcm.WindowPtr+i- 485] * Hann[i];
     
-    PcmPointer += (InSync ? 970 : 485);
+    pcm.WindowPtr += (InSync ? 970 : 485);
 
     // FFT of last 22 ms
     fftw_execute(Plan2048);

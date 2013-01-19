@@ -28,7 +28,7 @@ bool GetVideo(guchar Mode, double Rate, int Skip, bool Redraw) {
   guint      FFTLen=1024, WinLength=0;
   guint      LopassBin,SyncTargetBin;
   int        LineNum = 0, SampleNum, Length;
-  int        x = 0, y = 0, prevline=0, tx=0, MaxPcm=0;
+  int        x = 0, y = 0, prevline=0, tx=0;
   double     Hann[7][1024] = {{0}};
   double     t=0, Freq = 0, PrevFreq = 0, InterpFreq = 0, NextPixelTime = 0, NextSNRtime = 0, NextFFTtime = 0;
   double     NextSyncTime = 0;
@@ -114,7 +114,7 @@ bool GetVideo(guchar Mode, double Rate, int Skip, bool Redraw) {
 
       /*** Read ahead from sound card ***/
 
-      if (PcmPointer == 0 || PcmPointer >= BUFLEN-1024) readPcm(2048);
+      if (pcm.WindowPtr == 0 || pcm.WindowPtr >= BUFLEN-1024) readPcm(2048);
      
 
       /*** Store the sync band for later adjustments ***/
@@ -127,7 +127,7 @@ bool GetVideo(guchar Mode, double Rate, int Skip, bool Redraw) {
         memset(out, 0, sizeof(out[0])*FFTLen);
        
         // Hann window
-        for (i = 0; i < 64; i++) in[i] = PcmBuffer[PcmPointer+i-32] / 32768.0 * Hann[1][i];
+        for (i = 0; i < 64; i++) in[i] = pcm.Buffer[pcm.WindowPtr+i-32] / 32768.0 * Hann[1][i];
 
         fftw_execute(Plan1024);
 
@@ -158,7 +158,7 @@ bool GetVideo(guchar Mode, double Rate, int Skip, bool Redraw) {
       if (t >= NextSNRtime) {
 
         // Apply Hann window
-        for (i = 0; i < FFTLen; i++) in[i] = PcmBuffer[PcmPointer + i - FFTLen/2] / 32768.0 * Hann[6][i];
+        for (i = 0; i < FFTLen; i++) in[i] = pcm.Buffer[pcm.WindowPtr + i - FFTLen/2] / 32768.0 * Hann[6][i];
 
         // FFT
         fftw_execute(Plan1024);
@@ -224,7 +224,7 @@ bool GetVideo(guchar Mode, double Rate, int Skip, bool Redraw) {
 
         // Apply window function
 
-        for (i = 0; i < WinLength; i++) in[i] = PcmBuffer[PcmPointer + i - WinLength/2] / 32768.0 * Hann[WinIdx][i];
+        for (i = 0; i < WinLength; i++) in[i] = pcm.Buffer[pcm.WindowPtr + i - WinLength/2] / 32768.0 * Hann[WinIdx][i];
 
         fftw_execute(Plan1024);
 
@@ -254,7 +254,7 @@ bool GetVideo(guchar Mode, double Rate, int Skip, bool Redraw) {
 
       }
 
-      // Linear interpolation of intermediate frequencies
+      // Linear interpolation of (chronologically) intermediate frequencies
       InterpFreq = PrevFreq + (t - NextFFTtime + 0.6e-3) * ((Freq - PrevFreq) / 0.3e-3);
 
       // Calculate luminency & store for later use
@@ -391,13 +391,13 @@ bool GetVideo(guchar Mode, double Rate, int Skip, bool Redraw) {
     }
 
     if (!Redraw && SampleNum % 8820 == 0) {
-      setVU(MaxPcm, SNR);
-      MaxPcm = 0;
+      setVU(pcm.PeakVal, SNR);
+      pcm.PeakVal = 0;
     }
 
     if (Abort) return false;
 
-    PcmPointer ++;
+    pcm.WindowPtr ++;
 
   }
 
