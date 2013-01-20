@@ -108,7 +108,7 @@ double FindSync (guchar Mode, double Rate, int *Skip) {
     for (int i=0;i<8;i++) convd += xAcc[x+i] * ConvoFilter[i];
     if (convd > maxconvd) {
       maxconvd = convd;
-      xmax = x;
+      xmax = x+4;
     }
   }
 

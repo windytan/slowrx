@@ -28,7 +28,7 @@ gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
   int        LineNum = 0, SampleNum, Length;
   int        x = 0, y = 0, prevline=0, tx=0;
   double     Hann[7][1024] = {{0}};
-  double     t=0, Freq = 0, PrevFreq = 0, InterpFreq = 0, NextPixelTime = 0, NextSNRtime = 0, NextFFTtime = 0;
+  double     t=0, Freq = 0, PrevFreq = 0, InterpFreq = 0, NextPixelTime = 0, NextSNRtime = 0;
   double     NextSyncTime = 0;
   double     Praw, Psync;
   double     Power[1024] = {0};
@@ -40,8 +40,8 @@ gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
   guchar     Channel = 0, WinIdx = 0;
     
   // Initialize Hann windows of different lengths
-  gushort HannLens[5] = { 96, 128, 256, 512, 1024 };
-  for (j = 0; j < 5; j++)
+  gushort HannLens[6] = { 64, 96, 128, 256, 512, 1024 };
+  for (j = 0; j < 6; j++)
     for (i = 0; i < HannLens[j]; i++)
       Hann[j][i] = 0.5 * (1 - cos( (2 * M_PI * i) / (HannLens[j] - 1)) );
 
@@ -125,7 +125,7 @@ gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
         memset(out, 0, sizeof(out[0])*FFTLen);
        
         // Hann window
-        for (i = 0; i < 96; i++) in[i] = pcm.Buffer[pcm.WindowPtr+i-48] / 32768.0 * Hann[0][i];
+        for (i = 0; i < 64; i++) in[i] = pcm.Buffer[pcm.WindowPtr+i-32] / 32768.0 * Hann[0][i];
 
         fftw_execute(Plan1024);
 
@@ -156,7 +156,7 @@ gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
       if (t >= NextSNRtime) {
 
         // Apply Hann window
-        for (i = 0; i < FFTLen; i++) in[i] = pcm.Buffer[pcm.WindowPtr + i - FFTLen/2] / 32768.0 * Hann[4][i];
+        for (i = 0; i < FFTLen; i++) in[i] = pcm.Buffer[pcm.WindowPtr + i - FFTLen/2] / 32768.0 * Hann[5][i];
 
         // FFT
         fftw_execute(Plan1024);
@@ -197,22 +197,23 @@ gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
 
       /*** FM demodulation ***/
 
-      if (t >= NextFFTtime) {
+      if (t >= NextPixelTime) {
 
         PrevFreq = Freq;
 
         // Adapt window size to SNR
 
         if      (!Adaptive)  WinIdx = 0;
-
-        else if (SNR >=   9) WinIdx = 0;
-        else if (SNR >=   3) WinIdx = 1;
-        else if (SNR >=  -5) WinIdx = 2;
-        else if (SNR >= -10) WinIdx = 3;
-        else                 WinIdx = 4;
+        
+        else if (SNR >=  10) WinIdx = 0;
+        else if (SNR >=   9) WinIdx = 1;
+        else if (SNR >=   3) WinIdx = 2;
+        else if (SNR >=  -5) WinIdx = 3;
+        else if (SNR >= -10) WinIdx = 4;
+        else                 WinIdx = 5;
 
         // Minimum winlength can be doubled for Scottie DX
-        if (Mode == SDX && WinIdx < 4) WinIdx++;
+        if (Mode == SDX && WinIdx < 5) WinIdx++;
 
         WinLength = HannLens[WinIdx];
 
@@ -246,12 +247,10 @@ gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
           Freq = ( (MaxBin > GetBin(1900 + CurrentPic.HedrShift, FFTLen)) ? 2300 : 1500 ) + CurrentPic.HedrShift;
         }
 
-        NextFFTtime += 0.3e-3;
-
       }
 
       // Linear interpolation of (chronologically) intermediate frequencies
-      InterpFreq = PrevFreq + (t - NextFFTtime + 0.6e-3) * ((Freq - PrevFreq) / 0.3e-3);
+      InterpFreq = PrevFreq + (Freq-PrevFreq) * ((t-(NextPixelTime-ModeSpec[Mode].PixelLen))/ModeSpec[Mode].PixelLen);
 
       // Calculate luminency & store for later use
       StoredLum[SampleNum] = clip((InterpFreq - (1500 + CurrentPic.HedrShift)) / 3.1372549);
@@ -261,10 +260,10 @@ gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
 
     /*** Are we on a video line, and should we sample a pixel? ***/
 
-    if ( ( (CurLineTime >= ChanStart[0] && CurLineTime < ChanStart[0] + ChanLen[0])
+    if (  ((CurLineTime >= ChanStart[0] && CurLineTime < ChanStart[0] + ChanLen[0])
         || (CurLineTime >= ChanStart[1] && CurLineTime < ChanStart[1] + ChanLen[1])
         || (CurLineTime >= ChanStart[2] && CurLineTime < ChanStart[2] + ChanLen[2]) )
-        && t >= NextPixelTime
+      && t >= NextPixelTime
        ) {
 
       LineNum = t / ModeSpec[Mode].LineLen;
@@ -381,9 +380,14 @@ gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
           gdk_threads_leave();
         }
       }
+
+      if (LineNum > prevline)
+        NextPixelTime = t + ModeSpec[Mode].PixelLen/3; // take 3 samples per pixel; to better allow for redraw
+      else
+        NextPixelTime += ModeSpec[Mode].PixelLen/3;
+
       prevline = LineNum;
 
-      NextPixelTime += ModeSpec[Mode].PixelLen / 2;
     }
 
     if (!Redraw && SampleNum % 8820 == 0) {
