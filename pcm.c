@@ -183,6 +183,7 @@ int initPcmDevice(char *wanteddevname) {
   }
 
   pcm.Buffer = calloc( BUFLEN, sizeof(gint16));
+  memset(pcm.Buffer, 0, BUFLEN);
   
   if (exact_rate != 44100) {
     fprintf(stderr, "ALSA: Got %d Hz instead of 44100. Expect artifacts.\n", exact_rate);

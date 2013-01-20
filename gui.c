@@ -77,16 +77,16 @@ void createGUI() {
     gtk_entry_set_text(GTK_ENTRY(gui.entry_picdir),g_key_file_get_string(config,"slowrx","rxdir",NULL));
   }
 
-  setVU(0, -100);
+  setVU(0, 6);
 
   gtk_widget_show_all  (gui.window_main);
 
 }
 
 // Draw signal level meters according to given values
-void setVU (short int PcmValue, double SNRdB) {
+void setVU (short int PcmValue, int WinIdx) {
   int          x,y;
-  int          PWRdB = (int)round(10 * log10(pow(PcmValue/32767.0,2)));
+  int          PWRdB;
   guchar       *pixelsPWR, *pixelsSNR, *pPWR, *pSNR;
   unsigned int rowstridePWR,rowstrideSNR;
 
@@ -95,6 +95,11 @@ void setVU (short int PcmValue, double SNRdB) {
   
   rowstrideSNR = gdk_pixbuf_get_rowstride (pixbuf_SNR);
   pixelsSNR    = gdk_pixbuf_get_pixels    (pixbuf_SNR);
+
+  if (PcmValue == 0)
+    PWRdB = 0;
+  else
+    PWRdB = (int)round(10 * log10(pow(PcmValue/32767.0,2)));
 
   for (y=0; y<20; y++) {
     for (x=0; x<100; x++) {
@@ -112,7 +117,7 @@ void setVU (short int PcmValue, double SNRdB) {
           pPWR[0] = pPWR[1] = pPWR[2] = 0x80;
         }
 
-        if (SNRdB >= -0.6*x+40) {
+        if ((6-WinIdx)/0.06 > 100-x) {
           pSNR[0] = 0xef;
           pSNR[1] = 0xe4;
           pSNR[2] = 0x34;

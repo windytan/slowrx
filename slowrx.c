@@ -83,14 +83,14 @@ void *Listen() {
 
     // Allocate space for cached Lum
     free(StoredLum);
-    StoredLum = calloc( (int)(ModeSpec[CurrentPic.Mode].LineLen * ModeSpec[CurrentPic.Mode].ImgHeight + 1) * 44100, sizeof(guchar));
+    StoredLum = calloc( (int)((ModeSpec[CurrentPic.Mode].LineLen * ModeSpec[CurrentPic.Mode].ImgHeight + 1) * 44100), sizeof(guchar));
     if (StoredLum == NULL) {
       perror("Listen: Unable to allocate memory for Lum");
       exit(EXIT_FAILURE);
     }
 
     // Allocate space for sync signal
-    HasSync = calloc((int)(ModeSpec[CurrentPic.Mode].LineLen * ModeSpec[CurrentPic.Mode].ImgHeight / SYNCPIXLEN +1), sizeof(gboolean));
+    HasSync = calloc((int)(ModeSpec[CurrentPic.Mode].LineLen * ModeSpec[CurrentPic.Mode].ImgHeight / (13.0/44100) +1), sizeof(gboolean));
     if (HasSync == NULL) {
       perror("Listen: Unable to allocate memory for sync signal");
       exit(EXIT_FAILURE);
@@ -136,7 +136,7 @@ void *Listen() {
     if (Finished && gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(gui.tog_slant))) {
 
       // Fix slant
-      setVU(0,-100);
+      setVU(0,6);
       gdk_threads_enter        ();
       gtk_statusbar_push       (GTK_STATUSBAR(gui.statusbar), 0, "Calculating slant..." );
       gtk_widget_set_sensitive (gui.grid_vu, FALSE);
@@ -163,7 +163,7 @@ void *Listen() {
     // Save PNG
     if (gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON(gui.tog_save))) {
     
-      setVU(0,-100);
+      setVU(0,6);
 
       /*ensure_dir_exists("rx-lum");
       LumFile = fopen(lumfilename,"w");

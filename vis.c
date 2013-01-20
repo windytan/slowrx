@@ -18,12 +18,10 @@
 guchar GetVIS () {
 
   int        selmode, ptr=0;
-  //int        Pointer = 0;
   int        VIS = 0, Parity = 0, HedrPtr = 0;
-  //gushort    pcm.PeakVal = 0;
   guint      FFTLen = 2048, i=0, j=0, k=0, MaxBin = 0;
   double     Power[2048] = {0}, HedrBuf[100] = {0}, tone[100] = {0}, Hann[882] = {0};
-  gboolean       gotvis = FALSE;
+  gboolean   gotvis = FALSE;
   guchar     Bit[8] = {0}, ParityBit = 0;
 
   for (i = 0; i < FFTLen; i++) in[i]    = 0;
@@ -56,11 +54,12 @@ guchar GetVIS () {
     MaxBin = 0;
     for (i = GetBin(500, FFTLen); i <= GetBin(3300, FFTLen); i++) {
       Power[i] = pow(out[i], 2) + pow(out[FFTLen - i], 2);
-      if (Power[i] > Power[MaxBin] || MaxBin == 0) MaxBin = i;
+      if (MaxBin == 0 || Power[i] > Power[MaxBin]) MaxBin = i;
     }
 
     // Find the peak frequency by Gaussian interpolation
-    if (MaxBin > GetBin(500, FFTLen) && MaxBin < GetBin(3300, FFTLen))
+    if (MaxBin > GetBin(500, FFTLen) && MaxBin < GetBin(3300, FFTLen) &&
+        Power[MaxBin] > 0 && Power[MaxBin+1] > 0 && Power[MaxBin-1] > 0)
          HedrBuf[HedrPtr] = MaxBin +            (log( Power[MaxBin + 1] / Power[MaxBin - 1] )) /
                              (2 * log( pow(Power[MaxBin], 2) / (Power[MaxBin + 1] * Power[MaxBin - 1])));
     else HedrBuf[HedrPtr] = HedrBuf[(HedrPtr-1) % 45];
@@ -157,7 +156,7 @@ guchar GetVIS () {
     }
 
     if (++ptr == 25) {
-      setVU(pcm.PeakVal, -20);
+      setVU(pcm.PeakVal, 6);
       pcm.PeakVal = 0;
       ptr = 0;
     }

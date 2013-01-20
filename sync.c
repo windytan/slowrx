@@ -23,7 +23,7 @@ double FindSync (guchar Mode, double Rate, int *Skip) {
   gushort  xAcc[700] = {0};
   gushort  lines[600][(MAXSLANT-MINSLANT)*2];
   gushort  cy, cx, Retries = 0;
-  gboolean     SyncImg[700][630] = {{FALSE}};
+  gboolean SyncImg[700][630] = {{FALSE}};
   double   t=0, slantAngle, s;
   double   ConvoFilter[8] = { 1,1,1,1,-1,-1,-1,-1 };
   double   convd, maxconvd=0;
@@ -37,7 +37,7 @@ double FindSync (guchar Mode, double Rate, int *Skip) {
     for (y=0; y<ModeSpec[Mode].ImgHeight; y++) {
       for (x=0; x<LineWidth; x++) {
         t = (y + 1.0*x/LineWidth) * ModeSpec[Mode].LineLen;
-        SyncImg[x][y] = HasSync[ (int)( t / SYNCPIXLEN * Rate/44100) ];
+        SyncImg[x][y] = HasSync[ (int)( t * Rate / 13.0) ];
       }
     }
 
@@ -98,7 +98,7 @@ double FindSync (guchar Mode, double Rate, int *Skip) {
   for (y=0; y<ModeSpec[Mode].ImgHeight; y++) {
     for (x=0; x<700; x++) { 
       t = y * ModeSpec[Mode].LineLen + x/700.0 * ModeSpec[Mode].LineLen;
-      xAcc[x] += HasSync[ (int)(t / SYNCPIXLEN * Rate/44100) ];
+      xAcc[x] += HasSync[ (int)(t / (13.0/44100) * Rate/44100) ];
     }
   }
 
@@ -125,6 +125,8 @@ double FindSync (guchar Mode, double Rate, int *Skip) {
           + ModeSpec[Mode].PorchLen * 2;
 
   *Skip = s * Rate;
+
+  printf("will return %.2f\n",Rate);
   
   return (Rate);
 
