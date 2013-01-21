@@ -132,7 +132,7 @@ void     *Listen       ();
 void     populateDeviceList ();
 void     readPcm       (gint numsamples);
 void     saveCurrentPic();
-void     setVU         (short int PcmValue, int WinIdx);
+void     setVU         (double *Power, int FFTLen, int WinIdx);
 
 void     evt_AbortRx       ();
 void     evt_changeDevices ();

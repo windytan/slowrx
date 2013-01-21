@@ -77,18 +77,19 @@ void createGUI() {
     gtk_entry_set_text(GTK_ENTRY(gui.entry_picdir),g_key_file_get_string(config,"slowrx","rxdir",NULL));
   }
 
-  setVU(0, 6);
+  //setVU(0, 6);
 
   gtk_widget_show_all  (gui.window_main);
 
 }
 
 // Draw signal level meters according to given values
-void setVU (short int PcmValue, int WinIdx) {
+void setVU (double *Power, int FFTLen, int WinIdx) {
   int          x,y;
   int          PWRdB;
   guchar       *pixelsPWR, *pixelsSNR, *pPWR, *pSNR;
   unsigned int rowstridePWR,rowstrideSNR;
+  double       logpow;
 
   rowstridePWR = gdk_pixbuf_get_rowstride (pixbuf_PWR);
   pixelsPWR    = gdk_pixbuf_get_pixels    (pixbuf_PWR);
@@ -96,38 +97,35 @@ void setVU (short int PcmValue, int WinIdx) {
   rowstrideSNR = gdk_pixbuf_get_rowstride (pixbuf_SNR);
   pixelsSNR    = gdk_pixbuf_get_pixels    (pixbuf_SNR);
 
-  if (PcmValue == 0)
-    PWRdB = 0;
-  else
-    PWRdB = (int)round(10 * log10(pow(PcmValue/32767.0,2)));
-
   for (y=0; y<20; y++) {
     for (x=0; x<100; x++) {
 
       pPWR = pixelsPWR + y * rowstridePWR + (99-x) * 3;
       pSNR = pixelsSNR + y * rowstrideSNR + (99-x) * 3;
 
-      if (y > 1 && y < 18 && x % 2 == 0) {
+      if (y > 3 && y < 16 && (99-x) % 16 >3 && x % 2 == 0) {
 
-        if (PWRdB >= -0.0075*pow(x,2)-3) {
-          pPWR[0] = 0x89;
-          pPWR[1] = 0xfe;
-          pPWR[2] = 0xf4;
+        if ((5-WinIdx)  >= (99-x)/16) {
+            pSNR[0] = 0x34;
+            pSNR[1] = 0xe4;
+            pSNR[2] = 0x84;
         } else {
-          pPWR[0] = pPWR[1] = pPWR[2] = 0x80;
-        }
-
-        if ((6-WinIdx)/0.06 > 100-x) {
-          pSNR[0] = 0xef;
-          pSNR[1] = 0xe4;
-          pSNR[2] = 0x34;
-        } else {
-          pSNR[0] = pSNR[1] = pSNR[2] = 0x80;
+          pSNR[0] = pSNR[2] = 0x60;
+          pSNR[1] = 0x60;
         }
 
       } else {
-        pPWR[0] = pPWR[1] = pPWR[2] = 0x40;
         pSNR[0] = pSNR[1] = pSNR[2] = 0x40;
+      }
+
+      logpow = log(2*Power[(int)((99-x)*60/44100.0 * FFTLen)]);
+
+      if (logpow > (19-y)/2.0) {
+        pPWR[1] = 0xaa;
+        pPWR[2] = 0xff;
+        pPWR[0] = 0x33;
+      } else {
+        pPWR[0] = pPWR[1] = pPWR[2] = 0;
       }
 
     }

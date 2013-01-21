@@ -136,7 +136,7 @@ void *Listen() {
     if (Finished && gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(gui.tog_slant))) {
 
       // Fix slant
-      setVU(0,6);
+      //setVU(0,6);
       gdk_threads_enter        ();
       gtk_statusbar_push       (GTK_STATUSBAR(gui.statusbar), 0, "Calculating slant..." );
       gtk_widget_set_sensitive (gui.grid_vu, FALSE);
@@ -163,7 +163,7 @@ void *Listen() {
     // Save PNG
     if (gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON(gui.tog_save))) {
     
-      setVU(0,6);
+      //setVU(0,6);
 
       /*ensure_dir_exists("rx-lum");
       LumFile = fopen(lumfilename,"w");

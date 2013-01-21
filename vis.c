@@ -52,9 +52,11 @@ guchar GetVIS () {
 
     // Find the bin with most power
     MaxBin = 0;
-    for (i = GetBin(500, FFTLen); i <= GetBin(3300, FFTLen); i++) {
+    for (i = 0; i <= GetBin(6000, FFTLen); i++) {
       Power[i] = pow(out[i], 2) + pow(out[FFTLen - i], 2);
-      if (MaxBin == 0 || Power[i] > Power[MaxBin]) MaxBin = i;
+      if ( (i >= GetBin(500,FFTLen) && i < GetBin(3300,FFTLen)) &&
+           (MaxBin == 0 || Power[i] > Power[MaxBin]))
+        MaxBin = i;
     }
 
     // Find the peak frequency by Gaussian interpolation
@@ -156,7 +158,7 @@ guchar GetVIS () {
     }
 
     if (++ptr == 25) {
-      setVU(pcm.PeakVal, 6);
+      setVU(Power, 2048, 6);
       pcm.PeakVal = 0;
       ptr = 0;
     }
