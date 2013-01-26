@@ -54,7 +54,6 @@ gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
   gushort HannLens[7] = { 48, 64, 96, 128, 256, 512, 1024 };
   for (j = 0; j < 7; j++)
     for (i = 0; i < HannLens[j]; i++)
-      //Hann[j][i] = exp(-0.5*pow((i-(HannLens[j]-1)*0.5)/(0.35*(HannLens[j]-1)*0.5),2));
       Hann[j][i] = 0.5 * (1 - cos( (2 * M_PI * i) / (HannLens[j] - 1)) );
 
 
@@ -283,7 +282,7 @@ gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
 
         if      (!Adaptive)  WinIdx = 0;
         
-        else if (SNR >=  30) WinIdx = 0;
+        else if (SNR >=  20) WinIdx = 0;
         else if (SNR >=  10) WinIdx = 1;
         else if (SNR >=   9) WinIdx = 2;
         else if (SNR >=   3) WinIdx = 3;
@@ -324,9 +323,6 @@ gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
           // Clip if out of bounds
           Freq = ( (MaxBin > GetBin(1900 + CurrentPic.HedrShift, FFTLen)) ? 2300 : 1500 ) + CurrentPic.HedrShift;
         }
-
-        printf("%.0f\n",Freq);
-
 
       } /* endif (SampleNum == PixelGrid[PixelIdx].Time) */
 

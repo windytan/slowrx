@@ -117,7 +117,7 @@ void setVU (double *Power, int FFTLen, int WinIdx) {
         pSNR[0] = pSNR[1] = pSNR[2] = 0x40;
       }
 
-      logpow = log(2*Power[(int)((99-x)*60/44100.0 * FFTLen)]);
+      logpow = log(4*Power[(int)((99-x)*60/44100.0 * FFTLen)]);
 
       if (logpow > (19-y)/2.0) {
         pPWR[1] = 0xaa;
