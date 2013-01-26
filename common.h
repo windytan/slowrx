@@ -9,18 +9,22 @@
 extern gboolean   Abort;
 extern gboolean   Adaptive;
 extern gboolean  *HasSync;
-extern double    *in;
 extern gboolean   ManualActivated;
 extern gboolean   ManualResync;
-extern double    *out;
 extern guchar    *StoredLum;
 extern pthread_t  thread1;
 extern guchar     VISmap[];
 
+typedef struct _FFTStuff FFTStuff;
+struct _FFTStuff {
+  double       *in;
+  fftw_complex *out;
+};
+extern FFTStuff fft;
+
 typedef struct _PcmData PcmData;
 struct _PcmData {
   snd_pcm_t *handle;
-  int        PeakVal;
   gint16    *Buffer;
   int        WindowPtr;
   gboolean   BufferDrop;
@@ -119,6 +123,7 @@ typedef struct ModeSpec {
 
 extern _ModeSpec ModeSpec[];
 
+double   power     (fftw_complex coeff);
 guchar   clip          (double a);
 void     createGUI     ();
 double   deg2rad       (double Deg);

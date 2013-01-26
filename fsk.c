@@ -35,7 +35,7 @@ void GetFSK (char *dest) {
     0x03, 0x23, 0x13, 0x33,   0x0b, 0x2b, 0x1b, 0x3b,
     0x07, 0x27, 0x17, 0x37,   0x0f, 0x2f, 0x1f, 0x3f };
 
-  for (i = 0; i < FFTLen; i++) in[i] = 0;
+  for (i = 0; i < FFTLen; i++) fft.in[i] = 0;
 
   // Create 22ms Hann window
   for (i = 0; i < 970; i++) Hann[i] = 0.5 * (1 - cos( 2 * M_PI * i / 969.0 ) );
@@ -46,7 +46,7 @@ void GetFSK (char *dest) {
     readPcm(InSync ? 970: 485);
 
     // Apply Hann window
-    for (i = 0; i < 970; i++) in[i] = pcm.Buffer[pcm.WindowPtr+i- 485] * Hann[i];
+    for (i = 0; i < 970; i++) fft.in[i] = pcm.Buffer[pcm.WindowPtr+i- 485] * Hann[i];
     
     pcm.WindowPtr += (InSync ? 970 : 485);
 
@@ -61,8 +61,8 @@ void GetFSK (char *dest) {
     HiPow = 0;
 
     for (i = LoBin; i <= HiBin; i++) {
-      if (i < MidBin) LoPow += pow(out[i], 2) + pow(out[FFTLen - i], 2);
-      else            HiPow += pow(out[i], 2) + pow(out[FFTLen - i], 2);
+      if (i < MidBin) LoPow += power(fft.out[i]);
+      else            HiPow += power(fft.out[i]);
     }
 
     Bit = (LoPow>HiPow);

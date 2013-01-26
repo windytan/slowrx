@@ -53,12 +53,10 @@ void readPcm(gint numsamples) {
       pcm.Buffer[i] = tmp[i] & 0xffff;
     pcm.WindowPtr = BUFLEN/2;
   } else {
-    for (i=0; i<BUFLEN-numsamples; i++) pcm.Buffer[i] = pcm.Buffer[i+numsamples];
-    for (i=0; i<numsamples;        i++) {
-      pcm.Buffer[BUFLEN-numsamples+i] = tmp[i] & 0xffff;
-      // Keep track of max power for VU meter
-      if (abs(pcm.Buffer[i]) > pcm.PeakVal) pcm.PeakVal = abs(pcm.Buffer[i]);
-    }
+
+    // Move buffer and push samples
+    for (i=0; i<BUFLEN-numsamples;      i++) pcm.Buffer[i] = pcm.Buffer[i+numsamples];
+    for (i=BUFLEN-numsamples; i<BUFLEN; i++) pcm.Buffer[i] = tmp[i-(BUFLEN-numsamples)] & 0xffff;
 
     pcm.WindowPtr -= numsamples;
   }
@@ -110,7 +108,7 @@ int initPcmDevice(char *wanteddevname) {
   char                 pcm_name[30];
   unsigned int         exact_rate = 44100;
   int                  card;
-  gboolean                 found;
+  gboolean             found;
   char                *cardname;
 
   pcm.BufferDrop = FALSE;

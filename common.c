@@ -13,16 +13,15 @@
 
 gboolean     Abort           = FALSE;
 gboolean     Adaptive        = TRUE;
-double      *in              = NULL;
 gboolean    *HasSync         = NULL;
 gshort       HedrShift       = 0;
 gboolean     ManualActivated = FALSE;
 gboolean     ManualResync    = FALSE;
-double      *out             = NULL;
 guchar      *StoredLum       = NULL;
 
 pthread_t    thread1;
 
+FFTStuff     fft;
 GuiObjs      gui;
 PicMeta      CurrentPic;
 PcmData      pcm;
@@ -42,6 +41,11 @@ fftw_plan    Plan2048        = NULL;
 // Return the FFT bin index matching the given frequency
 guint GetBin (double Freq, guint FFTLen) {
   return (Freq / 44100 * FFTLen);
+}
+
+// Sinusoid power from complex DFT coefficients
+double power (fftw_complex coeff) {
+  return pow(coeff[0],2) + pow(coeff[1],2);
 }
 
 // Clip to [0..255]

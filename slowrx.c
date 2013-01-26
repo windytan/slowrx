@@ -28,7 +28,7 @@ void *Listen() {
   guchar      Mode=0;
   struct tm  *timeptr = NULL;
   time_t      timet;
-  gboolean        Finished;
+  gboolean    Finished;
   char        id[20];
   GtkTreeIter iter;
 
@@ -215,22 +215,21 @@ int main(int argc, char *argv[]) {
   }
 
   // Prepare FFT
-  in = fftw_malloc(sizeof(double) * 2048);
-  if (in == NULL) {
+  fft.in = fftw_alloc_real(2048);
+  if (fft.in == NULL) {
     perror("GetVideo: Unable to allocate memory for FFT");
     exit(EXIT_FAILURE);
   }
-  out = fftw_malloc(sizeof(double) * 2048);
-  if (out == NULL) {
+  fft.out = fftw_alloc_complex(2048);
+  if (fft.out == NULL) {
     perror("GetVideo: Unable to allocate memory for FFT");
-    fftw_free(in);
+    fftw_free(fft.in);
     exit(EXIT_FAILURE);
   }
-  memset(in,  0, sizeof(double) * 2048);
-  memset(out, 0, sizeof(double) * 2048);
+  memset(fft.in,  0, sizeof(double) * 2048);
 
-  Plan1024 = fftw_plan_r2r_1d(1024, in, out, FFTW_FORWARD, FFTW_ESTIMATE);
-  Plan2048 = fftw_plan_r2r_1d(2048, in, out, FFTW_FORWARD, FFTW_ESTIMATE);
+  Plan1024 = fftw_plan_dft_r2c_1d(1024, fft.in, fft.out, FFTW_ESTIMATE);
+  Plan2048 = fftw_plan_dft_r2c_1d(2048, fft.in, fft.out, FFTW_ESTIMATE);
 
   createGUI();
   populateDeviceList();
@@ -250,8 +249,8 @@ int main(int argc, char *argv[]) {
 
   g_object_unref(pixbuf_rx);
   free(StoredLum);
-  fftw_free(in);
-  fftw_free(out);
+  fftw_free(fft.in);
+  fftw_free(fft.out);
 
   return (EXIT_SUCCESS);
 }
