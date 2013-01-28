@@ -228,8 +228,8 @@ int main(int argc, char *argv[]) {
   }
   memset(fft.in,  0, sizeof(double) * 2048);
 
-  Plan1024 = fftw_plan_dft_r2c_1d(1024, fft.in, fft.out, FFTW_ESTIMATE);
-  Plan2048 = fftw_plan_dft_r2c_1d(2048, fft.in, fft.out, FFTW_ESTIMATE);
+  fft.Plan1024 = fftw_plan_dft_r2c_1d(1024, fft.in, fft.out, FFTW_ESTIMATE);
+  fft.Plan2048 = fftw_plan_dft_r2c_1d(2048, fft.in, fft.out, FFTW_ESTIMATE);
 
   createGUI();
   populateDeviceList();

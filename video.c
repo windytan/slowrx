@@ -24,7 +24,7 @@ gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
   guint      SyncSampleNum;
   guint      i=0, j=0;
   guint      FFTLen=1024, WinLength=0;
-  guint      LopassBin,SyncTargetBin;
+  guint      SyncTargetBin;
   int        SampleNum, Length, NumChans;
   int        x = 0, y = 0, tx=0, k=0;
   double     Hann[7][1024] = {{0}};
@@ -175,7 +175,6 @@ gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
 
   Length        = ModeSpec[Mode].LineLen * ModeSpec[Mode].ImgHeight * 44100;
   SyncTargetBin = GetBin(1200+CurrentPic.HedrShift, FFTLen);
-  LopassBin     = GetBin(5000, FFTLen);
   Abort         = FALSE;
   SyncSampleNum = 0;
 
@@ -200,23 +199,20 @@ gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
         // Hann window
         for (i = 0; i < 64; i++) fft.in[i] = pcm.Buffer[pcm.WindowPtr+i-32] / 32768.0 * Hann[1][i];
 
-        fftw_execute(Plan1024);
+        fftw_execute(fft.Plan1024);
 
-        for (i=0;i<LopassBin;i++) {
-          if (i >= GetBin(1500+CurrentPic.HedrShift, FFTLen) && i <= GetBin(2300+CurrentPic.HedrShift, FFTLen))
-              Praw += power(fft.out[i]);
+        for (i=GetBin(1500+CurrentPic.HedrShift,FFTLen); i<=GetBin(2300+CurrentPic.HedrShift, FFTLen); i++)
+          Praw += power(fft.out[i]);
 
-          if (i >= SyncTargetBin-1 && i <= SyncTargetBin+1)
-            Psync += power(fft.out[i]) * (1- .5*abs(SyncTargetBin-i));
-        }
+        for (i=SyncTargetBin-1; i<=SyncTargetBin+1; i++)
+          Psync += power(fft.out[i]) * (1- .5*abs(SyncTargetBin-i));
 
         Praw  /= (GetBin(2300+CurrentPic.HedrShift, FFTLen) - GetBin(1500+CurrentPic.HedrShift, FFTLen));
         Psync /= 2.0;
 
         // If there is more than twice the amount of power per Hz in the
         // sync band than in the video band, we have a sync signal here
-        if (Psync > 2*Praw)  HasSync[SyncSampleNum] = TRUE;
-        else                 HasSync[SyncSampleNum] = FALSE;
+        HasSync[SyncSampleNum] = (Psync > 2*Praw);
 
         NextSyncTime += 13;
         SyncSampleNum ++;
@@ -230,12 +226,11 @@ gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
       if (SampleNum == NextSNRtime) {
         
         memset(fft.in, 0, sizeof(double)*FFTLen);
-        memset(fft.out, 0, sizeof(double)*FFTLen);
 
         // Apply Hann window
         for (i = 0; i < FFTLen; i++) fft.in[i] = pcm.Buffer[pcm.WindowPtr + i - FFTLen/2] / 32768.0 * Hann[6][i];
 
-        fftw_execute(Plan1024);
+        fftw_execute(fft.Plan1024);
 
         // Calculate video-plus-noise power (1500-2300 Hz)
 
@@ -301,7 +296,7 @@ gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
         WinLength = HannLens[WinIdx];
         for (i = 0; i < WinLength; i++) fft.in[i] = pcm.Buffer[pcm.WindowPtr + i - WinLength/2] / 32768.0 * Hann[WinIdx][i];
 
-        fftw_execute(Plan1024);
+        fftw_execute(fft.Plan1024);
 
         MaxBin = 0;
           
@@ -400,7 +395,7 @@ gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
     } /* endif (SampleNum == PixelGrid[PixelIdx].Time) */
     
     if (!Redraw && SampleNum % 8820 == 0) {
-      setVU(Power, FFTLen, WinIdx);
+      setVU(Power, FFTLen, WinIdx, TRUE);
     }
 
     if (Abort) return FALSE;

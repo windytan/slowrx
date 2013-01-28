@@ -13,7 +13,7 @@ void createGUI() {
 
   builder = gtk_builder_new();
   gtk_builder_add_from_file(builder, "slowrx.ui",      NULL);
-  gtk_builder_add_from_file(builder, "window_about.ui", NULL);
+  gtk_builder_add_from_file(builder, "aboutdialog.ui", NULL);
   
   gui.button_abort    = GTK_WIDGET(gtk_builder_get_object(builder,"button_abort"));
   gui.button_browse   = GTK_WIDGET(gtk_builder_get_object(builder,"button_browse"));
@@ -65,8 +65,8 @@ void createGUI() {
   pixbuf_disp = gdk_pixbuf_scale_simple (pixbuf_rx, 500, 400, GDK_INTERP_BILINEAR);
   gtk_image_set_from_pixbuf(GTK_IMAGE(gui.image_rx), pixbuf_disp);
 
-  pixbuf_PWR = gdk_pixbuf_new (GDK_COLORSPACE_RGB, FALSE, 8, 100, 20);
-  pixbuf_SNR = gdk_pixbuf_new (GDK_COLORSPACE_RGB, FALSE, 8, 100, 20);
+  pixbuf_PWR = gdk_pixbuf_new (GDK_COLORSPACE_RGB, FALSE, 8, 100, 30);
+  pixbuf_SNR = gdk_pixbuf_new (GDK_COLORSPACE_RGB, FALSE, 8, 100, 30);
 
   gtk_combo_box_set_active(GTK_COMBO_BOX(gui.combo_mode), 0);
 
@@ -84,11 +84,11 @@ void createGUI() {
 }
 
 // Draw signal level meters according to given values
-void setVU (double *Power, int FFTLen, int WinIdx) {
-  int          x,y;
+void setVU (double *Power, int FFTLen, int WinIdx, gboolean ShowWin) {
+  int          x,y, W=100, H=30;
   guchar       *pixelsPWR, *pixelsSNR, *pPWR, *pSNR;
-  unsigned int rowstridePWR,rowstrideSNR;
-  double       logpow;
+  unsigned int rowstridePWR,rowstrideSNR, LoBin, HiBin, i;
+  double       logpow,p;
 
   rowstridePWR = gdk_pixbuf_get_rowstride (pixbuf_PWR);
   pixelsPWR    = gdk_pixbuf_get_pixels    (pixbuf_PWR);
@@ -96,36 +96,52 @@ void setVU (double *Power, int FFTLen, int WinIdx) {
   rowstrideSNR = gdk_pixbuf_get_rowstride (pixbuf_SNR);
   pixelsSNR    = gdk_pixbuf_get_pixels    (pixbuf_SNR);
 
-  for (y=0; y<20; y++) {
-    for (x=0; x<100; x++) {
+  for (y=0; y<H; y++) {
+    for (x=0; x<W; x++) {
 
-      pPWR = pixelsPWR + y * rowstridePWR + (99-x) * 3;
-      pSNR = pixelsSNR + y * rowstrideSNR + (99-x) * 3;
+      pPWR = pixelsPWR + y * rowstridePWR + (W-1-x) * 3;
+      pSNR = pixelsSNR + y * rowstrideSNR + (W-1-x) * 3;
 
-      if (y > 3 && y < 16 && (99-x) % 16 >3 && x % 2 == 0) {
-
-        if ((5-WinIdx)  >= (99-x)/16) {
+      if ((5-WinIdx)  >= (W-1-x)/16) {
+        if (y > 3 && y < H-3 && (W-1-x) % 16 >3 && x % 2 == 0) {
             pSNR[0] = 0x34;
             pSNR[1] = 0xe4;
             pSNR[2] = 0x84;
         } else {
-          pSNR[0] = pSNR[2] = 0x60;
-          pSNR[1] = 0x60;
+          pSNR[0] = 0x00;
+          pSNR[1] = 0x50;
+          pSNR[2] = 0x30;
         }
-
       } else {
-        pSNR[0] = pSNR[1] = pSNR[2] = 0x40;
+        if (y > 3 && y < H-3 && (W-1-x) % 16 >3 && x % 2 == 0) {
+          pSNR[0] = pSNR[1] = pSNR[2] = 0x40;
+        } else {
+          pSNR[0] = pSNR[1] = pSNR[2] = 0x20;
+        }
       }
 
-      logpow = log(4*Power[(int)((99-x)*60/44100.0 * FFTLen)]);
+      LoBin = (int)((W-1-x)*(6000/W)/44100.0 * FFTLen);
+      HiBin = (int)((W  -x)*(6000/W)/44100.0 * FFTLen);
 
-      if (logpow > (19-y)/2.0) {
-        pPWR[1] = 0xaa;
-        pPWR[2] = 0xff;
-        pPWR[0] = 0x33;
-      } else {
-        pPWR[0] = pPWR[1] = pPWR[2] = 0;
+      logpow = 0;
+      for (i=LoBin; i<HiBin; i++) logpow += log(850*Power[i]) / 2;
+
+      p = (H-1-y)/(H/23.0);
+
+      pPWR[0] = pPWR[1] = pPWR[2] = 0;
+
+      if (logpow > p) {
+        pPWR[0] = clip(pPWR[0] + 0x22 * (logpow-p) / (HiBin-LoBin+1));
+        pPWR[1] = clip(pPWR[1] + 0x66 * (logpow-p) / (HiBin-LoBin+1));
+        pPWR[2] = clip(pPWR[2] + 0x22 * (logpow-p) / (HiBin-LoBin+1));
       }
+
+      /*if (ShowWin && LoBin >= GetBin(1200+CurrentPic.HedrShift, FFTLen) &&
+          HiBin <= GetBin(2300+CurrentPic.HedrShift, FFTLen)) {
+        pPWR[0] = clip(pPWR[0] + 0x66);
+        pPWR[1] = clip(pPWR[1] + 0x11);
+        pPWR[2] = clip(pPWR[2] + 0x11);
+      }*/
 
     }
   }

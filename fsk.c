@@ -51,7 +51,7 @@ void GetFSK (char *dest) {
     pcm.WindowPtr += (InSync ? 970 : 485);
 
     // FFT of last 22 ms
-    fftw_execute(Plan2048);
+    fftw_execute(fft.Plan2048);
 
     LoBin  = GetBin(1900+CurrentPic.HedrShift, FFTLen)-1;
     MidBin = GetBin(2000+CurrentPic.HedrShift, FFTLen);

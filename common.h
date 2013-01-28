@@ -19,6 +19,8 @@ typedef struct _FFTStuff FFTStuff;
 struct _FFTStuff {
   double       *in;
   fftw_complex *out;
+  fftw_plan     Plan1024;
+  fftw_plan     Plan2048;
 };
 extern FFTStuff fft;
 
@@ -77,9 +79,6 @@ extern GtkListStore *savedstore;
 extern GKeyFile  *config;
 
 
-extern fftw_plan  Plan1024;
-extern fftw_plan  Plan2048;
-
 typedef struct _PicMeta PicMeta;
 struct _PicMeta {
   gshort HedrShift;
@@ -137,7 +136,7 @@ void     *Listen       ();
 void     populateDeviceList ();
 void     readPcm       (gint numsamples);
 void     saveCurrentPic();
-void     setVU         (double *Power, int FFTLen, int WinIdx);
+void     setVU         (double *Power, int FFTLen, int WinIdx, gboolean ShowWin);
 
 void     evt_AbortRx       ();
 void     evt_changeDevices ();

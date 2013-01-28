@@ -35,9 +35,6 @@ GtkListStore *savedstore     = NULL;
 
 GKeyFile    *config          = NULL;
 
-fftw_plan    Plan1024        = NULL;
-fftw_plan    Plan2048        = NULL;
-
 // Return the FFT bin index matching the given frequency
 guint GetBin (double Freq, guint FFTLen) {
   return (Freq / 44100 * FFTLen);

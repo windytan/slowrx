@@ -48,7 +48,7 @@ guchar GetVIS () {
     for (i = 0; i < 882; i++) fft.in[i] = pcm.Buffer[pcm.WindowPtr + i - 441] / 32768.0 * Hann[i];
 
     // FFT of last 20 ms
-    fftw_execute(Plan2048);
+    fftw_execute(fft.Plan2048);
 
     // Find the bin with most power
     MaxBin = 0;
@@ -157,8 +157,8 @@ guchar GetVIS () {
       break;
     }
 
-    if (++ptr == 25) {
-      setVU(Power, 2048, 6);
+    if (++ptr == 10) {
+      setVU(Power, 2048, 6, FALSE);
       ptr = 0;
     }
 
