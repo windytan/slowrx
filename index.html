@@ -92,6 +92,42 @@
 <li>Automatic timing-based mode detection (such as in QSSTV) in case of missed VIS?</li>
 </ul>
 
+<h2>Brief usage</h2>
+<h3>Capture device</h3>
+<ul>
+  <li>Select the sound card to be used. An icon will appear next to the combo box telling if there was a problem.
+    The icon has a descriptive tooltip.</li>
+</ul>
+<h3>Saved pictures directory</h3>
+<ul>
+  <li>Location to save the received PNG images in.</li>
+</ul>
+<h3>Rx control</h3>
+<ul>
+  <li><b>AutoStart</b> toggle: Start decoding automatically upon receiving a VIS code.</li>
+  <li><b>AutoSlant</b> toggle: Try to fix slant automatically after receiving image.</li>
+  <li><b>AutoSave</b> toggle: Save received pictures as PNG files.</li>
+  <li><b>NoiseAdapt</b> toggle: Use a wider windowing function when estimated SNR is low.</li>
+  <li><b>FSKID</b> toggle: Decode FSK callsign after image.</li>
+  <li><b>Abort</b> button: Stop receiving immediately and return to VIS listening mode.</li>
+  <li><b>Clear image</b> button: Clears the last received picture. Saved PNG will not be deleted.</li>
+</ul>
+<h3>Manual slant adj.</h3>
+<ul>
+  <li><b>Set left edge</b> button: Set the left edge of the image with two mouse clicks.
+    Slant will then be recalculated.</li>
+</ul>
+<h3>Manual start</h3>
+<ul>
+  <li><b>Mode select</b> combobox: The SSTV mode used for decoding the image. Does not affect AutoStart.</li>
+  <li><b>Shift Hz</b> spinbox: Number of Hertz to shift the reception window up or down.</li>
+  <li><b>Start</b> button: Start decoding audio immediately.</li>
+</ul>
+<h3>Signal level</h3>
+<ul>
+  <li><b>FFT</b>: Simple spectrum analyzer to aid in setting up the audio.</li>
+  <li><b>SNR</b>: Estimated signal-to-noise ratio. Only active during decoding.</li>
+</ul>
 <h2>References</h2>
 
 <p>The program was inspired by several papers:</p>
