@@ -398,12 +398,16 @@ gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
       setVU(Power, FFTLen, WinIdx, TRUE);
     }
 
-    if (Abort) return FALSE;
+    if (Abort) {
+      free(PixelGrid);
+      return FALSE;
+    }
 
     pcm.WindowPtr ++;
 
   }
 
+  free(PixelGrid);
   return TRUE;
 
 }

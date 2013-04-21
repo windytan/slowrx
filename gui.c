@@ -108,9 +108,9 @@ void setVU (double *Power, int FFTLen, int WinIdx, gboolean ShowWin) {
             pSNR[1] = 0xe4;
             pSNR[2] = 0x84;
         } else {
-          pSNR[0] = 0x00;
-          pSNR[1] = 0x50;
-          pSNR[2] = 0x30;
+          pSNR[0] = 0x20;
+          pSNR[1] = 0x20;
+          pSNR[2] = 0x20;
         }
       } else {
         if (y > 3 && y < H-3 && (W-1-x) % 16 >3 && x % 2 == 0) {
@@ -131,9 +131,9 @@ void setVU (double *Power, int FFTLen, int WinIdx, gboolean ShowWin) {
       pPWR[0] = pPWR[1] = pPWR[2] = 0;
 
       if (logpow > p) {
-        pPWR[0] = clip(pPWR[0] + 0x22 * (logpow-p) / (HiBin-LoBin+1));
-        pPWR[1] = clip(pPWR[1] + 0x66 * (logpow-p) / (HiBin-LoBin+1));
-        pPWR[2] = clip(pPWR[2] + 0x22 * (logpow-p) / (HiBin-LoBin+1));
+        pPWR[0] = 0;//clip(pPWR[0] + 0x22 * (logpow-p) / (HiBin-LoBin+1));
+        pPWR[1] = 192;//clip(pPWR[1] + 0x66 * (logpow-p) / (HiBin-LoBin+1));
+        pPWR[2] = 64;//clip(pPWR[2] + 0x22 * (logpow-p) / (HiBin-LoBin+1));
       }
 
       /*if (ShowWin && LoBin >= GetBin(1200+CurrentPic.HedrShift, FFTLen) &&
