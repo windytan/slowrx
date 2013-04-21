@@ -249,6 +249,7 @@ h2 {
   font-weight: bold;
   color: #303030;
   margin-bottom: 8px;
+  border-bottom: 1px dotted #6d6d6d;
 } 
 
 h3 {
