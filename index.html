@@ -37,6 +37,15 @@
 
 <p>Written in C99 by Oona Räisänen OH2-250 (windyoona at gmail).</p>
 
+<ul>
+  <li><b>Adaptive noise reduction.</b> DSP window length changes based on SNR. Even very noisy pictures can be
+  decoded, albeit at a lower resolution.</li>
+  <li><b>Automatic frequency shift.</b> The Rx window will shift based on the detected VIS frequency. No
+  need to manually fine-tune the radio.</li>
+  <li><b>Automatic slant correction.</b> But manual readjustment is also simple.</li>
+  <li><b>FSK ID decoding.</b> Displays the station's call sign under the picture.</li>
+</ul>
+
 <p><a href="http://www.cs.helsinki.fi/u/okraisan/shot-slowrx-big.png"><img src="http://www.cs.helsinki.fi/u/okraisan/shot-slowrx.png" alt="Screenshot"></a></p>
 
 <h2>Brief usage</h2>
@@ -76,12 +85,8 @@
   <li><strong>SNR</strong>: Estimated signal-to-noise ratio. Only active during decoding.</li>
 </ul>
 
-<h2>Features</h2>
+<h2>Supported modes</h2>
 
-  <h3>VIS detection</h3>
-  <p>Automatic start upon detecting a VIS. Also manual start can be forced.</p>
-  
-  <h3>Supports a multitude of modes</h3>
   <ul>
   <li>Martin 1, 2, 3, 4</li>
   <li>Scottie 1, 2, DX</li>
@@ -90,23 +95,6 @@
 <li>PD 50, 90, 120, 160, 180, 240, 290</li>
 <li>Pasokon TV 3, 5, 7</li>
 </ul>
-
-  <h3>Automatic frequency shift</h3>
-  <p>The Rx window will be shifted based on the detected VIS frequency, as long as it falls on the 6 kHz passband. No
-  need to manually fine-tune the radio!</p>
-  
-  <h3>Automatic slant correction</h3>
-  <p>But manual readjustment is also simple.</p>
-  
-  <h3>Adaptive noise reduction</h3>
-  <p>DSP window length changes based on SNR. Even very noisy pictures can be decoded, albeit at a lower resolution.</p>
-  
-  <h3>FSK ID decoding</h3>
-  <p>Displays a callsign under the picture, if one is transmitted.</p>
-  
-  <h3>Save pictures as PNG</h3>
-  <p>Lossless compression at original resolution.</p>
-
 
 <h2>Requirements</h2>
 
