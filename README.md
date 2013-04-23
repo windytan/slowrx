@@ -3,7 +3,7 @@ slowrx
 
 Slowrx is an SSTV decoder for Linux.
 
-Created by Oona Räisänen / OH2-250 (windyoona at gmail).
+Created by Oona Räisänen / OH2EIQ (windyoona at gmail).
 
 http://windytan.github.com/slowrx/
 
