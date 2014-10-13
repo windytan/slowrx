@@ -45,6 +45,9 @@ void GetFSK (char *dest) {
     // Read data from DSP
     readPcm(InSync ? 970: 485);
 
+    if (pcm.WindowPtr < 485)
+      continue;
+
     // Apply Hann window
     for (i = 0; i < 970; i++) fft.in[i] = pcm.Buffer[pcm.WindowPtr+i- 485] * Hann[i];
     
