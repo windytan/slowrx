@@ -3,107 +3,68 @@
   <head>
     <meta charset='utf-8'>
     <meta http-equiv="X-UA-Compatible" content="chrome=1">
-    <link href='https://fonts.googleapis.com/css?family=Chivo:900' rel='stylesheet' type='text/css'>
-    <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen" />
-    <link rel="stylesheet" type="text/css" href="stylesheets/pygment_trac.css" media="screen" />
-    <link rel="stylesheet" type="text/css" href="stylesheets/print.css" media="print" />
-    <!--[if lt IE 9]>
-    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
-    <![endif]-->
-    <title>slowrx, a SSTV decoder for Linux</title>
+
+    <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen">
+    <link rel="stylesheet" type="text/css" href="stylesheets/pygment_trac.css" media="screen">
+    <link rel="stylesheet" type="text/css" href="stylesheets/print.css" media="print">
+
+    <title>Slowrx by windytan</title>
   </head>
 
   <body>
-    <div id="container">
-      <div class="inner">
 
-        <header>
-          <h1>slowrx</h1>
-          <h2>A decoder for Slow-Scan Television (SSTV).</h2>
-        </header>
+    <header>
+      <div class="container">
+        <h1>Slowrx</h1>
+        <h2>A decoder for Slow-Scanning Television (SSTV).</h2>
 
-        <section id="downloads" class="clearfix">
-          <a href="https://github.com/windytan/slowrx/zipball/master" id="download-zip" class="button"><span>Download .zip</span></a>
-          <a href="https://github.com/windytan/slowrx/tarball/master" id="download-tar-gz" class="button"><span>Download .tar.gz</span></a>
-          <a href="https://github.com/windytan/slowrx" id="view-on-github" class="button"><span>View on GitHub</span></a>
+        <section id="downloads">
+          <a href="https://github.com/windytan/slowrx/zipball/master" class="btn">Download as .zip</a>
+          <a href="https://github.com/windytan/slowrx/tarball/master" class="btn">Download as .tar.gz</a>
+          <a href="https://github.com/windytan/slowrx" class="btn btn-github"><span class="icon"></span>View on GitHub</a>
         </section>
+      </div>
+    </header>
 
-        <hr>
+    <div class="container">
+      <section id="main_content">
+        <h1>
+<a id="slowrx" class="anchor" href="#slowrx" aria-hidden="true"><span class="octicon octicon-link"></span></a>slowrx</h1>
 
-        <section id="main_content">
+<p>Slowrx is an <a href="http://en.wikipedia.org/wiki/Slow-scan%20television">SSTV</a> decoder that aims for intuitive simplicity and lack of features not needed by a shortwave listener (SWL).</p>
 
-<p><strong>slowrx</strong> is a shortwave listener's Linux tool for receiving
-<a href="http://en.wikipedia.org/wiki/Slow-scan%20television">SSTV</a> using a sound card. It's still in alpha.</p>
+<p>Created by Oona Räisänen OH2-250 (windyoona at gmail).</p>
 
-<p>Written in C99 by <a href="http://windytan.com">Oona Räisänen</a> OH2EIQ.</p>
+<h2>
+<a id="screenshot" class="anchor" href="#screenshot" aria-hidden="true"><span class="octicon octicon-link"></span></a>Screenshot</h2>
+
+<p><img src="http://www.cs.helsinki.fi/u/okraisan/shot-slowrx.png" alt="Screenshot"></p>
+
+<h2>
+<a id="features" class="anchor" href="#features" aria-hidden="true"><span class="octicon octicon-link"></span></a>Features</h2>
 
 <ul>
-  <li><strong>Adaptive noise reduction.</strong> DSP window length changes based on SNR. Even very noisy pictures can be
-  decoded, albeit at a lower resolution.</li>
-  <li><strong>Automatic frequency shift.</strong> The Rx window will shift based on the detected VIS frequency. No
-  need to manually fine-tune the radio.</li>
-  <li><strong>Automatic slant correction.</strong> But manual readjustment is also simple.</li>
-  <li><strong>FSK ID decoding.</strong> Displays the station's call sign under the picture.</li>
+<li>Support for a multitude of modes (see <code>modespec.c</code> for a list)</li>
+<li>Detect frequency-shifted signals – no need to fine-tune the radio</li>
+<li>Automatic slant correction (compensation for sound card clock error)</li>
+<li>Adaptive noise reduction</li>
+<li>Decode digital FSK ID</li>
+<li>Save received pictures as PNG</li>
+<li>Written in C99</li>
 </ul>
 
-<p><a href="http://www.cs.helsinki.fi/u/okraisan/shot-slowrx-big.png"><img src="http://www.cs.helsinki.fi/u/okraisan/shot-slowrx.png" alt="Screenshot"></a></p>
-
-<h2>Brief usage</h2>
-<h3>Capture device</h3>
-<ul>
-  <li>Select the sound card to be used. An icon will appear next to the combo box telling if there was a problem.
-    The icon has a descriptive tooltip.</li>
-</ul>
-<h3>Saved pictures directory</h3>
-<ul>
-  <li>Location to save the received PNG images in.</li>
-</ul>
-<h3>Rx control</h3>
-<ul>
-  <li><strong>AutoStart</strong> toggle: Start decoding automatically upon receiving a VIS code.</li>
-  <li><strong>AutoSlant</strong> toggle: Try to fix slant automatically after receiving image.</li>
-  <li><strong>AutoSave</strong> toggle: Save received pictures as PNG files.</li>
-  <li><strong>NoiseAdapt</strong> toggle: Use a wider windowing function when SNR is poor.</li>
-  <li><strong>FSKID</strong> toggle: Decode FSK callsign after image.</li>
-  <li><strong>Abort</strong> button: Stop receiving immediately and return to VIS listening mode.</li>
-  <li><strong>Clear image</strong> button: Clears the last received picture. Saved PNG will not be deleted.</li>
-</ul>
-<h3>Manual slant adj.</h3>
-<ul>
-  <li><strong>Set left edge</strong> button: Set the left edge of the image with two mouse clicks.
-    Slant will then be recalculated.</li>
-</ul>
-<h3>Manual start</h3>
-<ul>
-  <li><strong>Mode select</strong> combobox: The SSTV mode used for decoding the image. Does not affect AutoStart.</li>
-  <li><strong>Shift Hz</strong> spinbox: Number of Hertz to shift the reception window up or down.</li>
-  <li><strong>Start</strong> button: Start decoding audio immediately.</li>
-</ul>
-<h3>Signal level</h3>
-<ul>
-  <li><strong>FFT</strong>: Simple spectrum analyzer to aid in setting up the audio.</li>
-  <li><strong>SNR</strong>: Estimated signal-to-noise ratio. Only active during decoding.</li>
-</ul>
-
-<h2>Supported modes</h2>
-
-  <ul>
-  <li>Martin 1, 2, 3, 4</li>
-  <li>Scottie 1, 2, DX</li>
-<li>Robot 72, 36, 24, 24 B/W, 12 B/W, 8 B/W</li>
-<li>Wraase SC-2 120, 180</li>
-<li>PD 50, 90, 120, 160, 180, 240, 290</li>
-<li>Pasokon TV 3, 5, 7</li>
-</ul>
-
-<h2>Requirements</h2>
+<h2>
+<a id="requirements" class="anchor" href="#requirements" aria-hidden="true"><span class="octicon octicon-link"></span></a>Requirements</h2>
 
 <ul>
 <li>Linux</li>
 <li>Alsa</li>
 <li>Gtk+ 3.4</li>
 <li>FFTW 3</li>
-</ul><p>And, obviously:</p>
+<li>pnglite</li>
+</ul>
+
+<p>And, obviously:</p>
 
 <ul>
 <li>shortwave radio with SSB</li>
@@ -111,25 +72,23 @@
 <li>means of getting sound from one to the other</li>
 </ul>
 
-<h2>Future plans</h2>
-<ul>  
-<li>Support for Redundant Digital File Transfer (RDFT i.e. "Digital SSTV")?</li>
-<li>Automatic timing-based mode detection (such as in QSSTV) in case of missed VIS?</li>
-</ul>
+<h2>
+<a id="references" class="anchor" href="#references" aria-hidden="true"><span class="octicon octicon-link"></span></a>References</h2>
 
-<h2>References</h2>
+<p>The program was inspired by several articles:</p>
 
-<p>The program was inspired by several papers:</p>
-
-<ul style="font-size:85%">
+<ul>
 <li>Barber, JL (N7CXI) (May 2000). <a href="http://www.barberdsp.com/files/Dayton%20Paper.pdf">"Proposal for SSTV Mode Specifications"</a>. Presented at the Dayton SSTV forum, 20 May 2000.</li>
 <li>Cordesses L, Cordesses R (F2DC) (May 2003). <a href="http://lionel.cordesses.free.fr/gpages/Cordesses.pdf">"Some thoughts on 'Real-Time' SSTV Processing"</a>. <em>QEX</em> May/June 2003: 3–20.</li>
 <li>Gasior M, Gonzalez J L (May 2004). <a href="http://cdsweb.cern.ch/record/738182/files/ab-2004-023.pdf">"Improving FFT Frequency Measurement Resolution by Parabolic and Gaussian Spectrum Interpolation"</a>. <em>AIP Conf. Proc.</em> (Geneva: CERN) <strong>732</strong> (2004): 276–285.</li>
 <li>Jones, D (KB4YZ) (Feb 1998). <a href="http://www.tima.com/%7Edjones/vis.txt">"List of SSTV Modes with VIS Codes"</a>.</li>
 <li>Jones, D (KB4YZ) (May 1999). <a href="http://www.tima.com/%7Edjones/line.txt">"List of SSTV Modes with Line Timing"</a>.</li>
-</ul><h2>Licensing</h2>
+</ul>
 
-<pre><code>Copyright (c) 2007-2013, Oona Räisänen (OH2EIQ [at] sral.fi)
+<h2>
+<a id="licensing" class="anchor" href="#licensing" aria-hidden="true"><span class="octicon octicon-link"></span></a>Licensing</h2>
+
+<pre><code>Copyright (c) 2007-2012, windytan (OH2-250)
 
 Permission to use, copy, modify, and/or distribute this software for any
 purpose with or without fee is hereby granted, provided that the above
@@ -143,32 +102,9 @@ WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
 ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 </code></pre>
-        </section>
-
-        <footer>
-          Slowrx is maintained by <a href="https://github.com/windytan">windytan</a><br>
-          This page was generated by <a href="http://pages.github.com">GitHub Pages</a>. Tactile theme by <a href="http://twitter.com/jasonlong">Jason Long</a>.
-        </footer>
-
-        
-      </div>
+      </section>
     </div>
-    <!-- Start of StatCounter Code for Default Guide -->
-<script type="text/javascript">
-var sc_project=8573662; 
-var sc_invisible=1; 
-var sc_security="922e0817"; 
-var scJsHost = (("https:" == document.location.protocol) ?
-"https://secure." : "http://www.");
-document.write("<sc"+"ript type='text/javascript' src='" +
-scJsHost+
-"statcounter.com/counter/counter_xhtml.js'></"+"script>");
-</script>
-<noscript><div class="statcounter"><a title="web statistics"
-href="http://statcounter.com/" class="statcounter"><img
-class="statcounter"
-src="http://c.statcounter.com/8573662/0/922e0817/1/"
-alt="web statistics" /></a></div></noscript>
-<!-- End of StatCounter Code for Default Guide -->
+
+    
   </body>
 </html>
