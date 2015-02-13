@@ -124,7 +124,10 @@ void evt_changeDevices() {
   pcm.BufferDrop = FALSE;
   Abort = TRUE;
 
-  pthread_join(thread1, NULL);
+  static int init;
+  if (init)
+    pthread_join(thread1, NULL);
+  init = 1;
 
   if (pcm.handle != NULL) snd_pcm_close(pcm.handle);
 
