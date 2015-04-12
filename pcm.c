@@ -82,7 +82,8 @@ void populateDeviceList() {
       snd_card_get_name(card,&cardname);
       gdk_threads_enter();
       gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(gui.combo_card), cardname);
-      if (strcmp(cardname,g_key_file_get_string(config,"slowrx","device",NULL)) == 0)
+      char *dev = g_key_file_get_string(config,"slowrx","device",NULL);
+      if (dev == NULL || strcmp(cardname, dev) == 0)
         gtk_combo_box_set_active(GTK_COMBO_BOX(gui.combo_card), row);
 
       gdk_threads_leave();
