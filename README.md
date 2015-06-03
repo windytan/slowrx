@@ -23,14 +23,14 @@ Requirements
 
 * Linux
 * Alsa
-* Gtk+ 3.4
-* FFTW 3
+* Gtk+ 3.4 (`libgtk-3-dev`)
+* FFTW 3 (`libfftw3-dev`)
 
 And, obviously:
 
 * shortwave radio with SSB
 * computer with sound card
-* means of getting sound from one to the other
+* means of getting sound from radio to sound card
 
 Compiling
 ---------
