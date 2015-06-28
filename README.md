@@ -22,7 +22,7 @@ Requirements
 ------------
 
 * Linux
-* Alsa
+* Alsa (`libasound2-dev`)
 * Gtk+ 3.4 (`libgtk-3-dev`)
 * FFTW 3 (`libfftw3-dev`)
 
