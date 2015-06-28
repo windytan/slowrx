@@ -9,9 +9,9 @@
     <property name="has_resize_grip">False</property>
     <property name="program_name">slowrx</property>
     <property name="version">0.01 alpha</property>
-    <property name="copyright" translatable="yes">2007–2013 Oona Räisänen (windyoona at gmail)</property>
+    <property name="copyright" translatable="yes">Oona Räisänen OH2EIQ (oona@kapsi.fi)</property>
     <property name="comments" translatable="yes">A shortwave listener's tool for decoding SSTV images.</property>
-    <property name="website">https://windytan.github.com/slowrx/</property>
+    <property name="website">https://windytan.github.io/slowrx/</property>
     <property name="website_label" translatable="yes">GitHub page</property>
     <property name="license" translatable="yes">Permission to use, copy, modify, and/or distribute this software for any
 purpose with or without fee is hereby granted, provided that the above
