@@ -47,7 +47,7 @@ gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
   } _PixelGrid;
 
   _PixelGrid *PixelGrid;
-  PixelGrid = calloc( ModeSpec[Mode].ImgWidth * ModeSpec[Mode].ImgHeight * 3, sizeof(_PixelGrid) );
+  PixelGrid = calloc( ModeSpec[Mode].ImgWidth * ModeSpec[Mode].NumLines * 3, sizeof(_PixelGrid) );
 
 
   // Initialize Hann windows of different lengths
@@ -105,7 +105,7 @@ gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
 
   // Plan ahead the time instants (in samples) at which to take pixels out
   int PixelIdx = 0;
-  for (y=0; y<ModeSpec[Mode].ImgHeight; y++) {
+  for (y=0; y<ModeSpec[Mode].NumLines; y++) {
     for (Channel=0; Channel<NumChans; Channel++) {
       for (x=0; x<ModeSpec[Mode].ImgWidth; x++) {
 
@@ -157,7 +157,7 @@ gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
   // Initialize pixbuffer
   if (!Redraw) {
     g_object_unref(pixbuf_rx);
-    pixbuf_rx = gdk_pixbuf_new (GDK_COLORSPACE_RGB, FALSE, 8, ModeSpec[Mode].ImgWidth, ModeSpec[Mode].ImgHeight);
+    pixbuf_rx = gdk_pixbuf_new (GDK_COLORSPACE_RGB, FALSE, 8, ModeSpec[Mode].ImgWidth, ModeSpec[Mode].NumLines);
     gdk_pixbuf_fill(pixbuf_rx, 0);
   }
 
@@ -167,13 +167,13 @@ gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
 
   g_object_unref(pixbuf_disp);
   pixbuf_disp = gdk_pixbuf_scale_simple(pixbuf_rx, 500,
-      500.0/ModeSpec[Mode].ImgWidth * ModeSpec[Mode].ImgHeight * ModeSpec[Mode].YScale, GDK_INTERP_BILINEAR);
+      500.0/ModeSpec[Mode].ImgWidth * ModeSpec[Mode].NumLines * ModeSpec[Mode].LineHeight, GDK_INTERP_BILINEAR);
 
   gdk_threads_enter();
   gtk_image_set_from_pixbuf(GTK_IMAGE(gui.image_rx), pixbuf_disp);
   gdk_threads_leave();
 
-  Length        = ModeSpec[Mode].LineLen * ModeSpec[Mode].ImgHeight * 44100;
+  Length        = ModeSpec[Mode].LineLen * ModeSpec[Mode].NumLines * 44100;
   SyncTargetBin = GetBin(1200+CurrentPic.HedrShift, FFTLen);
   Abort         = FALSE;
   SyncSampleNum = 0;
@@ -381,7 +381,7 @@ gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
           // Scale and update image
           g_object_unref(pixbuf_disp);
           pixbuf_disp = gdk_pixbuf_scale_simple(pixbuf_rx, 500,
-              500.0/ModeSpec[Mode].ImgWidth * ModeSpec[Mode].ImgHeight * ModeSpec[Mode].YScale, GDK_INTERP_BILINEAR);
+              500.0/ModeSpec[Mode].ImgWidth * ModeSpec[Mode].NumLines * ModeSpec[Mode].LineHeight, GDK_INTERP_BILINEAR);
 
           gdk_threads_enter();
           gtk_image_set_from_pixbuf(GTK_IMAGE(gui.image_rx), pixbuf_disp);

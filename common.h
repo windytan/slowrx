@@ -115,8 +115,8 @@ typedef struct ModeSpec {
   double  PixelLen;
   double  LineLen;
   gushort ImgWidth;
-  gushort ImgHeight;
-  guchar  YScale;
+  gushort NumLines;
+  guchar  LineHeight;
   guchar  ColorEnc;
 } _ModeSpec;
 

@@ -18,8 +18,8 @@
  * PixelLen      Duration of one pixel in seconds
  * LineLen       Time in seconds from the beginning of a sync pulse to the beginning of the next one
  * ImgWidth      Pixels per scanline
- * ImgHeight     Number of scanlines
- * YScale        Height of one scanline in pixels (1 or 2)
+ * Lines         Number of scanlines
+ * LineHeight    Height of one scanline in pixels (1 or 2)
  * ColorEnc      Color format (GBR, RGB, YUV, BW)
  *
  *
@@ -45,8 +45,8 @@ _ModeSpec ModeSpec[] = {
     .PixelLen     = 0.4576e-3,
     .LineLen      = 446.446e-3,
     .ImgWidth     = 320,
-    .ImgHeight    = 256,
-    .YScale       = 1,
+    .NumLines     = 256,
+    .LineHeight   = 1,
     .ColorEnc     = GBR },
 
   [M2] = {  // N7CXI, 2000
@@ -58,8 +58,8 @@ _ModeSpec ModeSpec[] = {
     .PixelLen     = 0.2288e-3,
     .LineLen      = 226.7986e-3,
     .ImgWidth     = 320,
-    .ImgHeight    = 256,
-    .YScale       = 1,
+    .NumLines     = 256,
+    .LineHeight   = 1,
     .ColorEnc     = GBR },
 
   [M3] = {   // KB4YZ, 1999
@@ -71,8 +71,8 @@ _ModeSpec ModeSpec[] = {
     .PixelLen     = 0.2288e-3,
     .LineLen      = 446.446e-3,
     .ImgWidth     = 320,
-    .ImgHeight    = 128,
-    .YScale       = 2,
+    .NumLines     = 128,
+    .LineHeight   = 2,
     .ColorEnc     = GBR },
 
   [M4] = {   // KB4YZ, 1999
@@ -84,8 +84,8 @@ _ModeSpec ModeSpec[] = {
     .PixelLen     = 0.2288e-3,
     .LineLen      = 226.7986e-3,
     .ImgWidth     = 320,
-    .ImgHeight    = 128,
-    .YScale       = 2,
+    .NumLines     = 128,
+    .LineHeight   = 2,
     .ColorEnc     = GBR },
 
   [S1] = {  // N7CXI, 2000
@@ -97,8 +97,8 @@ _ModeSpec ModeSpec[] = {
     .PixelLen     = 0.4320e-3,
     .LineLen      = 428.38e-3,
     .ImgWidth     = 320,
-    .ImgHeight    = 256,
-    .YScale       = 1,
+    .NumLines     = 256,
+    .LineHeight   = 1,
     .ColorEnc     = GBR },
 
   [S2] = {  // N7CXI, 2000
@@ -110,8 +110,8 @@ _ModeSpec ModeSpec[] = {
     .PixelLen     = 0.2752e-3,
     .LineLen      = 277.692e-3,
     .ImgWidth     = 320,
-    .ImgHeight    = 256,
-    .YScale       = 1,
+    .NumLines     = 256,
+    .LineHeight   = 1,
     .ColorEnc     = GBR },
 
   [SDX] = {  // N7CXI, 2000
@@ -123,8 +123,8 @@ _ModeSpec ModeSpec[] = {
     .PixelLen     = 1.08053e-3,
     .LineLen      = 1050.3e-3,
     .ImgWidth     = 320,
-    .ImgHeight    = 256,
-    .YScale       = 1,
+    .NumLines     = 256,
+    .LineHeight   = 1,
     .ColorEnc     = GBR },
 
   [R72] = {  // N7CXI, 2000
@@ -136,8 +136,8 @@ _ModeSpec ModeSpec[] = {
     .PixelLen     = 0.2875e-3,
     .LineLen      = 300e-3,
     .ImgWidth     = 320,
-    .ImgHeight    = 240,
-    .YScale       = 1,
+    .NumLines     = 240,
+    .LineHeight   = 1,
     .ColorEnc     = YUV },
 
   [R36] = {  // N7CXI, 2000
@@ -149,8 +149,8 @@ _ModeSpec ModeSpec[] = {
     .PixelLen     = 0.1375e-3,
     .LineLen      = 150e-3,
     .ImgWidth     = 320,
-    .ImgHeight    = 240,
-    .YScale       = 1,
+    .NumLines     = 240,
+    .LineHeight   = 1,
     .ColorEnc     = YUV },
 
   [R24] = {  // N7CXI, 2000
@@ -162,8 +162,8 @@ _ModeSpec ModeSpec[] = {
     .PixelLen     = 0.1375e-3,
     .LineLen      = 150e-3,
     .ImgWidth     = 320,
-    .ImgHeight    = 240,
-    .YScale       = 1,
+    .NumLines     = 240,
+    .LineHeight   = 1,
     .ColorEnc     = YUV },
 
   [R24BW] = {  // N7CXI, 2000
@@ -175,8 +175,8 @@ _ModeSpec ModeSpec[] = {
     .PixelLen     = 0.291e-3,
     .LineLen      = 100e-3,
     .ImgWidth     = 320,
-    .ImgHeight    = 240,
-    .YScale       = 1,
+    .NumLines     = 240,
+    .LineHeight   = 1,
     .ColorEnc     = BW },
 
   [R12BW] = {  // N7CXI, 2000
@@ -188,8 +188,8 @@ _ModeSpec ModeSpec[] = {
     .PixelLen     = 0.291e-3,
     .LineLen      = 100e-3,
     .ImgWidth     = 320,
-    .ImgHeight    = 120,
-    .YScale       = 2,
+    .NumLines     = 120,
+    .LineHeight   = 2,
     .ColorEnc     = BW },
 
   [R8BW] = {  // N7CXI, 2000
@@ -201,8 +201,8 @@ _ModeSpec ModeSpec[] = {
     .PixelLen     = 0.188e-3,
     .LineLen      = 67e-3,
     .ImgWidth     = 320,
-    .ImgHeight    = 120,
-    .YScale       = 2,
+    .NumLines     = 120,
+    .LineHeight   = 2,
     .ColorEnc     = BW },
   
   [W2120] = { // KB4YZ, 1999
@@ -214,8 +214,8 @@ _ModeSpec ModeSpec[] = {
     .PixelLen     = 0.489039081e-3,
     .LineLen      = 475.530018e-3,
     .ImgWidth     = 320,
-    .ImgHeight    = 256,
-    .YScale       = 1,
+    .NumLines     = 256,
+    .LineHeight   = 1,
     .ColorEnc     = RGB },
 
   [W2180] = {  // N7CXI, 2000
@@ -227,8 +227,8 @@ _ModeSpec ModeSpec[] = {
     .PixelLen     = 0.734532e-3,
     .LineLen      = 711.0225e-3,
     .ImgWidth     = 320,
-    .ImgHeight    = 256,
-    .YScale       = 1,
+    .NumLines     = 256,
+    .LineHeight   = 1,
     .ColorEnc     = RGB },
 
   [PD50] = {  // N7CXI, 2000
@@ -240,8 +240,8 @@ _ModeSpec ModeSpec[] = {
     .PixelLen     = 0.286e-3,
     .LineLen      = 388.16e-3,
     .ImgWidth     = 320,
-    .ImgHeight    = 256,
-    .YScale       = 1,
+    .NumLines     = 256,
+    .LineHeight   = 1,
     .ColorEnc     = YUV },
 
   [PD90] = {  // N7CXI, 2000
@@ -253,8 +253,8 @@ _ModeSpec ModeSpec[] = {
     .PixelLen     = 0.532e-3,
     .LineLen      = 703.04e-3,
     .ImgWidth     = 320,
-    .ImgHeight    = 256,
-    .YScale       = 1,
+    .NumLines     = 256,
+    .LineHeight   = 1,
     .ColorEnc     = YUV },
 
   [PD120] = {  // N7CXI, 2000
@@ -266,8 +266,8 @@ _ModeSpec ModeSpec[] = {
     .PixelLen     = 0.19e-3,
     .LineLen      = 508.48e-3,
     .ImgWidth     = 640,
-    .ImgHeight    = 496,
-    .YScale       = 1,
+    .NumLines     = 496,
+    .LineHeight   = 1,
     .ColorEnc     = YUV },
 
   [PD160] = {  // N7CXI, 2000
@@ -279,8 +279,8 @@ _ModeSpec ModeSpec[] = {
     .PixelLen     = 0.382e-3,
     .LineLen      = 804.416e-3,
     .ImgWidth     = 512,
-    .ImgHeight    = 400,
-    .YScale       = 1,
+    .NumLines     = 400,
+    .LineHeight   = 1,
     .ColorEnc     = YUV },
 
   [PD180] = {  // N7CXI, 2000
@@ -292,8 +292,8 @@ _ModeSpec ModeSpec[] = {
     .PixelLen     = 0.286e-3,
     .LineLen      = 754.24e-3,
     .ImgWidth     = 640,
-    .ImgHeight    = 496,
-    .YScale       = 1,
+    .NumLines     = 496,
+    .LineHeight   = 1,
     .ColorEnc     = YUV },
 
   [PD240] = {  // N7CXI, 2000
@@ -305,8 +305,8 @@ _ModeSpec ModeSpec[] = {
     .PixelLen     = 0.382e-3,
     .LineLen      = 1000e-3,
     .ImgWidth     = 640,
-    .ImgHeight    = 496,
-    .YScale       = 1,
+    .NumLines     = 496,
+    .LineHeight   = 1,
     .ColorEnc     = YUV },
 
   [PD290] = {  // N7CXI, 2000
@@ -318,8 +318,8 @@ _ModeSpec ModeSpec[] = {
     .PixelLen     = 0.286e-3,
     .LineLen      = 937.28e-3,
     .ImgWidth     = 800,
-    .ImgHeight    = 616,
-    .YScale       = 1,
+    .NumLines     = 616,
+    .LineHeight   = 1,
     .ColorEnc     = YUV },
 
   [P3] = {  // N7CXI, 2000
@@ -331,8 +331,8 @@ _ModeSpec ModeSpec[] = {
     .PixelLen     = 0.2083e-3,
     .LineLen      = 409.375e-3,
     .ImgWidth     = 640,
-    .ImgHeight    = 496,
-    .YScale       = 1,
+    .NumLines     = 496,
+    .LineHeight   = 1,
     .ColorEnc     = RGB },
 
   [P5] = {  // N7CXI, 2000
@@ -344,8 +344,8 @@ _ModeSpec ModeSpec[] = {
     .PixelLen     = 0.3125e-3,
     .LineLen      = 614.065e-3,
     .ImgWidth     = 640,
-    .ImgHeight    = 496,
-    .YScale       = 1,
+    .NumLines     = 496,
+    .LineHeight   = 1,
     .ColorEnc     = RGB },
 
   [P7] = {  // N7CXI, 2000
@@ -357,8 +357,8 @@ _ModeSpec ModeSpec[] = {
     .PixelLen     = 0.4167e-3,
     .LineLen      = 818.747e-3,
     .ImgWidth     = 640,
-    .ImgHeight    = 496,
-    .YScale       = 1,
+    .NumLines     = 496,
+    .LineHeight   = 1,
     .ColorEnc     = RGB }
  
 };

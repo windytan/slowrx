@@ -83,14 +83,14 @@ void *Listen() {
 
     // Allocate space for cached Lum
     free(StoredLum);
-    StoredLum = calloc( (int)((ModeSpec[CurrentPic.Mode].LineLen * ModeSpec[CurrentPic.Mode].ImgHeight + 1) * 44100), sizeof(guchar));
+    StoredLum = calloc( (int)((ModeSpec[CurrentPic.Mode].LineLen * ModeSpec[CurrentPic.Mode].NumLines + 1) * 44100), sizeof(guchar));
     if (StoredLum == NULL) {
       perror("Listen: Unable to allocate memory for Lum");
       exit(EXIT_FAILURE);
     }
 
     // Allocate space for sync signal
-    HasSync = calloc((int)(ModeSpec[CurrentPic.Mode].LineLen * ModeSpec[CurrentPic.Mode].ImgHeight / (13.0/44100) +1), sizeof(gboolean));
+    HasSync = calloc((int)(ModeSpec[CurrentPic.Mode].LineLen * ModeSpec[CurrentPic.Mode].NumLines / (13.0/44100) +1), sizeof(gboolean));
     if (HasSync == NULL) {
       perror("Listen: Unable to allocate memory for sync signal");
       exit(EXIT_FAILURE);
@@ -154,7 +154,7 @@ void *Listen() {
 
     // Add thumbnail to iconview
     CurrentPic.thumbbuf = gdk_pixbuf_scale_simple (pixbuf_rx, 100,
-        100.0/ModeSpec[CurrentPic.Mode].ImgWidth * ModeSpec[CurrentPic.Mode].ImgHeight * ModeSpec[CurrentPic.Mode].YScale, GDK_INTERP_HYPER);
+        100.0/ModeSpec[CurrentPic.Mode].ImgWidth * ModeSpec[CurrentPic.Mode].NumLines * ModeSpec[CurrentPic.Mode].LineHeight, GDK_INTERP_HYPER);
     gdk_threads_enter                  ();
     gtk_list_store_prepend             (savedstore, &iter);
     gtk_list_store_set                 (savedstore, &iter, 0, CurrentPic.thumbbuf, 1, id, -1);
@@ -169,7 +169,7 @@ void *Listen() {
       LumFile = fopen(lumfilename,"w");
       if (LumFile == NULL)
         perror("Unable to open luma file for writing");
-      fwrite(StoredLum,1,(ModeSpec[Mode].LineLen * ModeSpec[Mode].ImgHeight) * 44100,LumFile);
+      fwrite(StoredLum,1,(ModeSpec[Mode].LineLen * ModeSpec[Mode].NumLines) * 44100,LumFile);
       fclose(LumFile);*/
 
       saveCurrentPic();

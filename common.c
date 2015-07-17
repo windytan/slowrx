@@ -84,7 +84,7 @@ void saveCurrentPic() {
   printf("  Saving to %s\n", pngfilename->str);
 
   scaledpb = gdk_pixbuf_scale_simple (pixbuf_rx, ModeSpec[CurrentPic.Mode].ImgWidth,
-    ModeSpec[CurrentPic.Mode].ImgHeight * ModeSpec[CurrentPic.Mode].YScale, GDK_INTERP_HYPER);
+    ModeSpec[CurrentPic.Mode].NumLines * ModeSpec[CurrentPic.Mode].LineHeight, GDK_INTERP_HYPER);
 
   ensure_dir_exists(g_key_file_get_string(config,"slowrx","rxdir",NULL));
   gdk_pixbuf_savev(scaledpb, pngfilename->str, "png", NULL, NULL, NULL);
@@ -176,7 +176,7 @@ void evt_clickimg(GtkWidget *widget, GdkEventButton* event, GdkWindowEdge edge) 
   if (event->type == GDK_BUTTON_PRESS && event->button == 1 && gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON(gui.tog_setedge))) {
 
     x = event->x * (ModeSpec[CurrentPic.Mode].ImgWidth / 500.0);
-    y = event->y * (ModeSpec[CurrentPic.Mode].ImgWidth / 500.0) / ModeSpec[CurrentPic.Mode].YScale;
+    y = event->y * (ModeSpec[CurrentPic.Mode].ImgWidth / 500.0) / ModeSpec[CurrentPic.Mode].LineHeight;
 
     if (secondpress) {
       secondpress=FALSE;
@@ -187,7 +187,7 @@ void evt_clickimg(GtkWidget *widget, GdkEventButton* event, GdkWindowEdge edge) 
       gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON(gui.tog_setedge),FALSE);
 
       // Adjust sample rate, if in sensible limits
-      newrate = CurrentPic.Rate + CurrentPic.Rate * (dx * ModeSpec[CurrentPic.Mode].PixelLen) / (dy * ModeSpec[CurrentPic.Mode].YScale * ModeSpec[CurrentPic.Mode].LineLen);
+      newrate = CurrentPic.Rate + CurrentPic.Rate * (dx * ModeSpec[CurrentPic.Mode].PixelLen) / (dy * ModeSpec[CurrentPic.Mode].LineHeight * ModeSpec[CurrentPic.Mode].LineLen);
       if (newrate > 32000 && newrate < 56000) {
         CurrentPic.Rate = newrate;
 

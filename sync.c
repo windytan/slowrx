@@ -34,7 +34,7 @@ double FindSync (guchar Mode, double Rate, int *Skip) {
 
     // Draw the 2D sync signal at current rate
     
-    for (y=0; y<ModeSpec[Mode].ImgHeight; y++) {
+    for (y=0; y<ModeSpec[Mode].NumLines; y++) {
       for (x=0; x<LineWidth; x++) {
         t = (y + 1.0*x/LineWidth) * ModeSpec[Mode].LineLen;
         SyncImg[x][y] = HasSync[ (int)( t * Rate / 13.0) ];
@@ -47,7 +47,7 @@ double FindSync (guchar Mode, double Rate, int *Skip) {
     memset(lines, 0, sizeof(lines[0][0]) * (MAXSLANT-MINSLANT)*2 * 600);
 
     // Find white pixels
-    for (cy = 0; cy < ModeSpec[Mode].ImgHeight; cy++) {
+    for (cy = 0; cy < ModeSpec[Mode].NumLines; cy++) {
       for (cx = 0; cx < LineWidth; cx++) {
         if (SyncImg[cx][cy]) {
 
@@ -95,7 +95,7 @@ double FindSync (guchar Mode, double Rate, int *Skip) {
   
   // accumulate a 1-dim array of the position of the sync pulse
   memset(xAcc, 0, sizeof(xAcc[0]) * 700);
-  for (y=0; y<ModeSpec[Mode].ImgHeight; y++) {
+  for (y=0; y<ModeSpec[Mode].NumLines; y++) {
     for (x=0; x<700; x++) { 
       t = y * ModeSpec[Mode].LineLen + x/700.0 * ModeSpec[Mode].LineLen;
       xAcc[x] += HasSync[ (int)(t / (13.0/44100) * Rate/44100) ];
