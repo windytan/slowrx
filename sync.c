@@ -17,7 +17,7 @@
  */
 double FindSync (guchar Mode, double Rate, int *Skip) {
 
-  int      LineWidth = ModeSpec[Mode].LineLen / ModeSpec[Mode].SyncLen * 4;
+  int      LineWidth = ModeSpec[Mode].LineTime / ModeSpec[Mode].SyncTime * 4;
   int      x,y;
   int      q, d, qMost, dMost;
   gushort  xAcc[700] = {0};
@@ -36,7 +36,7 @@ double FindSync (guchar Mode, double Rate, int *Skip) {
     
     for (y=0; y<ModeSpec[Mode].NumLines; y++) {
       for (x=0; x<LineWidth; x++) {
-        t = (y + 1.0*x/LineWidth) * ModeSpec[Mode].LineLen;
+        t = (y + 1.0*x/LineWidth) * ModeSpec[Mode].LineTime;
         SyncImg[x][y] = HasSync[ (int)( t * Rate / 13.0) ];
       }
     }
@@ -97,7 +97,7 @@ double FindSync (guchar Mode, double Rate, int *Skip) {
   memset(xAcc, 0, sizeof(xAcc[0]) * 700);
   for (y=0; y<ModeSpec[Mode].NumLines; y++) {
     for (x=0; x<700; x++) { 
-      t = y * ModeSpec[Mode].LineLen + x/700.0 * ModeSpec[Mode].LineLen;
+      t = y * ModeSpec[Mode].LineTime + x/700.0 * ModeSpec[Mode].LineTime;
       xAcc[x] += HasSync[ (int)(t / (13.0/44100) * Rate/44100) ];
     }
   }
@@ -117,12 +117,12 @@ double FindSync (guchar Mode, double Rate, int *Skip) {
   if (xmax > 350) xmax -= 350;
 
   // Skip until the start of the line
-  s = xmax / 700.0 * ModeSpec[Mode].LineLen - ModeSpec[Mode].SyncLen;
+  s = xmax / 700.0 * ModeSpec[Mode].LineTime - ModeSpec[Mode].SyncTime;
   
   // (Scottie modes don't start lines with sync)
   if (Mode == S1 || Mode == S2 || Mode == SDX)
-    s = s - ModeSpec[Mode].PixelLen * ModeSpec[Mode].ImgWidth / 2.0
-          + ModeSpec[Mode].PorchLen * 2;
+    s = s - ModeSpec[Mode].PixelTime * ModeSpec[Mode].ImgWidth / 2.0
+          + ModeSpec[Mode].PorchTime * 2;
 
   *Skip = s * Rate;
 

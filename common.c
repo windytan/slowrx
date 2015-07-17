@@ -187,17 +187,17 @@ void evt_clickimg(GtkWidget *widget, GdkEventButton* event, GdkWindowEdge edge) 
       gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON(gui.tog_setedge),FALSE);
 
       // Adjust sample rate, if in sensible limits
-      newrate = CurrentPic.Rate + CurrentPic.Rate * (dx * ModeSpec[CurrentPic.Mode].PixelLen) / (dy * ModeSpec[CurrentPic.Mode].LineHeight * ModeSpec[CurrentPic.Mode].LineLen);
+      newrate = CurrentPic.Rate + CurrentPic.Rate * (dx * ModeSpec[CurrentPic.Mode].PixelTime) / (dy * ModeSpec[CurrentPic.Mode].LineHeight * ModeSpec[CurrentPic.Mode].LineTime);
       if (newrate > 32000 && newrate < 56000) {
         CurrentPic.Rate = newrate;
 
         // Find x-intercept and adjust skip
         xic = fmod( (x - (y / (dy/dx))), ModeSpec[CurrentPic.Mode].ImgWidth);
         if (xic < 0) xic = ModeSpec[CurrentPic.Mode].ImgWidth - xic;
-        CurrentPic.Skip = fmod(CurrentPic.Skip + xic * ModeSpec[CurrentPic.Mode].PixelLen * CurrentPic.Rate,
-          ModeSpec[CurrentPic.Mode].LineLen * CurrentPic.Rate);
-        if (CurrentPic.Skip > ModeSpec[CurrentPic.Mode].LineLen * CurrentPic.Rate / 2.0)
-          CurrentPic.Skip -= ModeSpec[CurrentPic.Mode].LineLen * CurrentPic.Rate;
+        CurrentPic.Skip = fmod(CurrentPic.Skip + xic * ModeSpec[CurrentPic.Mode].PixelTime * CurrentPic.Rate,
+          ModeSpec[CurrentPic.Mode].LineTime * CurrentPic.Rate);
+        if (CurrentPic.Skip > ModeSpec[CurrentPic.Mode].LineTime * CurrentPic.Rate / 2.0)
+          CurrentPic.Skip -= ModeSpec[CurrentPic.Mode].LineTime * CurrentPic.Rate;
 
         // Signal the listener to exit from GetVIS() and re-process the pic
         ManualResync = TRUE;

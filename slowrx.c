@@ -83,14 +83,14 @@ void *Listen() {
 
     // Allocate space for cached Lum
     free(StoredLum);
-    StoredLum = calloc( (int)((ModeSpec[CurrentPic.Mode].LineLen * ModeSpec[CurrentPic.Mode].NumLines + 1) * 44100), sizeof(guchar));
+    StoredLum = calloc( (int)((ModeSpec[CurrentPic.Mode].LineTime * ModeSpec[CurrentPic.Mode].NumLines + 1) * 44100), sizeof(guchar));
     if (StoredLum == NULL) {
       perror("Listen: Unable to allocate memory for Lum");
       exit(EXIT_FAILURE);
     }
 
     // Allocate space for sync signal
-    HasSync = calloc((int)(ModeSpec[CurrentPic.Mode].LineLen * ModeSpec[CurrentPic.Mode].NumLines / (13.0/44100) +1), sizeof(gboolean));
+    HasSync = calloc((int)(ModeSpec[CurrentPic.Mode].LineTime * ModeSpec[CurrentPic.Mode].NumLines / (13.0/44100) +1), sizeof(gboolean));
     if (HasSync == NULL) {
       perror("Listen: Unable to allocate memory for sync signal");
       exit(EXIT_FAILURE);
@@ -169,7 +169,7 @@ void *Listen() {
       LumFile = fopen(lumfilename,"w");
       if (LumFile == NULL)
         perror("Unable to open luma file for writing");
-      fwrite(StoredLum,1,(ModeSpec[Mode].LineLen * ModeSpec[Mode].NumLines) * 44100,LumFile);
+      fwrite(StoredLum,1,(ModeSpec[Mode].LineTime * ModeSpec[Mode].NumLines) * 44100,LumFile);
       fclose(LumFile);*/
 
       saveCurrentPic();

@@ -109,11 +109,11 @@ enum {
 typedef struct ModeSpec {
   char   *Name;
   char   *ShortName;
-  double  SyncLen;
-  double  PorchLen;
-  double  SeparatorLen;
-  double  PixelLen;
-  double  LineLen;
+  double  SyncTime;
+  double  PorchTime;
+  double  SeptrTime;
+  double  PixelTime;
+  double  LineTime;
   gushort ImgWidth;
   gushort NumLines;
   guchar  LineHeight;

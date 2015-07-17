@@ -62,27 +62,27 @@ gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
 
     case R36:
     case R24:
-      ChanLen[0]   = ModeSpec[Mode].PixelLen * ModeSpec[Mode].ImgWidth * 2;
-      ChanLen[1]   = ChanLen[2] = ModeSpec[Mode].PixelLen * ModeSpec[Mode].ImgWidth;
-      ChanStart[0] = ModeSpec[Mode].SyncLen + ModeSpec[Mode].PorchLen;
-      ChanStart[1] = ChanStart[0] + ChanLen[0] + ModeSpec[Mode].SeparatorLen;
+      ChanLen[0]   = ModeSpec[Mode].PixelTime * ModeSpec[Mode].ImgWidth * 2;
+      ChanLen[1]   = ChanLen[2] = ModeSpec[Mode].PixelTime * ModeSpec[Mode].ImgWidth;
+      ChanStart[0] = ModeSpec[Mode].SyncTime + ModeSpec[Mode].PorchTime;
+      ChanStart[1] = ChanStart[0] + ChanLen[0] + ModeSpec[Mode].SeptrTime;
       ChanStart[2] = ChanStart[1];
       break;
 
     case S1:
     case S2:
     case SDX:
-      ChanLen[0]   = ChanLen[1] = ChanLen[2] = ModeSpec[Mode].PixelLen * ModeSpec[Mode].ImgWidth;
-      ChanStart[0] = ModeSpec[Mode].SeparatorLen;
-      ChanStart[1] = ChanStart[0] + ChanLen[0] + ModeSpec[Mode].SeparatorLen;
-      ChanStart[2] = ChanStart[1] + ChanLen[1] + ModeSpec[Mode].SyncLen + ModeSpec[Mode].PorchLen;
+      ChanLen[0]   = ChanLen[1] = ChanLen[2] = ModeSpec[Mode].PixelTime * ModeSpec[Mode].ImgWidth;
+      ChanStart[0] = ModeSpec[Mode].SeptrTime;
+      ChanStart[1] = ChanStart[0] + ChanLen[0] + ModeSpec[Mode].SeptrTime;
+      ChanStart[2] = ChanStart[1] + ChanLen[1] + ModeSpec[Mode].SyncTime + ModeSpec[Mode].PorchTime;
       break;
 
     default:
-      ChanLen[0]   = ChanLen[1] = ChanLen[2] = ModeSpec[Mode].PixelLen * ModeSpec[Mode].ImgWidth;
-      ChanStart[0] = ModeSpec[Mode].SyncLen + ModeSpec[Mode].PorchLen;
-      ChanStart[1] = ChanStart[0] + ChanLen[0] + ModeSpec[Mode].SeparatorLen;
-      ChanStart[2] = ChanStart[1] + ChanLen[1] + ModeSpec[Mode].SeparatorLen;
+      ChanLen[0]   = ChanLen[1] = ChanLen[2] = ModeSpec[Mode].PixelTime * ModeSpec[Mode].ImgWidth;
+      ChanStart[0] = ModeSpec[Mode].SyncTime + ModeSpec[Mode].PorchTime;
+      ChanStart[1] = ChanStart[0] + ChanLen[0] + ModeSpec[Mode].SeptrTime;
+      ChanStart[2] = ChanStart[1] + ChanLen[1] + ModeSpec[Mode].SeptrTime;
       break;
 
   }
@@ -118,7 +118,7 @@ gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
           PixelGrid[PixelIdx].Channel = Channel;
         }
         
-        PixelGrid[PixelIdx].Time = (int)round(Rate * (y * ModeSpec[Mode].LineLen + ChanStart[Channel] +
+        PixelGrid[PixelIdx].Time = (int)round(Rate * (y * ModeSpec[Mode].LineTime + ChanStart[Channel] +
           (1.0*(x-.5)/ModeSpec[Mode].ImgWidth*ChanLen[PixelGrid[PixelIdx].Channel]))) + Skip;
 
 
@@ -173,7 +173,7 @@ gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
   gtk_image_set_from_pixbuf(GTK_IMAGE(gui.image_rx), pixbuf_disp);
   gdk_threads_leave();
 
-  Length        = ModeSpec[Mode].LineLen * ModeSpec[Mode].NumLines * 44100;
+  Length        = ModeSpec[Mode].LineTime * ModeSpec[Mode].NumLines * 44100;
   SyncTargetBin = GetBin(1200+CurrentPic.HedrShift, FFTLen);
   Abort         = FALSE;
   SyncSampleNum = 0;
