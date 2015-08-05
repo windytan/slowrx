@@ -1,0 +1,55 @@
+/*
+You can type here any CSS rule recognized by GTK+.
+You can temporarily disable this custom CSS by clicking on the “Pause” button above.
+
+Changes are applied instantly and globally, for the whole application.
+*/
+
+GtkWindow {
+  background: #747474;
+  color: white;
+}
+
+GtkFrame, GtkBox, GtkAlignment, GtkNotebook {
+  background: transparent;
+}
+
+GtkButton {
+  background: linear-gradient(#777, #000 60%);
+  border: 2px solid #111;
+  border-bottom-color: #999;
+  border-right-color: #999;
+  color: white;
+
+  box-shadow: none;
+  text-shadow: none;
+  padding: 3px;
+}
+GtkButton:insensitive {
+  color: #606060;
+}
+GtkButton:checked {
+  background: linear-gradient(#7cc, #055 50%);
+}
+
+GtkComboBox {
+  text-shadow: none;
+  font-weight: bold;
+  font-family: monospace;
+  color: #6792e5;
+}
+GtkComboBox > GtkButton, GtkEntry {
+  background: linear-gradient(#3f4b8b, #2f3b7b);
+  color: #6792e5;
+  font-weight: bold;
+  font-family: monospace;
+  border-color: #5c4f6f;
+  border-top-color: #000;
+  box-shadow: none;
+  border-left-color: #000;
+}
+
+GtkFrame {
+  border: 1px solid #444;
+}
+

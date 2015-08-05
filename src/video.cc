@@ -1,30 +1,21 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <math.h>
-#include <string.h>
-#include <gtk/gtk.h>
-#include <alsa/asoundlib.h>
-
-#include <fftw3.h>
-
 #include "common.h"
 
 /* Demodulate the video signal & store all kinds of stuff for later stages
  *  Mode:      M1, M2, S1, S2, R72, R36...
  *  Rate:      exact sampling rate used
  *  Skip:      number of PCM samples to skip at the beginning (for sync phase adjustment)
- *  Redraw:    FALSE = Apply windowing and FFT to the signal, TRUE = Redraw from cached FFT data
- *  returns:   TRUE when finished, FALSE when aborted
+ *  Redraw:    false = Apply windowing and FFT to the signal, true = Redraw from cached FFT data
+ *  returns:   true when finished, false when aborted
  */
-gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
+gboolean GetVideo(SSTVMode Mode, double Rate, int Skip, bool Redraw) {
 
-  guint      MaxBin = 0;
-  guint      VideoPlusNoiseBins=0, ReceiverBins=0, NoiseOnlyBins=0;
-  guint      n=0;
-  guint      SyncSampleNum;
-  guint      i=0, j=0;
-  guint      FFTLen=1024, WinLength=0;
-  guint      SyncTargetBin;
+  int      MaxBin = 0;
+  int      VideoPlusNoiseBins=0, ReceiverBins=0, NoiseOnlyBins=0;
+  int      n=0;
+  int      SyncSampleNum;
+  int      i=0, j=0;
+  int      FFTLen=1024, WinLength=0;
+  int      SyncTargetBin;
   int        SampleNum, Length, NumChans;
   int        x = 0, y = 0, tx=0, k=0;
   double     Hann[7][1024] = {{0}};
@@ -43,7 +34,7 @@ gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
     int Y;
     int Time;
     guchar Channel;
-    gboolean Last;
+    bool Last;
   } _PixelGrid;
 
   _PixelGrid *PixelGrid;
@@ -126,13 +117,13 @@ gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
         PixelGrid[PixelIdx].Y = y;
         
 
-        PixelGrid[PixelIdx].Last = FALSE;
+        PixelGrid[PixelIdx].Last = false;
 
         PixelIdx ++;
       }
     }
   }
-  PixelGrid[PixelIdx-1].Last = TRUE;
+  PixelGrid[PixelIdx-1].Last = true;
 
   for (k=0; k<PixelIdx; k++) {
     if (PixelGrid[k].Time >= 0) {
@@ -157,7 +148,7 @@ gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
   // Initialize pixbuffer
   if (!Redraw) {
     g_object_unref(pixbuf_rx);
-    pixbuf_rx = gdk_pixbuf_new (GDK_COLORSPACE_RGB, FALSE, 8, ModeSpec[Mode].ImgWidth, ModeSpec[Mode].NumLines);
+    pixbuf_rx = gdk_pixbuf_new (GDK_COLORSPACE_RGB, false, 8, ModeSpec[Mode].ImgWidth, ModeSpec[Mode].NumLines);
     gdk_pixbuf_fill(pixbuf_rx, 0);
   }
 
@@ -175,7 +166,7 @@ gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
 
   Length        = ModeSpec[Mode].LineTime * ModeSpec[Mode].NumLines * 44100;
   SyncTargetBin = GetBin(1200+CurrentPic.HedrShift, FFTLen);
-  Abort         = FALSE;
+  Abort         = false;
   SyncSampleNum = 0;
 
   // Loop through signal
@@ -292,14 +283,14 @@ gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
         memset(Power,  0, sizeof(double)*1024);
 
         // Apply window function
-        
+
         WinLength = HannLens[WinIdx];
         for (i = 0; i < WinLength; i++) fft.in[i] = pcm.Buffer[pcm.WindowPtr + i - WinLength/2] / 32768.0 * Hann[WinIdx][i];
 
         fftw_execute(fft.Plan1024);
 
         MaxBin = 0;
-          
+
         // Find the bin with most power
         for (n = GetBin(1500 + CurrentPic.HedrShift, FFTLen) - 1; n <= GetBin(2300 + CurrentPic.HedrShift, FFTLen) + 1; n++) {
 
@@ -383,9 +374,7 @@ gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
           pixbuf_disp = gdk_pixbuf_scale_simple(pixbuf_rx, 500,
               500.0/ModeSpec[Mode].ImgWidth * ModeSpec[Mode].NumLines * ModeSpec[Mode].LineHeight, GDK_INTERP_BILINEAR);
 
-          gdk_threads_enter();
           gtk_image_set_from_pixbuf(GTK_IMAGE(gui.image_rx), pixbuf_disp);
-          gdk_threads_leave();
         }
       }
 
@@ -395,12 +384,12 @@ gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
     } /* endif (SampleNum == PixelGrid[PixelIdx].Time) */
     
     if (!Redraw && SampleNum % 8820 == 0) {
-      setVU(Power, FFTLen, WinIdx, TRUE);
+      setVU(Power, FFTLen, WinIdx, true);
     }
 
     if (Abort) {
       free(PixelGrid);
-      return FALSE;
+      return false;
     }
 
     pcm.WindowPtr ++;
@@ -408,6 +397,6 @@ gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
   }
 
   free(PixelGrid);
-  return TRUE;
+  return true;
 
 }

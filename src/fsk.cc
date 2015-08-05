@@ -1,10 +1,3 @@
-#include <stdlib.h>
-#include <math.h>
-#include <gtk/gtk.h>
-#include <alsa/asoundlib.h>
-
-#include <fftw3.h>
-
 #include "common.h"
 
 /* 
@@ -17,15 +10,23 @@
  *
  */
 
-void GetFSK (char *dest) {
+vector<double> WindowHann (int len) {
+  vector<double> result(len);
+  for (int i = 0; i < len; i++)
+    result[i] = 0.5 * (1 - cos( 2 * M_PI * i / (1.0*len-1) ) );
+  return result;
+}
 
-  guint      FFTLen = 2048, i=0, LoBin, HiBin, MidBin, TestNum=0, TestPtr=0;
-  guchar     Bit = 0, AsciiByte = 0, BytePtr = 0, TestBits[24] = {0}, BitPtr=0;
-  double     HiPow,LoPow,Hann[970];
-  gboolean   InSync = FALSE;
+string GetFSK () {
 
-  // Bit-reversion lookup table
-  static const guchar BitRev[] = {
+  guint  fft_len = 2048, i=0, lo_bin, hi_bin, mid_bin, test_num=0, test_ptr=0;
+  guchar bit = 0, ascii_byte = 0, byte_ptr = 0, test_bits[24] = {0}, bit_ptr=0;
+  double hi_pow,lo_pow
+  vector<double> Hann;
+  bool   is_in_sync = false;
+
+  // bit-reversion lookup table
+  static const guchar bit_rev[] = {
     0x00, 0x20, 0x10, 0x30,   0x08, 0x28, 0x18, 0x38,
     0x04, 0x24, 0x14, 0x34,   0x0c, 0x2c, 0x1c, 0x3c,
     0x02, 0x22, 0x12, 0x32,   0x0a, 0x2a, 0x1a, 0x3a,
@@ -35,76 +36,77 @@ void GetFSK (char *dest) {
     0x03, 0x23, 0x13, 0x33,   0x0b, 0x2b, 0x1b, 0x3b,
     0x07, 0x27, 0x17, 0x37,   0x0f, 0x2f, 0x1f, 0x3f };
 
-  for (i = 0; i < FFTLen; i++) fft.in[i] = 0;
+  for (i = 0; i < fft_len; i++) fft.in[i] = 0;
 
   // Create 22ms Hann window
-  for (i = 0; i < 970; i++) Hann[i] = 0.5 * (1 - cos( 2 * M_PI * i / 969.0 ) );
+  Hann = WindowHann(970);
+  //for (i = 0; i < 970; i++) Hann[i] = 0.5 * (1 - cos( 2 * M_PI * i / 969.0 ) );
 
-  while ( TRUE ) {
+  while ( true ) {
 
     // Read data from DSP
-    readPcm(InSync ? 970: 485);
+    readPcm(is_in_sync ? 970: 485);
 
     if (pcm.WindowPtr < 485) {
-      pcm.WindowPtr += (InSync ? 970 : 485);
+      pcm.WindowPtr += (is_in_sync ? 970 : 485);
       continue;
     }
 
     // Apply Hann window
     for (i = 0; i < 970; i++) fft.in[i] = pcm.Buffer[pcm.WindowPtr+i- 485] * Hann[i];
     
-    pcm.WindowPtr += (InSync ? 970 : 485);
+    pcm.WindowPtr += (is_in_sync ? 970 : 485);
 
     // FFT of last 22 ms
     fftw_execute(fft.Plan2048);
 
-    LoBin  = GetBin(1900+CurrentPic.HedrShift, FFTLen)-1;
-    MidBin = GetBin(2000+CurrentPic.HedrShift, FFTLen);
-    HiBin  = GetBin(2100+CurrentPic.HedrShift, FFTLen)+1;
+    lo_bin  = GetBin(1900+CurrentPic.HedrShift, fft_len)-1;
+    mid_bin = GetBin(2000+CurrentPic.HedrShift, fft_len);
+    hi_bin  = GetBin(2100+CurrentPic.HedrShift, fft_len)+1;
 
-    LoPow = 0;
-    HiPow = 0;
+    lo_pow = 0;
+    hi_pow = 0;
 
-    for (i = LoBin; i <= HiBin; i++) {
-      if (i < MidBin) LoPow += power(fft.out[i]);
-      else            HiPow += power(fft.out[i]);
+    for (i = lo_bin; i <= hi_bin; i++) {
+      if (i < mid_bin) lo_pow += power(fft.out[i]);
+      else             hi_pow += power(fft.out[i]);
     }
 
-    Bit = (LoPow>HiPow);
+    bit = (lo_pow > hi_pow) ? 1 : 0;
 
-    if (!InSync) {
+    if (!is_in_sync) {
 
       // Wait for 20 2A
       
-      TestBits[TestPtr % 24] = Bit;
+      test_bits[test_ptr % 24] = bit;
 
-      TestNum = 0;
-      for (i=0; i<12; i++) TestNum |= TestBits[(TestPtr - (23-i*2)) % 24] << (11-i);
+      test_num = 0;
+      for (i=0; i<12; i++) test_num |= test_bits[(test_ptr - (23-i*2)) % 24] << (11-i);
 
-      if (BitRev[(TestNum >>  6) & 0x3f] == 0x20 && BitRev[TestNum & 0x3f] == 0x2a) {
-        InSync    = TRUE;
-        AsciiByte = 0;
-        BitPtr    = 0;
-        BytePtr   = 0;
+      if (bit_rev[(test_num >>  6) & 0x3f] == 0x20 && bit_rev[test_num & 0x3f] == 0x2a) {
+        is_in_sync    = true;
+        ascii_byte = 0;
+        bit_ptr    = 0;
+        byte_ptr   = 0;
       }
 
-      if (++TestPtr > 200) break;
+      if (++test_ptr > 200) break;
 
     } else {
 
-      AsciiByte |= Bit << BitPtr;
+      ascii_byte |= bit << bit_ptr;
 
-      if (++BitPtr == 6) {
-        if (AsciiByte < 0x0d || BytePtr > 9) break;
-        dest[BytePtr] = AsciiByte + 0x20;
-        BitPtr        = 0;
-        AsciiByte     = 0;
-        BytePtr ++;
+      if (++bit_ptr == 6) {
+        if (ascii_byte < 0x0d || byte_ptr > 9) break;
+        dest[byte_ptr] = ascii_byte + 0x20;
+        bit_ptr        = 0;
+        ascii_byte     = 0;
+        byte_ptr ++;
       }
     }
 
   }
     
-  dest[BytePtr] = '\0';
+  dest[byte_ptr] = '\0';
 
 }

@@ -1,100 +1,95 @@
-#include <stdlib.h>
-#include <gtk/gtk.h>
-#include <alsa/asoundlib.h>
-#include <math.h>
+#include "gui.hh"
 
-#include <fftw3.h>
+SlowGUI::SlowGUI() {
+  Glib::RefPtr<Gtk::Application> app =
+    Gtk::Application::create("com.windytan.slowrx");
 
-#include "common.h"
+  Glib::RefPtr<Gtk::Builder> builder = Gtk::Builder::create();
+  builder->add_from_file("ui/slowrx.ui");
+  builder->add_from_file("ui/aboutdialog.ui");
 
-void createGUI() {
+  builder->get_widget("button_abort",    button_abort);
+  builder->get_widget("button_browse",   button_browse);
+  builder->get_widget("button_clear",    button_clear);
+  builder->get_widget("button_start",    button_start);
+  builder->get_widget("combo_card",      combo_card);
+  builder->get_widget("combo_mode",      combo_mode);
+  builder->get_widget("entry_picdir",    entry_picdir);
+  builder->get_widget("eventbox_img",    eventbox_img);
+  builder->get_widget("frame_manual",    frame_manual);
+  builder->get_widget("frame_slant",     frame_slant);
+  builder->get_widget("grid_vu",         grid_vu);
+  builder->get_widget("SavedIconView",   iconview);
+  builder->get_widget("image_devstatus", image_devstatus);
+  builder->get_widget("image_pwr",       image_pwr);
+  builder->get_widget("image_rx",        image_rx);
+  builder->get_widget("image_snr",       image_snr);
+  builder->get_widget("label_fskid",     label_fskid);
+  builder->get_widget("label_lastmode",  label_lastmode);
+  builder->get_widget("label_utc",       label_utc);
+  builder->get_widget("menuitem_quit",   menuitem_quit);
+  builder->get_widget("menuitem_about",  menuitem_about);
+  builder->get_widget("spin_shift",      spin_shift);
+  builder->get_widget("statusbar",       statusbar);
+  builder->get_widget("tog_adapt",       tog_adapt);
+  builder->get_widget("tog_fsk",         tog_fsk);
+  builder->get_widget("tog_rx",          tog_rx);
+  builder->get_widget("tog_save",        tog_save);
+  builder->get_widget("tog_setedge",     tog_setedge);
+  builder->get_widget("tog_slant",       tog_slant);
+  builder->get_widget("window_about",    window_about);
+  builder->get_widget("window_main",     window_main);
 
-  GtkBuilder *builder;
+  button_abort->signal_clicked().connect(sigc::ptr_fun(&evt_AbortRx));
+  button_abort->signal_clicked().connect(sigc::ptr_fun(&evt_AbortRx));
+  button_browse->signal_clicked().connect(sigc::ptr_fun(&evt_chooseDir));
+  button_clear->signal_clicked().connect(sigc::ptr_fun(&evt_clearPix));
+  button_start->signal_clicked().connect(sigc::ptr_fun(&evt_ManualStart));
+  combo_card->signal_changed().connect(sigc::ptr_fun(&evt_changeDevices));
+  //eventbox_img->signal_button_press_event().connect(sigc::ptr_fun(&evt_clickimg));
+  menuitem_quit->signal_activate().connect(sigc::ptr_fun(&evt_deletewindow));
+  menuitem_about->signal_activate().connect(sigc::ptr_fun(&evt_show_about));
+  tog_adapt->signal_activate().connect(sigc::ptr_fun(&evt_GetAdaptive));
+  //window_main->signal_delete_event().connect(sigc::ptr_fun(&evt_deletewindow));
 
-  builder = gtk_builder_new();
-  gtk_builder_add_from_file(builder, "slowrx.ui",      NULL);
-  gtk_builder_add_from_file(builder, "aboutdialog.ui", NULL);
-  
-  gui.button_abort    = GTK_WIDGET(gtk_builder_get_object(builder,"button_abort"));
-  gui.button_browse   = GTK_WIDGET(gtk_builder_get_object(builder,"button_browse"));
-  gui.button_clear    = GTK_WIDGET(gtk_builder_get_object(builder,"button_clear"));
-  gui.button_start    = GTK_WIDGET(gtk_builder_get_object(builder,"button_start"));
-  gui.combo_card      = GTK_WIDGET(gtk_builder_get_object(builder,"combo_card"));
-  gui.combo_mode      = GTK_WIDGET(gtk_builder_get_object(builder,"combo_mode"));
-  gui.entry_picdir    = GTK_WIDGET(gtk_builder_get_object(builder,"entry_picdir"));
-  gui.eventbox_img    = GTK_WIDGET(gtk_builder_get_object(builder,"eventbox_img"));
-  gui.frame_manual    = GTK_WIDGET(gtk_builder_get_object(builder,"frame_manual"));
-  gui.frame_slant     = GTK_WIDGET(gtk_builder_get_object(builder,"frame_slant"));
-  gui.grid_vu         = GTK_WIDGET(gtk_builder_get_object(builder,"grid_vu"));
-  gui.iconview        = GTK_WIDGET(gtk_builder_get_object(builder,"SavedIconView"));
-  gui.image_devstatus = GTK_WIDGET(gtk_builder_get_object(builder,"image_devstatus"));
-  gui.image_pwr       = GTK_WIDGET(gtk_builder_get_object(builder,"image_pwr"));
-  gui.image_rx        = GTK_WIDGET(gtk_builder_get_object(builder,"image_rx"));
-  gui.image_snr       = GTK_WIDGET(gtk_builder_get_object(builder,"image_snr"));
-  gui.label_fskid     = GTK_WIDGET(gtk_builder_get_object(builder,"label_fskid"));
-  gui.label_lastmode  = GTK_WIDGET(gtk_builder_get_object(builder,"label_lastmode"));
-  gui.label_utc       = GTK_WIDGET(gtk_builder_get_object(builder,"label_utc"));
-  gui.menuitem_quit   = GTK_WIDGET(gtk_builder_get_object(builder,"menuitem_quit"));
-  gui.menuitem_about  = GTK_WIDGET(gtk_builder_get_object(builder,"menuitem_about"));
-  gui.spin_shift      = GTK_WIDGET(gtk_builder_get_object(builder,"spin_shift"));
-  gui.statusbar       = GTK_WIDGET(gtk_builder_get_object(builder,"statusbar"));
-  gui.tog_adapt       = GTK_WIDGET(gtk_builder_get_object(builder,"tog_adapt"));
-  gui.tog_fsk         = GTK_WIDGET(gtk_builder_get_object(builder,"tog_fsk"));
-  gui.tog_rx          = GTK_WIDGET(gtk_builder_get_object(builder,"tog_rx"));
-  gui.tog_save        = GTK_WIDGET(gtk_builder_get_object(builder,"tog_save"));
-  gui.tog_setedge     = GTK_WIDGET(gtk_builder_get_object(builder,"tog_setedge"));
-  gui.tog_slant       = GTK_WIDGET(gtk_builder_get_object(builder,"tog_slant"));
-  gui.window_about    = GTK_WIDGET(gtk_builder_get_object(builder,"window_about"));
-  gui.window_main     = GTK_WIDGET(gtk_builder_get_object(builder,"window_main"));
+  //savedstore = iconview.get_model();
 
-  g_signal_connect        (gui.button_abort,  "clicked",      G_CALLBACK(evt_AbortRx),       NULL);
-  g_signal_connect        (gui.button_browse, "clicked",      G_CALLBACK(evt_chooseDir),     NULL);
-  g_signal_connect        (gui.button_clear,  "clicked",      G_CALLBACK(evt_clearPix),      NULL);
-  g_signal_connect        (gui.button_start,  "clicked",      G_CALLBACK(evt_ManualStart),   NULL);
-  g_signal_connect        (gui.combo_card,    "changed",      G_CALLBACK(evt_changeDevices), NULL);
-  g_signal_connect        (gui.eventbox_img,  "button-press-event",G_CALLBACK(evt_clickimg),     NULL);
-  g_signal_connect        (gui.menuitem_quit, "activate",     G_CALLBACK(evt_deletewindow),  NULL);
-  g_signal_connect        (gui.menuitem_about,"activate",     G_CALLBACK(evt_show_about),    NULL);
-  g_signal_connect_swapped(gui.tog_adapt,     "toggled",      G_CALLBACK(evt_GetAdaptive),   NULL);
-  g_signal_connect        (gui.window_main,   "delete-event", G_CALLBACK(evt_deletewindow),  NULL);
+  pixbuf_rx   = Gdk::Pixbuf::create(Gdk::COLORSPACE_RGB, false, 8, 320, 256);
+  pixbuf_rx->fill(0x000000ff);
+  pixbuf_disp = pixbuf_rx->scale_simple(500, 400, Gdk::INTERP_BILINEAR);
+  image_rx->set(pixbuf_disp);
 
-  savedstore = GTK_LIST_STORE(gtk_icon_view_get_model(GTK_ICON_VIEW(gui.iconview)));
+  pixbuf_PWR = Gdk::Pixbuf::create(Gdk::COLORSPACE_RGB, false, 8, 100, 30);
+  pixbuf_SNR = Gdk::Pixbuf::create(Gdk::COLORSPACE_RGB, false, 8, 100, 30);
 
-  pixbuf_rx   = gdk_pixbuf_new (GDK_COLORSPACE_RGB, FALSE, 8, 320, 256);
-  gdk_pixbuf_fill(pixbuf_rx, 0x000000ff);
-  pixbuf_disp = gdk_pixbuf_scale_simple (pixbuf_rx, 500, 400, GDK_INTERP_BILINEAR);
-  gtk_image_set_from_pixbuf(GTK_IMAGE(gui.image_rx), pixbuf_disp);
+  combo_mode->set_active(0);
 
-  pixbuf_PWR = gdk_pixbuf_new (GDK_COLORSPACE_RGB, FALSE, 8, 100, 30);
-  pixbuf_SNR = gdk_pixbuf_new (GDK_COLORSPACE_RGB, FALSE, 8, 100, 30);
-
-  gtk_combo_box_set_active(GTK_COMBO_BOX(gui.combo_mode), 0);
-
-  if (g_key_file_get_string(config,"slowrx","rxdir",NULL) != NULL) {
-    gtk_entry_set_text(GTK_ENTRY(gui.entry_picdir),g_key_file_get_string(config,"slowrx","rxdir",NULL));
+  if (config.get_string("slowrx","rxdir") != NULL) {
+    entry_picdir->set_text(config.get_string("slowrx","rxdir"));
   } else {
-    g_key_file_set_string(config,"slowrx","rxdir",g_get_home_dir());
-    gtk_entry_set_text(GTK_ENTRY(gui.entry_picdir),g_key_file_get_string(config,"slowrx","rxdir",NULL));
+    config.set_string("slowrx","rxdir",g_get_home_dir());
+    entry_picdir->set_text(config.get_string("slowrx","rxdir"));
   }
 
   //setVU(0, 6);
 
-  gtk_widget_show_all  (gui.window_main);
+  window_main->show_all();
 
+  app->run(*window_main);
 }
 
 // Draw signal level meters according to given values
-void setVU (double *Power, int FFTLen, int WinIdx, gboolean ShowWin) {
+void setVU (double *Power, int FFTLen, int WinIdx, bool ShowWin) {
   int          x,y, W=100, H=30;
   guchar       *pixelsPWR, *pixelsSNR, *pPWR, *pSNR;
   unsigned int rowstridePWR,rowstrideSNR, LoBin, HiBin, i;
   double       logpow,p;
 
-  rowstridePWR = gdk_pixbuf_get_rowstride (pixbuf_PWR);
-  pixelsPWR    = gdk_pixbuf_get_pixels    (pixbuf_PWR);
+  rowstridePWR = pixbuf_PWR->get_rowstride();
+  pixelsPWR    = pixbuf_PWR->get_pixels();
   
-  rowstrideSNR = gdk_pixbuf_get_rowstride (pixbuf_SNR);
-  pixelsSNR    = gdk_pixbuf_get_pixels    (pixbuf_SNR);
+  rowstrideSNR = pixbuf_SNR->get_rowstride();
+  pixelsSNR    = pixbuf_SNR->get_pixels();
 
   for (y=0; y<H; y++) {
     for (x=0; x<W; x++) {
@@ -146,31 +141,24 @@ void setVU (double *Power, int FFTLen, int WinIdx, gboolean ShowWin) {
     }
   }
 
-  gdk_threads_enter();
-  gtk_image_set_from_pixbuf(GTK_IMAGE(gui.image_pwr), pixbuf_PWR);
-  gtk_image_set_from_pixbuf(GTK_IMAGE(gui.image_snr), pixbuf_SNR);
-  gdk_threads_leave();
+  //gui.image_pwr->set(pixbuf_PWR);
+  //gui.image_snr->set(pixbuf_SNR);
 
 }
 
 void evt_chooseDir() {
-  GtkWidget *dialog;
-  dialog = gtk_file_chooser_dialog_new ("Select folder",
-                                      GTK_WINDOW(gui.window_main),
-                                      GTK_FILE_CHOOSER_ACTION_SELECT_FOLDER,
-                                      GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL,
-                                      GTK_STOCK_OPEN, GTK_RESPONSE_ACCEPT,
-                                      NULL);
+  /*Gtk::FileChooserDialog dialog (*gui.window_main, "Select folder",
+                                      Gtk::FILE_CHOOSER_ACTION_SELECT_FOLDER);
   
-  if (gtk_dialog_run (GTK_DIALOG (dialog)) == GTK_RESPONSE_ACCEPT) {
-    g_key_file_set_string(config,"slowrx","rxdir",gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog)));
-    gtk_entry_set_text(GTK_ENTRY(gui.entry_picdir),gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog)));
+  if (dialog.run() == Gtk::RESPONSE_ACCEPT) {
+    config->set_string("slowrx","rxdir",dialog.get_filename());
+    //gui.entry_picdir->set_text(dialog.get_filename());
   }
 
-  gtk_widget_destroy (dialog);
+  //dialog.destroy_widget();*/
 }
 
 void evt_show_about() {
-  gtk_dialog_run(GTK_DIALOG(gui.window_about));
-  gtk_widget_hide(gui.window_about);
+  //gui.window_about->show();
+  //gui.window_about->hide();
 }

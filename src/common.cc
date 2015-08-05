@@ -1,42 +1,29 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <math.h>
-#include <sys/stat.h>
-#include <sys/types.h>
+#include "common.hh"
+#include <thread>
 
-#include <gtk/gtk.h>
-#include <alsa/asoundlib.h>
+bool     Abort           = false;
+bool     Adaptive        = true;
+bool    *HasSync         = NULL;
+uint16_t HedrShift       = 0;
+bool     ManualActivated = false;
+bool     ManualResync    = false;
+int      *StoredLum      = NULL;
 
-#include <fftw3.h>
+Glib::RefPtr<Gdk::Pixbuf> pixbuf_PWR;
+Glib::RefPtr<Gdk::Pixbuf> pixbuf_SNR;
+Glib::RefPtr<Gdk::Pixbuf> pixbuf_rx;
+Glib::RefPtr<Gdk::Pixbuf> pixbuf_disp;
 
-#include "common.h"
+Glib::KeyFile config;
 
-gboolean     Abort           = FALSE;
-gboolean     Adaptive        = TRUE;
-gboolean    *HasSync         = NULL;
-gshort       HedrShift       = 0;
-gboolean     ManualActivated = FALSE;
-gboolean     ManualResync    = FALSE;
-guchar      *StoredLum       = NULL;
-
-pthread_t    thread1;
+vector<thread> threads(2);
 
 FFTStuff     fft;
-GuiObjs      gui;
 PicMeta      CurrentPic;
 PcmData      pcm;
 
-GdkPixbuf   *pixbuf_rx       = NULL;
-GdkPixbuf   *pixbuf_disp     = NULL;
-GdkPixbuf   *pixbuf_PWR      = NULL;
-GdkPixbuf   *pixbuf_SNR      = NULL;
-
-GtkListStore *savedstore     = NULL;
-
-GKeyFile    *config          = NULL;
-
 // Return the FFT bin index matching the given frequency
-guint GetBin (double Freq, guint FFTLen) {
+int GetBin (double Freq, int FFTLen) {
   return (Freq / 44100 * FFTLen);
 }
 
@@ -46,10 +33,10 @@ double power (fftw_complex coeff) {
 }
 
 // Clip to [0..255]
-guchar clip (double a) {
+int clip (double a) {
   if      (a < 0)   return 0;
   else if (a > 255) return 255;
-  return  (guchar)round(a);
+  return  round(a);
 }
 
 // Convert degrees -> radians
@@ -62,12 +49,12 @@ double rad2deg (double rad) {
   return (180 / M_PI) * rad;
 }
 
-void ensure_dir_exists(const char *dir) {
+void ensure_dir_exists(string dir) {
   struct stat buf;
 
-  int i = stat(dir, &buf);
+  int i = stat(dir.c_str(), &buf);
   if (i != 0) {
-    if (mkdir(dir, 0777) != 0) {
+    if (mkdir(dir.c_str(), 0777) != 0) {
       perror("Unable to create directory for output file");
       exit(EXIT_FAILURE);
     }
@@ -76,20 +63,23 @@ void ensure_dir_exists(const char *dir) {
 
 // Save current picture as PNG
 void saveCurrentPic() {
-  GdkPixbuf *scaledpb;
-  GString   *pngfilename;
+  Glib::RefPtr<Gdk::Pixbuf> scaledpb;
 
-  pngfilename = g_string_new(g_key_file_get_string(config,"slowrx","rxdir",NULL));
-  g_string_append_printf(pngfilename, "/%s_%s.png", CurrentPic.timestr, ModeSpec[CurrentPic.Mode].ShortName);
-  printf("  Saving to %s\n", pngfilename->str);
+  stringstream ss;
+  string basename = config.get_string("slowrx","rxdir");
 
-  scaledpb = gdk_pixbuf_scale_simple (pixbuf_rx, ModeSpec[CurrentPic.Mode].ImgWidth,
-    ModeSpec[CurrentPic.Mode].NumLines * ModeSpec[CurrentPic.Mode].LineHeight, GDK_INTERP_HYPER);
+  ss << basename << "/" << CurrentPic.timestr << "_" << ModeSpec[CurrentPic.Mode].ShortName;
 
-  ensure_dir_exists(g_key_file_get_string(config,"slowrx","rxdir",NULL));
-  gdk_pixbuf_savev(scaledpb, pngfilename->str, "png", NULL, NULL, NULL);
-  g_object_unref(scaledpb);
-  g_string_free(pngfilename, TRUE);
+  string pngfilename = ss.str();
+  cout << "  Saving to " << pngfilename << "\n";
+
+  scaledpb = pixbuf_rx->scale_simple(ModeSpec[CurrentPic.Mode].ImgWidth,
+    ModeSpec[CurrentPic.Mode].NumLines * ModeSpec[CurrentPic.Mode].LineHeight, Gdk::INTERP_HYPER);
+
+  ensure_dir_exists(config.get_string("slowrx","rxdir"));
+  scaledpb->save(pngfilename, "png");
+  //g_object_unref(scaledpb);
+  //g_string_free(pngfilename, true);
 }
 
 
@@ -103,17 +93,17 @@ void evt_deletewindow() {
 
 // Transform the NoiseAdapt toggle state into a variable
 void evt_GetAdaptive() {
-  Adaptive = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON(gui.tog_adapt));
+  //Adaptive = gui.tog_adapt->get_active();
 }
 
 // Manual Start clicked
 void evt_ManualStart() {
-  ManualActivated = TRUE;
+  ManualActivated = true;
 }
 
 // Abort clicked during rx
 void evt_AbortRx() {
-  Abort = TRUE;
+  Abort = true;
 }
 
 // Another device selected from list
@@ -121,70 +111,70 @@ void evt_changeDevices() {
 
   int status;
 
-  pcm.BufferDrop = FALSE;
-  Abort = TRUE;
+  pcm.BufferDrop = false;
+  Abort = true;
 
   static int init;
-  if (init)
-    pthread_join(thread1, NULL);
+  /*if (init)
+    threads[0].join;*/
   init = 1;
 
-  if (pcm.handle != NULL) snd_pcm_close(pcm.handle);
+//  if (pcm.handle != NULL) snd_pcm_close(pcm.handle);
 
-  status = initPcmDevice(gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(gui.combo_card)));
+  //status = initPcmDevice(gui.combo_card->get_active_text());
 
 
   switch(status) {
     case 0:
-      gtk_image_set_from_stock(GTK_IMAGE(gui.image_devstatus),GTK_STOCK_YES,GTK_ICON_SIZE_SMALL_TOOLBAR);
-      gtk_widget_set_tooltip_text(gui.image_devstatus, "Device successfully opened");
+      //gui.image_devstatus->set(Gtk::Stock::YES,Gtk::ICON_SIZE_SMALL_TOOLBAR);
+      //gui.image_devstatus->set_tooltip_text("Device successfully opened");
       break;
     case -1:
-      gtk_image_set_from_stock(GTK_IMAGE(gui.image_devstatus),GTK_STOCK_DIALOG_WARNING,GTK_ICON_SIZE_SMALL_TOOLBAR);
-      gtk_widget_set_tooltip_text(gui.image_devstatus, "Device was opened, but doesn't support 44100 Hz");
+      //gui.image_devstatus->set(Gtk::Stock::DIALOG_WARNING,Gtk::ICON_SIZE_SMALL_TOOLBAR);
+      //gui.image_devstatus->set_tooltip_text("Device was opened, but doesn't support 44100 Hz");
       break;
     case -2:
-      gtk_image_set_from_stock(GTK_IMAGE(gui.image_devstatus),GTK_STOCK_DIALOG_ERROR,GTK_ICON_SIZE_SMALL_TOOLBAR);
-      gtk_widget_set_tooltip_text(gui.image_devstatus, "Failed to open device");
+      //gui.image_devstatus->set(Gtk::Stock::DIALOG_ERROR,Gtk::ICON_SIZE_SMALL_TOOLBAR);
+      //gui.image_devstatus->set_tooltip_text("Failed to open device");
       break;
   }
 
-  g_key_file_set_string(config,"slowrx","device",gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(gui.combo_card)));
+  //config->set_string("slowrx","device",gui.combo_card->get_active_text());
 
-  pthread_create (&thread1, NULL, Listen, NULL);
+  //threads[0] =  thread(Listen);
 
 }
 
 // Clear received picture & metadata
 void evt_clearPix() {
-  gdk_pixbuf_fill (pixbuf_disp, 0);
-  gtk_image_set_from_pixbuf(GTK_IMAGE(gui.image_rx), pixbuf_disp);
-  gtk_label_set_markup (GTK_LABEL(gui.label_fskid), "");
-  gtk_label_set_markup (GTK_LABEL(gui.label_utc), "");
-  gtk_label_set_markup (GTK_LABEL(gui.label_lastmode), "");
+  pixbuf_disp->fill(0);
+  /*gui.image_rx->set(pixbuf_disp);
+  gui.label_fskid->set_markup("");
+  gui.label_utc->set_markup("");
+  gui.label_lastmode->set_markup("");*/
 }
 
 // Manual slant adjust
-void evt_clickimg(GtkWidget *widget, GdkEventButton* event, GdkWindowEdge edge) {
+void evt_clickimg(Gtk::Widget *widget, GdkEventButton* event, Gdk::WindowEdge edge) {
   static double prevx=0,prevy=0,newrate;
-  static gboolean   secondpress=FALSE;
+  static bool   secondpress=false;
   double        x,y,dx,dy,xic;
 
   (void)widget;
   (void)edge;
-
-  if (event->type == GDK_BUTTON_PRESS && event->button == 1 && gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON(gui.tog_setedge))) {
+/*
+  if (event->type == Gdk::BUTTON_PRESS && event->button == 1 && gui.tog_setedge->get_active()) {
 
     x = event->x * (ModeSpec[CurrentPic.Mode].ImgWidth / 500.0);
     y = event->y * (ModeSpec[CurrentPic.Mode].ImgWidth / 500.0) / ModeSpec[CurrentPic.Mode].LineHeight;
 
     if (secondpress) {
-      secondpress=FALSE;
+      secondpress=false;
 
       dx = x - prevx;
       dy = y - prevy;
 
-      gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON(gui.tog_setedge),FALSE);
+      //gui.tog_setedge->set_active(false);
 
       // Adjust sample rate, if in sensible limits
       newrate = CurrentPic.Rate + CurrentPic.Rate * (dx * ModeSpec[CurrentPic.Mode].PixelTime) / (dy * ModeSpec[CurrentPic.Mode].LineHeight * ModeSpec[CurrentPic.Mode].LineTime);
@@ -200,16 +190,16 @@ void evt_clickimg(GtkWidget *widget, GdkEventButton* event, GdkWindowEdge edge) 
           CurrentPic.Skip -= ModeSpec[CurrentPic.Mode].LineTime * CurrentPic.Rate;
 
         // Signal the listener to exit from GetVIS() and re-process the pic
-        ManualResync = TRUE;
+        ManualResync = true;
       }
 
     } else {
-      secondpress = TRUE;
+      secondpress = true;
       prevx = x;
       prevy = y;
     }
   } else {
-    secondpress=FALSE;
-    gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON(gui.tog_setedge), FALSE);
-  }
+    secondpress=false;
+    //gui.tog_setedge->set_active(false);
+  }*/
 }

@@ -1,11 +1,4 @@
-#include <stdlib.h>
-#include <math.h>
-#include <string.h>
-#include <fftw3.h>
-#include <gtk/gtk.h>
-#include <alsa/asoundlib.h>
-
-#include "common.h"
+#include "common.hh"
 
 /* Find the slant angle of the sync singnal and adjust sample rate to cancel it out
  *   Length:  number of PCM samples to process
@@ -15,15 +8,15 @@
  *   returns  adjusted sample rate
  *
  */
-double FindSync (guchar Mode, double Rate, int *Skip) {
+double FindSync (SSTVMode Mode, double Rate, int *Skip) {
 
-  int      LineWidth = ModeSpec[Mode].LineTime / ModeSpec[Mode].SyncTime * 4;
+  int      LineWidth = ModeSpec[Mode].tLine / ModeSpec[Mode].tSync * 4;
   int      x,y;
   int      q, d, qMost, dMost;
   gushort  xAcc[700] = {0};
   gushort  lines[600][(MAXSLANT-MINSLANT)*2];
   gushort  cy, cx, Retries = 0;
-  gboolean SyncImg[700][630] = {{FALSE}};
+  bool     SyncImg[700][630] = {{FALSE}};
   double   t=0, slantAngle, s;
   double   ConvoFilter[8] = { 1,1,1,1,-1,-1,-1,-1 };
   double   convd, maxconvd=0;
@@ -36,7 +29,7 @@ double FindSync (guchar Mode, double Rate, int *Skip) {
     
     for (y=0; y<ModeSpec[Mode].NumLines; y++) {
       for (x=0; x<LineWidth; x++) {
-        t = (y + 1.0*x/LineWidth) * ModeSpec[Mode].LineTime;
+        t = (y + 1.0*x/LineWidth) * ModeSpec[Mode].tLine;
         SyncImg[x][y] = HasSync[ (int)( t * Rate / 13.0) ];
       }
     }
@@ -97,7 +90,7 @@ double FindSync (guchar Mode, double Rate, int *Skip) {
   memset(xAcc, 0, sizeof(xAcc[0]) * 700);
   for (y=0; y<ModeSpec[Mode].NumLines; y++) {
     for (x=0; x<700; x++) { 
-      t = y * ModeSpec[Mode].LineTime + x/700.0 * ModeSpec[Mode].LineTime;
+      t = y * ModeSpec[Mode].tLine + x/700.0 * ModeSpec[Mode].tLine;
       xAcc[x] += HasSync[ (int)(t / (13.0/44100) * Rate/44100) ];
     }
   }
@@ -117,12 +110,12 @@ double FindSync (guchar Mode, double Rate, int *Skip) {
   if (xmax > 350) xmax -= 350;
 
   // Skip until the start of the line
-  s = xmax / 700.0 * ModeSpec[Mode].LineTime - ModeSpec[Mode].SyncTime;
+  s = xmax / 700.0 * ModeSpec[Mode].tLine - ModeSpec[Mode].tSync;
   
   // (Scottie modes don't start lines with sync)
-  if (Mode == S1 || Mode == S2 || Mode == SDX)
-    s = s - ModeSpec[Mode].PixelTime * ModeSpec[Mode].ImgWidth / 2.0
-          + ModeSpec[Mode].PorchTime * 2;
+  if (ModeSpec[Mode].SyncType == SYNC_SCOTTIE)
+    s = s - ModeSpec[Mode].tPixel * ModeSpec[Mode].ImgWidth / 2.0
+          + ModeSpec[Mode].tPorch * 2;
 
   *Skip = s * Rate;
 
