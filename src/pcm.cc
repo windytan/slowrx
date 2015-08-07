@@ -35,7 +35,7 @@ DSPworker::DSPworker() : Mutex(), please_stop_(false) {
 
   printf("DSPworker created\n");
 
-  open_audio_file("/Users/windy/Movies/sstv_ebeju_f_mono.wav");
+  open_audio_file("/Users/windy/Movies/sstv-iss.wav");
   //open_audio_file("/Users/windy/Audio/sig/1000Hz-800Hz.wav");
 }
 

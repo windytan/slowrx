@@ -1,5 +1,14 @@
 #include "common.hh"
 
+typedef struct {
+  int X;
+  int Y;
+  int Channel;
+  double Time;
+} _Pixel;
+
+bool sortPixelTime(_Pixel a, _Pixel b) { return a.Time < b.Time; }
+
 /* Demodulate the video signal & store all kinds of stuff for later stages
  *  Mode:      M1, M2, S1, S2, R72, R36...
  *  Rate:      exact sampling rate used
@@ -9,18 +18,11 @@
  */
 bool GetVideo(SSTVMode Mode, double Rate, DSPworker* dsp, bool Redraw) {
 
-  typedef struct {
-    int X;
-    int Y;
-    int Channel;
-    double Time;
-  } _Pixel;
-
   vector<_Pixel> PixelGrid;
 
   _ModeSpec Spec = ModeSpec[Mode];
 
-  guint8 Image[800][600][3];
+  guint8 Image[800][800][3];
 
   printf("Mode %d: %dx%d\n",Mode,Spec.ImgWidth, Spec.NumLines);
 
@@ -40,11 +42,11 @@ bool GetVideo(SSTVMode Mode, double Rate, DSPworker* dsp, bool Redraw) {
             switch (Spec.SyncOrder) {
 
               case (SYNC_STRAIGHT):
-                px.Time += Spec.tSync + Spec.tPorch + Chan*Spec.tSep;
+                px.Time += Spec.tSync + Spec.tPorch + Chan*(Spec.tPixel * Spec.ImgWidth + Spec.tSep);
                 break;
 
               case (SYNC_SCOTTIE):
-                px.Time += Spec.tSync + (Chan+1) * Spec.tSep +
+                px.Time += Spec.tSync + (Chan+1) * Spec.tSep + Chan*(Spec.tPixel * Spec.ImgWidth) +
                   (Chan == 2 ? Spec.tSync : 0);
                 break;
 
@@ -59,11 +61,11 @@ bool GetVideo(SSTVMode Mode, double Rate, DSPworker* dsp, bool Redraw) {
                 break;
 
               case (1):
-                px.Time = 999;//TODO
+                px.Time = (y-(y % 2)) * (Spec.tLine) + Spec.tSync + Spec.tPorch + Spec.tPixel*2*Spec.ImgWidth + Spec.tSep + (x+0.5) * Spec.tPixel;
                 break;
 
               case (2):
-                px.Time = 999;
+                px.Time = (y+1-(y % 2)) * (Spec.tLine) + Spec.tSync + Spec.tPorch + Spec.tPixel*2*Spec.ImgWidth + Spec.tSep + (x+0.5) * Spec.tPixel;
                 break;
 
             }
@@ -89,15 +91,18 @@ bool GetVideo(SSTVMode Mode, double Rate, DSPworker* dsp, bool Redraw) {
             switch (Chan) {
 
               case (0):
-                px.Time = y*(Spec.tLine) + Spec.tSync + Spec.tPorch + (x+.5) * Spec.tPixel * 2;
+                px.Time = (y/2)*(Spec.tLine) + Spec.tSync + Spec.tPorch +
+                  ((y%2 == 1 ? 640*3 : 0)+x+.5) * Spec.tPixel;
                 break;
 
               case (1):
-                px.Time = 999;//TODO
+                px.Time = (y/2)*(Spec.tLine) + Spec.tSync + Spec.tPorch +
+                  (640+x+.5)*Spec.tPixel;
                 break;
 
               case (2):
-                px.Time = 999;//TODO
+                px.Time = (y/2)*(Spec.tLine) + Spec.tSync + Spec.tPorch +
+                  (640*2+x+.5)*Spec.tPixel;
                 break;
 
             }
@@ -106,6 +111,8 @@ bool GetVideo(SSTVMode Mode, double Rate, DSPworker* dsp, bool Redraw) {
       }
     }
   }
+
+  std::sort(PixelGrid.begin(), PixelGrid.end(), sortPixelTime);
 
    Glib::RefPtr<Gtk::Application> app =
      Gtk::Application::create("com.windytan.slowrx");
@@ -230,8 +237,8 @@ bool GetVideo(SSTVMode Mode, double Rate, DSPworker* dsp, bool Redraw) {
 
       // Adapt window size to SNR
       WindowType WinType;
-      double SNR = 20;
-      bool Adaptive = false;
+      double SNR = 3;
+      bool Adaptive = true;
 
       if      (!Adaptive)  WinType = WINDOW_HANN47;
       
@@ -263,61 +270,62 @@ bool GetVideo(SSTVMode Mode, double Rate, DSPworker* dsp, bool Redraw) {
     
     // Store pixel
     Image[x][y][Channel] = Lum;//StoredLum[SampleNum];
-    printf("Image[%d][%d][%d] = %d\n",x,y,Channel,Lum);
 
     // Some modes have R-Y & B-Y channels that are twice the height of the Y channel
     //if (Channel > 0 && (Mode == R36 || Mode == R24))
     //  Image[x][y+1][Channel] = StoredLum[SampleNum];
 
-    // Calculate and draw pixels to pixbuf on line change
-    guint8 *p;
-    guint8 *pixels;
-    pixels = pixbuf_rx->get_pixels();
-    int rowstride = pixbuf_rx->get_rowstride();
-    int tx = x;
-    //if (x == ModeSpec[Mode].ImgWidth-1 || PixelIdx < PixelGrid.size()-1) {
-      //for (int tx = 0; tx < ModeSpec[Mode].ImgWidth; tx++) {
-        p = pixels + y * rowstride + tx * 3;
+  }
 
-        switch(Spec.ColorEnc) {
+  // Calculate and draw pixels to pixbuf on line change
+  guint8 *p;
+  guint8 *pixels;
+  pixels = pixbuf_rx->get_pixels();
+  int rowstride = pixbuf_rx->get_rowstride();
+  //int tx = x;
+  //if (x == ModeSpec[Mode].ImgWidth-1 || PixelIdx < PixelGrid.size()-1) {
+  for (int tx = 0; tx < ModeSpec[Mode].ImgWidth; tx++) {
+    for (int y = 0; y < Spec.NumLines; y++) {
+      p = pixels + y * rowstride + tx * 3;
 
-          case COLOR_RGB:
-            p[0] = Image[tx][y][0];
-            p[1] = Image[tx][y][1];
-            p[2] = Image[tx][y][2];
-            break;
+      switch(Spec.ColorEnc) {
 
-          case COLOR_GBR:
-            p[0] = Image[tx][y][2];
-            p[1] = Image[tx][y][0];
-            p[2] = Image[tx][y][1];
-            break;
+        case COLOR_RGB:
+          p[0] = Image[tx][y][0];
+          p[1] = Image[tx][y][1];
+          p[2] = Image[tx][y][2];
+          break;
 
-          case COLOR_YUV:
-            p[0] = clip((100 * Image[tx][y][0] + 140 * Image[tx][y][1] - 17850) / 100.0);
-            p[1] = clip((100 * Image[tx][y][0] -  71 * Image[tx][y][1] - 33 *
-                Image[tx][y][2] + 13260) / 100.0);
-            p[2] = clip((100 * Image[tx][y][0] + 178 * Image[tx][y][2] - 22695) / 100.0);
-            break;
+        case COLOR_GBR:
+          p[0] = Image[tx][y][2];
+          p[1] = Image[tx][y][0];
+          p[2] = Image[tx][y][1];
+          break;
 
-          case COLOR_MONO:
-            p[0] = p[1] = p[2] = Image[tx][y][0];
-            break;
+        case COLOR_YUV:
+          p[0] = clip((100 * Image[tx][y][0] + 140 * Image[tx][y][1] - 17850) / 100.0);
+          p[1] = clip((100 * Image[tx][y][0] -  71 * Image[tx][y][1] - 33 *
+              Image[tx][y][2] + 13260) / 100.0);
+          p[2] = clip((100 * Image[tx][y][0] + 178 * Image[tx][y][2] - 22695) / 100.0);
+          break;
 
-        //}
-      //}
+        case COLOR_MONO:
+          p[0] = p[1] = p[2] = Image[tx][y][0];
+          break;
 
-      /*if (!Redraw || y % 5 == 0 || PixelIdx == PixelGrid.size()-1) {
-        // Scale and update image
-        g_object_unref(pixbuf_disp);
-        pixbuf_disp = gdk_pixbuf_scale_simple(pixbuf_rx, 500,
-            500.0/ModeSpec[Mode].ImgWidth * ModeSpec[Mode].NumLines * ModeSpec[Mode].LineHeight, GDK_INTERP_BILINEAR);
-
-        gtk_image_set_from_pixbuf(GTK_IMAGE(gui.image_rx), pixbuf_disp);
-      }*/
+      }
     }
 
+    /*if (!Redraw || y % 5 == 0 || PixelIdx == PixelGrid.size()-1) {
+      // Scale and update image
+      g_object_unref(pixbuf_disp);
+      pixbuf_disp = gdk_pixbuf_scale_simple(pixbuf_rx, 500,
+          500.0/ModeSpec[Mode].ImgWidth * ModeSpec[Mode].NumLines * ModeSpec[Mode].LineHeight, GDK_INTERP_BILINEAR);
+
+      gtk_image_set_from_pixbuf(GTK_IMAGE(gui.image_rx), pixbuf_disp);
+    }*/
   }
+
   
   /*if (!Redraw && SampleNum % 8820 == 0) {
     setVU(Power, FFTLen, WinIdx, true);
