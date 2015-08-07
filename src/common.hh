@@ -5,6 +5,8 @@
 #define MAXSLANT   150
 #define CIRBUF_LEN 4096
 #define READ_CHUNK_LEN 1024
+
+// moment length only affects length of delay and maximum window size.
 #define MOMENT_LEN 1023
 #define SYNCPIXLEN 1.5e-3
 
@@ -40,9 +42,15 @@ enum eColorEnc {
   COLOR_GBR, COLOR_RGB, COLOR_YUV, COLOR_MONO
 };
 
-enum eSyncType {
+enum eSyncOrder {
   SYNC_STRAIGHT, SYNC_SCOTTIE
 };
+
+enum eSubSamp {
+  SUBSAMP_NONE, SUBSAMP_211, SUBSAMP_2121, SUBSAMP_2112
+};
+
+extern map<int, SSTVMode> vis2mode;
 
 typedef struct _FFTStuff FFTStuff;
 struct _FFTStuff {
@@ -64,31 +72,43 @@ struct _PcmData {
 //extern PcmData pcm;
 
 
-class PCMworker {
+class DSPworker {
 
   public:
 
-    PCMworker();
+    DSPworker();
 
     void open_audio_file(string);
     void read_more();
-    void next_moment();
-    vector<short> get_windowed_moment(WindowType);
-
+    double forward(unsigned);
+    double forward();
+    double forward_ms(double);
+    void get_windowed_moment(WindowType, double *);
+    double get_peak_freq (double, double, WindowType);
+    int  GetBin        (double);
+    double FourierPower (fftw_complex coeff);
+    bool is_still_listening ();
 
     vector<short> getsamples(int);
+
+    static short win_lens_[7];
+    static double window_[7][1024];
 
   private:
 
     mutable Glib::Threads::Mutex Mutex;
-    short *win_lens;
-    double window[7][1024];
-    short cirbuf[CIRBUF_LEN * 2];
-    int   cirbuf_head;
-    int   cirbuf_tail;
-    bool  please_stop;
-    SndfileHandle file;
-
+    short cirbuf_[CIRBUF_LEN * 2];
+    int   cirbuf_head_;
+    int   cirbuf_tail_;
+    int   cirbuf_fill_count_;
+    bool  please_stop_;
+    SndfileHandle file_;
+    int fft_len_;
+    double *fft_inbuf_;
+    fftw_complex *fft_outbuf_;
+    fftw_plan     fft_plan_;
+    int  samplerate_;
+    bool is_still_listening_;
 };
 
 class SlowGUI {
@@ -168,7 +188,8 @@ typedef struct ModeSpec {
   int       NumLines;
   int       LineHeight;
   eColorEnc ColorEnc;
-  eSyncType SyncType;
+  eSyncOrder SyncOrder;
+  eSubSamp  SubSamp;
 } _ModeSpec;
 
 extern _ModeSpec ModeSpec[];
@@ -179,9 +200,8 @@ void     createGUI     ();
 double   deg2rad       (double Deg);
 double   FindSync      (SSTVMode Mode, double Rate, int *Skip);
 string   GetFSK        ();
-bool     GetVideo      (SSTVMode Mode, double Rate, int Skip, bool Redraw);
-SSTVMode GetVIS        ();
-int      GetBin        (double Freq, int FFTLen);
+bool     GetVideo      (SSTVMode Mode, double Rate, DSPworker *dsp, bool Redraw);
+SSTVMode GetVIS        (DSPworker*);
 int      initPcmDevice (std::string);
 void     *Listen       ();
 void     populateDeviceList ();

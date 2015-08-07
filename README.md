@@ -10,20 +10,19 @@ http://windytan.github.io/slowrx/
 Features
 --------
 
-* Support for a multitude of modes (see `modespec.c` for a list)
+* Support for a multitude of modes (see `modespec.cc` for a list)
 * Detect frequency-shifted signals – no need to fine-tune the radio
 * Automatic slant correction, also manual adjustments are simple
 * Adaptive noise reduction
 * Decode digital FSK ID
 * Save received pictures as PNG
-* Written in C99
+* Written in C++11
 
 Requirements
 ------------
 
-* Linux
-* Alsa (`libasound2-dev`)
-* Gtk+ 3.4 (`libgtk-3-dev`)
+* Linux or OSX
+* gtkmm 3 (`libgtkmm-3.0-dev`)
 * FFTW 3 (`libfftw3-dev`)
 
 And, obviously:
@@ -35,9 +34,11 @@ And, obviously:
 Compiling
 ---------
 
-`make`
+    autoreconf --install
+    ./configure
+    make
 
 Running
 -------
 
-`./slowrx`
+`./src/slowrx`

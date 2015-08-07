@@ -9,69 +9,43 @@
  *
  */
 
-SSTVMode GetVIS () {
+SSTVMode GetVIS (DSPworker *dsp) {
 
   int        selmode, ptr=0;
   int        vis = 0, Parity = 0, HedrPtr = 0;
-  unsigned   FFTLen = 2048, i=0, j=0, k=0, MaxBin = 0;
-  double     Power[2048] = {0}, HedrBuf[100] = {0}, tone[100] = {0}, Hann[882] = {0};
+  double     HedrBuf[100] = {0}, tone[100] = {0};
   bool       gotvis = false;
   unsigned   Bit[8] = {0}, ParityBit = 0;
 
-  for (i = 0; i < FFTLen; i++) fft.in[i]    = 0;
+  //for (i = 0; i < FFTLen; i++) fft.in[i]    = 0;
 
   // Create 20ms Hann window
-  for (i = 0; i < 882; i++) Hann[i] = 0.5 * (1 - cos( (2 * M_PI * (double)i) / 881 ) );
+  //for (i = 0; i < 882; i++) Hann[i] = 0.5 * (1 - cos( (2 * M_PI * (double)i) / 881 ) );
 
   //ManualActivated = false;
   
   printf("Waiting for header\n");
 
-  while ( true ) {
+  while ( dsp->is_still_listening() ) {
 
     //if (Abort || ManualResync) return(0);
 
-    // Read 10 ms from sound card
-    readPcm(441);
-
-    // Apply Hann window
-    for (i = 0; i < 882; i++) fft.in[i] = pcm.Buffer[pcm.WindowPtr + i - 441] / 32768.0 * Hann[i];
-
-    // FFT of last 20 ms
-    fftw_execute(fft.Plan2048);
-
-    // Find the bin with most power
-    MaxBin = 0;
-    for (i = 0; i <= GetBin(6000, FFTLen); i++) {
-      Power[i] = power(fft.out[i]);
-      if ( (i >= GetBin(500,FFTLen) && i < GetBin(3300,FFTLen)) &&
-           (MaxBin == 0 || Power[i] > Power[MaxBin]))
-        MaxBin = i;
-    }
-
-    // Find the peak frequency by Gaussian interpolation
-    if (MaxBin > GetBin(500, FFTLen) && MaxBin < GetBin(3300, FFTLen) &&
-        Power[MaxBin] > 0 && Power[MaxBin+1] > 0 && Power[MaxBin-1] > 0)
-         HedrBuf[HedrPtr] = MaxBin +            (log( Power[MaxBin + 1] / Power[MaxBin - 1] )) /
-                             (2 * log( pow(Power[MaxBin], 2) / (Power[MaxBin + 1] * Power[MaxBin - 1])));
-    else HedrBuf[HedrPtr] = HedrBuf[(HedrPtr-1) % 45];
-
-    // In Hertz
-    HedrBuf[HedrPtr] = HedrBuf[HedrPtr] / FFTLen * 44100;
+    HedrBuf[HedrPtr] = dsp->get_peak_freq(500, 3300, WINDOW_HANN1023);
+    dsp->forward_ms(10);
 
     // Header buffer holds 45 * 10 msec = 450 msec
     HedrPtr = (HedrPtr + 1) % 45;
 
     // Frequencies in the last 450 msec
-    for (i = 0; i < 45; i++) tone[i] = HedrBuf[(HedrPtr + i) % 45];
+    for (int i = 0; i < 45; i++) tone[i] = HedrBuf[(HedrPtr + i) % 45];
 
     // Is there a pattern that looks like (the end of) a calibration header + VIS?
     // Tolerance ±25 Hz
     CurrentPic.HedrShift = 0;
     gotvis    = false;
-    for (i = 0; i < 3; i++) {
-      if (CurrentPic.HedrShift != 0) break;
-      for (j = 0; j < 3; j++) {
+    for (int i = 0; i < 3; i++) {
+      //if (CurrentPic.HedrShift != 0) break;
+      for (int j = 0; j < 3; j++) {
         if ( (tone[1*3+i]  > tone[0+j] - 25  && tone[1*3+i]  < tone[0+j] + 25)  && // 1900 Hz leader
              (tone[2*3+i]  > tone[0+j] - 25  && tone[2*3+i]  < tone[0+j] + 25)  && // 1900 Hz leader
              (tone[3*3+i]  > tone[0+j] - 25  && tone[3*3+i]  < tone[0+j] + 25)  && // 1900 Hz leader
@@ -84,7 +58,7 @@ SSTVMode GetVIS () {
           // Attempt to read VIS
 
           gotvis = true;
-          for (k = 0; k < 8; k++) {
+          for (int k = 0; k < 8; k++) {
             if      (tone[6*3+i+3*k] > tone[0+j] - 625 && tone[6*3+i+3*k] < tone[0+j] - 575) Bit[k] = 0;
             else if (tone[6*3+i+3*k] > tone[0+j] - 825 && tone[6*3+i+3*k] < tone[0+j] - 775) Bit[k] = 1;
             else { // erroneous bit
@@ -103,29 +77,30 @@ SSTVMode GetVIS () {
 
             Parity = Bit[0] ^ Bit[1] ^ Bit[2] ^ Bit[3] ^ Bit[4] ^ Bit[5] ^ Bit[6];
 
-            if (vis2mode.find(vis) == MODE_R12BW) Parity = !Parity;
-
-            if (Parity != ParityBit) {
-              printf("  Parity fail\n");
-              gotvis = false;
-            } else if (vis2mode.find(vis) == vis2mode.end()) {
+            if (vis2mode.find(vis) == vis2mode.end()) {
               printf("  Unknown VIS\n");
               gotvis = false;
+            } else if (Parity != ParityBit && vis2mode[vis] != MODE_R12BW) {
+              printf("  Parity fail\n");
+              gotvis = false;
             } else {
-              gtk_combo_box_set_active (GTK_COMBO_BOX(gui.combo_mode), VISmap[VIS]-1);
-              gtk_spin_button_set_value (GTK_SPIN_BUTTON(gui.spin_shift), CurrentPic.HedrShift);
+
+              //gtk_combo_box_set_active (GTK_COMBO_BOX(gui.combo_mode), VISmap[VIS]-1);
+              //gtk_spin_button_set_value (GTK_SPIN_BUTTON(gui.spin_shift), CurrentPic.HedrShift);
               break;
             }
           }
         }
       }
+      if (gotvis) break;
     }
+    if (gotvis) break;
 
-    if (gotvis)
-     if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(gui.tog_rx))) break;
+    //if (gotvis)
+     //if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(gui.tog_rx))) break;
 
     // Manual start
-    if (ManualActivated) {
+    /*if (ManualActivated) {
 
       gtk_widget_set_sensitive( gui.frame_manual, false );
       gtk_widget_set_sensitive( gui.combo_card,   false );
@@ -146,16 +121,21 @@ SSTVMode GetVIS () {
     if (++ptr == 10) {
       setVU(Power, 2048, 6, false);
       ptr = 0;
-    }
+    }*/
 
-    pcm.WindowPtr += 441;
+    //pcm.WindowPtr += 441;
   }
 
   // Skip the rest of the stop bit
-  readPcm(20e-3 * 44100);
-  pcm.WindowPtr += 20e-3 * 44100;
+  //readPcm(20e-3 * 44100);
+  //pcm.WindowPtr += 20e-3 * 44100;
+  
+  dsp->forward_ms(20);
+  
+  if (vis2mode.find(vis) != vis2mode.end()) {
+    return vis2mode[vis];
+  }
 
-  if (vis2mode.find(vis) != vis2mode.end()) return vis2mode.find(vis);
-  else                        printf("  No VIS found\n");
-  return 0;
+  printf("  No VIS found\n");
+  return MODE_UNKNOWN;
 }

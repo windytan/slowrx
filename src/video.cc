@@ -1,4 +1,4 @@
-#include "common.h"
+#include "common.hh"
 
 /* Demodulate the video signal & store all kinds of stuff for later stages
  *  Mode:      M1, M2, S1, S2, R72, R36...
@@ -7,181 +7,149 @@
  *  Redraw:    false = Apply windowing and FFT to the signal, true = Redraw from cached FFT data
  *  returns:   true when finished, false when aborted
  */
-gboolean GetVideo(SSTVMode Mode, double Rate, int Skip, bool Redraw) {
-
-  int      MaxBin = 0;
-  int      VideoPlusNoiseBins=0, ReceiverBins=0, NoiseOnlyBins=0;
-  int      n=0;
-  int      SyncSampleNum;
-  int      i=0, j=0;
-  int      FFTLen=1024, WinLength=0;
-  int      SyncTargetBin;
-  int        SampleNum, Length, NumChans;
-  int        x = 0, y = 0, tx=0, k=0;
-  double     Hann[7][1024] = {{0}};
-  double     Freq = 0, PrevFreq = 0, InterpFreq = 0;
-  int        NextSNRtime = 0, NextSyncTime = 0;
-  double     Praw, Psync;
-  double     Power[1024] = {0};
-  double     Pvideo_plus_noise=0, Pnoise_only=0, Pnoise=0, Psignal=0;
-  double     SNR = 0;
-  double     ChanStart[4] = {0}, ChanLen[4] = {0};
-  guchar     Image[800][616][3] = {{{0}}};
-  guchar     Channel = 0, WinIdx = 0;
+bool GetVideo(SSTVMode Mode, double Rate, DSPworker* dsp, bool Redraw) {
 
   typedef struct {
     int X;
     int Y;
-    int Time;
-    guchar Channel;
-    bool Last;
-  } _PixelGrid;
+    int Channel;
+    double Time;
+  } _Pixel;
 
-  _PixelGrid *PixelGrid;
-  PixelGrid = calloc( ModeSpec[Mode].ImgWidth * ModeSpec[Mode].NumLines * 3, sizeof(_PixelGrid) );
+  vector<_Pixel> PixelGrid;
 
+  _ModeSpec Spec = ModeSpec[Mode];
 
-  // Initialize Hann windows of different lengths
-  gushort HannLens[7] = { 48, 64, 96, 128, 256, 512, 1024 };
-  for (j = 0; j < 7; j++)
-    for (i = 0; i < HannLens[j]; i++)
-      Hann[j][i] = 0.5 * (1 - cos( (2 * M_PI * i) / (HannLens[j] - 1)) );
+  guint8 Image[800][600][3];
 
+  printf("Mode %d: %dx%d\n",Mode,Spec.ImgWidth, Spec.NumLines);
 
-  // Starting times of video channels on every line, counted from beginning of line
-  switch (Mode) {
+  // Time instants for all pixels
+  for (int y=0; y<Spec.NumLines; y++) {
+    for (int x=0; x<Spec.ImgWidth; x++) {
+      for (int Chan=0; Chan < (Spec.ColorEnc == COLOR_MONO ? 1 : 3); Chan++) {
+        _Pixel px;
+        px.X = x;
+        px.Y = y;
+        px.Channel = Chan;
+        switch(Spec.SubSamp) {
 
-    case R36:
-    case R24:
-      ChanLen[0]   = ModeSpec[Mode].PixelTime * ModeSpec[Mode].ImgWidth * 2;
-      ChanLen[1]   = ChanLen[2] = ModeSpec[Mode].PixelTime * ModeSpec[Mode].ImgWidth;
-      ChanStart[0] = ModeSpec[Mode].SyncTime + ModeSpec[Mode].PorchTime;
-      ChanStart[1] = ChanStart[0] + ChanLen[0] + ModeSpec[Mode].SeptrTime;
-      ChanStart[2] = ChanStart[1];
-      break;
+          case (SUBSAMP_NONE):
+            px.Time = y*(Spec.tLine) + (x+0.5) * Spec.tPixel;
 
-    case S1:
-    case S2:
-    case SDX:
-      ChanLen[0]   = ChanLen[1] = ChanLen[2] = ModeSpec[Mode].PixelTime * ModeSpec[Mode].ImgWidth;
-      ChanStart[0] = ModeSpec[Mode].SeptrTime;
-      ChanStart[1] = ChanStart[0] + ChanLen[0] + ModeSpec[Mode].SeptrTime;
-      ChanStart[2] = ChanStart[1] + ChanLen[1] + ModeSpec[Mode].SyncTime + ModeSpec[Mode].PorchTime;
-      break;
+            switch (Spec.SyncOrder) {
 
-    default:
-      ChanLen[0]   = ChanLen[1] = ChanLen[2] = ModeSpec[Mode].PixelTime * ModeSpec[Mode].ImgWidth;
-      ChanStart[0] = ModeSpec[Mode].SyncTime + ModeSpec[Mode].PorchTime;
-      ChanStart[1] = ChanStart[0] + ChanLen[0] + ModeSpec[Mode].SeptrTime;
-      ChanStart[2] = ChanStart[1] + ChanLen[1] + ModeSpec[Mode].SeptrTime;
-      break;
+              case (SYNC_STRAIGHT):
+                px.Time += Spec.tSync + Spec.tPorch + Chan*Spec.tSep;
+                break;
 
-  }
+              case (SYNC_SCOTTIE):
+                px.Time += Spec.tSync + (Chan+1) * Spec.tSep +
+                  (Chan == 2 ? Spec.tSync : 0);
+                break;
 
-  // Number of channels per line
-  switch(Mode) {
-    case R24BW:
-    case R12BW:
-    case R8BW:
-      NumChans = 1;
-      break;
-    case R24:
-    case R36:
-      NumChans = 2;
-      break;
-    default:
-      NumChans = 3;
-      break;
-  }
+            }
+            break;
 
-  // Plan ahead the time instants (in samples) at which to take pixels out
-  int PixelIdx = 0;
-  for (y=0; y<ModeSpec[Mode].NumLines; y++) {
-    for (Channel=0; Channel<NumChans; Channel++) {
-      for (x=0; x<ModeSpec[Mode].ImgWidth; x++) {
+          case (SUBSAMP_2121):
+            switch (Chan) {
 
-        if (Mode == R36 || Mode == R24) {
-          if (Channel == 1) {
-            if (y % 2 == 0) PixelGrid[PixelIdx].Channel = 1;
-            else            PixelGrid[PixelIdx].Channel = 2;
-          } else            PixelGrid[PixelIdx].Channel = 0;
-        } else {
-          PixelGrid[PixelIdx].Channel = Channel;
+              case (0):
+                px.Time = y*(Spec.tLine) + Spec.tSync + Spec.tPorch + (x+.5) * Spec.tPixel * 2;
+                break;
+
+              case (1):
+                px.Time = 999;//TODO
+                break;
+
+              case (2):
+                px.Time = 999;
+                break;
+
+            }
+
+          case (SUBSAMP_211):
+            switch (Chan) {
+
+              case (0):
+                px.Time = y*(Spec.tLine) + Spec.tSync + Spec.tPorch + (x+.5) * Spec.tPixel * 2;
+                break;
+
+              case (1):
+                px.Time = 999;//TODO
+                break;
+
+              case (2):
+                px.Time = 999;
+                break;
+
+            }
+
+          case (SUBSAMP_2112):
+            switch (Chan) {
+
+              case (0):
+                px.Time = y*(Spec.tLine) + Spec.tSync + Spec.tPorch + (x+.5) * Spec.tPixel * 2;
+                break;
+
+              case (1):
+                px.Time = 999;//TODO
+                break;
+
+              case (2):
+                px.Time = 999;//TODO
+                break;
+
+            }
         }
-        
-        PixelGrid[PixelIdx].Time = (int)round(Rate * (y * ModeSpec[Mode].LineTime + ChanStart[Channel] +
-          (1.0*(x-.5)/ModeSpec[Mode].ImgWidth*ChanLen[PixelGrid[PixelIdx].Channel]))) + Skip;
-
-
-        PixelGrid[PixelIdx].X = x;
-        PixelGrid[PixelIdx].Y = y;
-        
-
-        PixelGrid[PixelIdx].Last = false;
-
-        PixelIdx ++;
+        PixelGrid.push_back(px);
       }
     }
   }
-  PixelGrid[PixelIdx-1].Last = true;
 
-  for (k=0; k<PixelIdx; k++) {
-    if (PixelGrid[k].Time >= 0) {
-      PixelIdx = k;
-      break;
-    }
-  }
-
-        /*case PD50:
-        case PD90:
-        case PD120:
-        case PD160:
-        case PD180:
-        case PD240:
-        case PD290:
-          if (CurLineTime >= ChanStart[2] + ChanLen[2]) Channel = 3; // ch 0 of even line
-          else if (CurLineTime >= ChanStart[2])         Channel = 2;
-          else if (CurLineTime >= ChanStart[1])         Channel = 1;
-          else                                          Channel = 0;
-          break;*/
+   Glib::RefPtr<Gtk::Application> app =
+     Gtk::Application::create("com.windytan.slowrx");
+  Glib::RefPtr<Gdk::Pixbuf> pixbuf_rx;
+  pixbuf_rx = Gdk::Pixbuf::create(Gdk::COLORSPACE_RGB, false, 8, Spec.ImgWidth, Spec.NumLines);
+  pixbuf_rx->fill(0x000000ff);
 
   // Initialize pixbuffer
-  if (!Redraw) {
+  /*if (!Redraw) {
     g_object_unref(pixbuf_rx);
     pixbuf_rx = gdk_pixbuf_new (GDK_COLORSPACE_RGB, false, 8, ModeSpec[Mode].ImgWidth, ModeSpec[Mode].NumLines);
     gdk_pixbuf_fill(pixbuf_rx, 0);
-  }
+  }*/
 
-  int     rowstride = gdk_pixbuf_get_rowstride (pixbuf_rx);
+  /*int     rowstride = gdk_pixbuf_get_rowstride (pixbuf_rx);
   guchar *pixels, *p;
   pixels = gdk_pixbuf_get_pixels(pixbuf_rx);
 
   g_object_unref(pixbuf_disp);
   pixbuf_disp = gdk_pixbuf_scale_simple(pixbuf_rx, 500,
       500.0/ModeSpec[Mode].ImgWidth * ModeSpec[Mode].NumLines * ModeSpec[Mode].LineHeight, GDK_INTERP_BILINEAR);
+*/
+  //gtk_image_set_from_pixbuf(GTK_IMAGE(gui.image_rx), pixbuf_disp);
 
-  gdk_threads_enter();
-  gtk_image_set_from_pixbuf(GTK_IMAGE(gui.image_rx), pixbuf_disp);
-  gdk_threads_leave();
-
-  Length        = ModeSpec[Mode].LineTime * ModeSpec[Mode].NumLines * 44100;
+  /*int Length        = Spec.tLine * Spec.NumLines * 44100;
   SyncTargetBin = GetBin(1200+CurrentPic.HedrShift, FFTLen);
   Abort         = false;
-  SyncSampleNum = 0;
+  SyncSampleNum = 0;*/
 
   // Loop through signal
-  for (SampleNum = 0; SampleNum < Length; SampleNum++) {
+  double t = 0;
+  for (int PixelIdx = 0; PixelIdx < PixelGrid.size(); PixelIdx++) {
+
+    double Lum = 0;
 
     if (!Redraw) {
 
-      /*** Read ahead from sound card ***/
-
-      if (pcm.WindowPtr == 0 || pcm.WindowPtr >= BUFLEN-1024) readPcm(2048);
-     
+      while (t < PixelGrid[PixelIdx].Time && dsp->is_still_listening()) {
+        t += dsp->forward();
+      }
 
       /*** Store the sync band for later adjustments ***/
 
-      if (SampleNum == NextSyncTime) {
+      /*if (SampleNum == NextSyncTime) {
  
         Praw = Psync = 0;
 
@@ -208,13 +176,11 @@ gboolean GetVideo(SSTVMode Mode, double Rate, int Skip, bool Redraw) {
         NextSyncTime += 13;
         SyncSampleNum ++;
 
-      }
-
-
+      }*/
 
       /*** Estimate SNR ***/
 
-      if (SampleNum == NextSNRtime) {
+      /*if (SampleNum == NextSNRtime) {
         
         memset(fft.in, 0, sizeof(double)*FFTLen);
 
@@ -254,149 +220,111 @@ gboolean GetVideo(SSTVMode Mode, double Rate, int Skip, bool Redraw) {
         SNR = ((Psignal / Pnoise < .01) ? -20 : 10 * log10(Psignal / Pnoise));
 
         NextSNRtime += 256;
-      }
+      }*/
 
 
 
       /*** FM demodulation ***/
 
-      if (SampleNum % 6 == 0) { // Take FFT every 6 samples
+      //PrevFreq = Freq;
 
-        PrevFreq = Freq;
+      // Adapt window size to SNR
+      WindowType WinType;
+      double SNR = 20;
+      bool Adaptive = false;
 
-        // Adapt window size to SNR
+      if      (!Adaptive)  WinType = WINDOW_HANN47;
+      
+      else if (SNR >=  20) WinType = WINDOW_HANN47;
+      else if (SNR >=  10) WinType = WINDOW_HANN63;
+      else if (SNR >=   9) WinType = WINDOW_HANN95;
+      else if (SNR >=   3) WinType = WINDOW_HANN127;
+      else if (SNR >=  -5) WinType = WINDOW_HANN255;
+      else if (SNR >= -10) WinType = WINDOW_HANN511;
+      else                 WinType = WINDOW_HANN1023;
 
-        if      (!Adaptive)  WinIdx = 0;
-        
-        else if (SNR >=  20) WinIdx = 0;
-        else if (SNR >=  10) WinIdx = 1;
-        else if (SNR >=   9) WinIdx = 2;
-        else if (SNR >=   3) WinIdx = 3;
-        else if (SNR >=  -5) WinIdx = 4;
-        else if (SNR >= -10) WinIdx = 5;
-        else                 WinIdx = 6;
+      // Minimum winlength can be doubled for Scottie DX
+      //if (Mode == MODE_SDX && WinType < WINDOW_HANN511) WinType++;
 
-        // Minimum winlength can be doubled for Scottie DX
-        if (Mode == SDX && WinIdx < 6) WinIdx++;
-
-        memset(fft.in, 0, sizeof(double)*FFTLen);
-        memset(Power,  0, sizeof(double)*1024);
-
-        // Apply window function
-
-        WinLength = HannLens[WinIdx];
-        for (i = 0; i < WinLength; i++) fft.in[i] = pcm.Buffer[pcm.WindowPtr + i - WinLength/2] / 32768.0 * Hann[WinIdx][i];
-
-        fftw_execute(fft.Plan1024);
-
-        MaxBin = 0;
-
-        // Find the bin with most power
-        for (n = GetBin(1500 + CurrentPic.HedrShift, FFTLen) - 1; n <= GetBin(2300 + CurrentPic.HedrShift, FFTLen) + 1; n++) {
-
-          Power[n] = power(fft.out[n]);
-          if (MaxBin == 0 || Power[n] > Power[MaxBin]) MaxBin = n;
-
-        }
-
-        // Find the peak frequency by Gaussian interpolation
-        if (MaxBin > GetBin(1500 + CurrentPic.HedrShift, FFTLen) - 1 && MaxBin < GetBin(2300 + CurrentPic.HedrShift, FFTLen) + 1) {
-          Freq = MaxBin +            (log( Power[MaxBin + 1] / Power[MaxBin - 1] )) /
-                           (2 * log( pow(Power[MaxBin], 2) / (Power[MaxBin + 1] * Power[MaxBin - 1])));
-          // In Hertz
-          Freq = Freq / FFTLen * 44100;
-        } else {
-          // Clip if out of bounds
-          Freq = ( (MaxBin > GetBin(1900 + CurrentPic.HedrShift, FFTLen)) ? 2300 : 1500 ) + CurrentPic.HedrShift;
-        }
-
-      } /* endif (SampleNum == PixelGrid[PixelIdx].Time) */
+      double Freq = dsp->get_peak_freq(1500, 2300, WinType);
 
       // Linear interpolation of (chronologically) intermediate frequencies, for redrawing
       //InterpFreq = PrevFreq + (Freq-PrevFreq) * ...  // TODO!
 
       // Calculate luminency & store for later use
-      StoredLum[SampleNum] = clip((Freq - (1500 + CurrentPic.HedrShift)) / 3.1372549);
+      Lum = clip((Freq - (1500)) / 3.1372549);
+      //StoredLum[SampleNum] = clip((Freq - (1500 + CurrentPic.HedrShift)) / 3.1372549);
 
     } /* endif (!Redraw) */
 
-
-
-    if (SampleNum == PixelGrid[PixelIdx].Time) {
-
-      x = PixelGrid[PixelIdx].X;
-      y = PixelGrid[PixelIdx].Y;
-      Channel = PixelGrid[PixelIdx].Channel;
-      
-      // Store pixel
-      Image[x][y][Channel] = StoredLum[SampleNum];
-
-      // Some modes have R-Y & B-Y channels that are twice the height of the Y channel
-      if (Channel > 0 && (Mode == R36 || Mode == R24))
-        Image[x][y+1][Channel] = StoredLum[SampleNum];
-
-      // Calculate and draw pixels to pixbuf on line change
-      if (x == ModeSpec[Mode].ImgWidth-1 || PixelGrid[PixelIdx].Last) {
-        for (tx = 0; tx < ModeSpec[Mode].ImgWidth; tx++) {
-          p = pixels + y * rowstride + tx * 3;
-
-          switch(ModeSpec[Mode].ColorEnc) {
-
-            case RGB:
-              p[0] = Image[tx][y][0];
-              p[1] = Image[tx][y][1];
-              p[2] = Image[tx][y][2];
-              break;
-
-            case GBR:
-              p[0] = Image[tx][y][2];
-              p[1] = Image[tx][y][0];
-              p[2] = Image[tx][y][1];
-              break;
-
-            case YUV:
-              p[0] = clip((100 * Image[tx][y][0] + 140 * Image[tx][y][1] - 17850) / 100.0);
-              p[1] = clip((100 * Image[tx][y][0] -  71 * Image[tx][y][1] - 33 *
-                  Image[tx][y][2] + 13260) / 100.0);
-              p[2] = clip((100 * Image[tx][y][0] + 178 * Image[tx][y][2] - 22695) / 100.0);
-              break;
-
-            case BW:
-              p[0] = p[1] = p[2] = Image[tx][y][0];
-              break;
-
-          }
-        }
-
-        if (!Redraw || y % 5 == 0 || PixelGrid[PixelIdx].Last) {
-          // Scale and update image
-          g_object_unref(pixbuf_disp);
-          pixbuf_disp = gdk_pixbuf_scale_simple(pixbuf_rx, 500,
-              500.0/ModeSpec[Mode].ImgWidth * ModeSpec[Mode].NumLines * ModeSpec[Mode].LineHeight, GDK_INTERP_BILINEAR);
-
-          gtk_image_set_from_pixbuf(GTK_IMAGE(gui.image_rx), pixbuf_disp);
-        }
-      }
-
-      PixelIdx ++;
-
-
-    } /* endif (SampleNum == PixelGrid[PixelIdx].Time) */
+    int x = PixelGrid[PixelIdx].X;
+    int y = PixelGrid[PixelIdx].Y;
+    int Channel = PixelGrid[PixelIdx].Channel;
     
-    if (!Redraw && SampleNum % 8820 == 0) {
-      setVU(Power, FFTLen, WinIdx, true);
-    }
+    // Store pixel
+    Image[x][y][Channel] = Lum;//StoredLum[SampleNum];
+    printf("Image[%d][%d][%d] = %d\n",x,y,Channel,Lum);
 
-    if (Abort) {
-      free(PixelGrid);
-      return false;
-    }
+    // Some modes have R-Y & B-Y channels that are twice the height of the Y channel
+    //if (Channel > 0 && (Mode == R36 || Mode == R24))
+    //  Image[x][y+1][Channel] = StoredLum[SampleNum];
 
-    pcm.WindowPtr ++;
+    // Calculate and draw pixels to pixbuf on line change
+    guint8 *p;
+    guint8 *pixels;
+    pixels = pixbuf_rx->get_pixels();
+    int rowstride = pixbuf_rx->get_rowstride();
+    int tx = x;
+    //if (x == ModeSpec[Mode].ImgWidth-1 || PixelIdx < PixelGrid.size()-1) {
+      //for (int tx = 0; tx < ModeSpec[Mode].ImgWidth; tx++) {
+        p = pixels + y * rowstride + tx * 3;
+
+        switch(Spec.ColorEnc) {
+
+          case COLOR_RGB:
+            p[0] = Image[tx][y][0];
+            p[1] = Image[tx][y][1];
+            p[2] = Image[tx][y][2];
+            break;
+
+          case COLOR_GBR:
+            p[0] = Image[tx][y][2];
+            p[1] = Image[tx][y][0];
+            p[2] = Image[tx][y][1];
+            break;
+
+          case COLOR_YUV:
+            p[0] = clip((100 * Image[tx][y][0] + 140 * Image[tx][y][1] - 17850) / 100.0);
+            p[1] = clip((100 * Image[tx][y][0] -  71 * Image[tx][y][1] - 33 *
+                Image[tx][y][2] + 13260) / 100.0);
+            p[2] = clip((100 * Image[tx][y][0] + 178 * Image[tx][y][2] - 22695) / 100.0);
+            break;
+
+          case COLOR_MONO:
+            p[0] = p[1] = p[2] = Image[tx][y][0];
+            break;
+
+        //}
+      //}
+
+      /*if (!Redraw || y % 5 == 0 || PixelIdx == PixelGrid.size()-1) {
+        // Scale and update image
+        g_object_unref(pixbuf_disp);
+        pixbuf_disp = gdk_pixbuf_scale_simple(pixbuf_rx, 500,
+            500.0/ModeSpec[Mode].ImgWidth * ModeSpec[Mode].NumLines * ModeSpec[Mode].LineHeight, GDK_INTERP_BILINEAR);
+
+        gtk_image_set_from_pixbuf(GTK_IMAGE(gui.image_rx), pixbuf_disp);
+      }*/
+    }
 
   }
+  
+  /*if (!Redraw && SampleNum % 8820 == 0) {
+    setVU(Power, FFTLen, WinIdx, true);
+  }*/
 
-  free(PixelGrid);
+  pixbuf_rx->save("testi.png", "png");
+
   return true;
 
 }

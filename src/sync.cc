@@ -113,7 +113,7 @@ double FindSync (SSTVMode Mode, double Rate, int *Skip) {
   s = xmax / 700.0 * ModeSpec[Mode].tLine - ModeSpec[Mode].tSync;
   
   // (Scottie modes don't start lines with sync)
-  if (ModeSpec[Mode].SyncType == SYNC_SCOTTIE)
+  if (ModeSpec[Mode].SyncOrder == SYNC_SCOTTIE)
     s = s - ModeSpec[Mode].tPixel * ModeSpec[Mode].ImgWidth / 2.0
           + ModeSpec[Mode].tPorch * 2;
 

@@ -18,19 +18,11 @@ Glib::KeyFile config;
 
 vector<thread> threads(2);
 
-FFTStuff     fft;
 PicMeta      CurrentPic;
 PcmData      pcm;
 
-// Return the FFT bin index matching the given frequency
-int GetBin (double Freq, int FFTLen) {
-  return (Freq / 44100 * FFTLen);
-}
-
-// Sinusoid power from complex DFT coefficients
-double power (fftw_complex coeff) {
-  return pow(coeff[0],2) + pow(coeff[1],2);
-}
+short DSPworker::win_lens_[7] = { 47, 63, 95, 127, 255, 511, 1023 };
+double DSPworker::window_[7][1024];
 
 // Clip to [0..255]
 int clip (double a) {

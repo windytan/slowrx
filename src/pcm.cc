@@ -5,76 +5,150 @@
  *
  */
 
-PCMworker::PCMworker() : Mutex(), please_stop(false) {
+DSPworker::DSPworker() : Mutex(), please_stop_(false) {
 
-  short win_lens[7] = { 47, 63, 95, 127, 255, 511, 1023 };
+  fft_len_ = 2048;
+
   for (int j = 0; j < 7; j++)
-    for (int i = 0; i < win_lens[j]; i++)
-      window[j][i] = 0.5 * (1 - cos( (2 * M_PI * i) / (win_lens[j] - 1)) );
+    for (int i = 0; i < win_lens_[j]; i++)
+      window_[j][i] = 0.5 * (1 - cos( (2 * M_PI * i) / (win_lens_[j] - 1)) );
+
+  fft_inbuf_ = (double*) fftw_alloc_real(sizeof(double) * fft_len_);
+  if (fft_inbuf_ == NULL) {
+    perror("GetVideo: Unable to allocate memory for FFT");
+    exit(EXIT_FAILURE);
+  }
+  fft_outbuf_ = (fftw_complex*) fftw_alloc_complex(sizeof(fftw_complex) * (fft_len_));
+  if (fft_outbuf_ == NULL) {
+    perror("GetVideo: Unable to allocate memory for FFT");
+    fftw_free(fft_inbuf_);
+    exit(EXIT_FAILURE);
+  }
+  memset(fft_inbuf_,  0, sizeof(double) * fft_len_);
+
+  fft_plan_ = fftw_plan_dft_r2c_1d(fft_len_, fft_inbuf_, fft_outbuf_, FFTW_ESTIMATE);
+
+  cirbuf_tail_ = 0;
+  cirbuf_head_ = 0;
+  cirbuf_fill_count_ = 0;
+  is_still_listening_ = true;
+
+  printf("DSPworker created\n");
 
   open_audio_file("/Users/windy/Movies/sstv_ebeju_f_mono.wav");
+  //open_audio_file("/Users/windy/Audio/sig/1000Hz-800Hz.wav");
 }
 
-void PCMworker::open_audio_file (string fname) {
+void DSPworker::open_audio_file (string fname) {
 
-  file = SndfileHandle(fname.c_str()) ;
+  file_ = SndfileHandle(fname.c_str()) ;
 
   printf ("Opened file '%s'\n", fname.c_str()) ;
-  printf ("    Sample rate : %d\n", file.samplerate ()) ;
-  printf ("    Channels    : %d\n", file.channels ()) ;
+  printf ("    Sample rate : %d\n", file_.samplerate ()) ;
+  printf ("    Channels    : %d\n", file_.channels ()) ;
 
-  GetVIS();
-
+  samplerate_ = file_.samplerate();
 
   //puts ("") ;
 
   /* RAII takes care of destroying SndfileHandle object. */
 }
 
+int DSPworker::GetBin (double freq) {
+  return (freq / samplerate_ * fft_len_);
+}
 
-// read more stuff in
-void PCMworker::read_more () {
-  printf( "read more\n");
+double DSPworker::FourierPower (fftw_complex coeff) {
+  return pow(coeff[0],2) + pow(coeff[1],2);
+}
+
+bool DSPworker::is_still_listening () {
+  return is_still_listening_;
+}
+
+
+void DSPworker::read_more () {
   short read_buffer[READ_CHUNK_LEN];
 
-  file.read(read_buffer, READ_CHUNK_LEN);
+  sf_count_t samplesread = file_.read(read_buffer, READ_CHUNK_LEN);
+  if (samplesread < READ_CHUNK_LEN)
+    is_still_listening_ = false;
 
-  int cirbuf_fits = max(CIRBUF_LEN - cirbuf_head, READ_CHUNK_LEN);
+  int cirbuf_fits = std::min(CIRBUF_LEN - cirbuf_head_, (int)samplesread);
 
-  memcpy(&cirbuf[cirbuf_head], read_buffer, cirbuf_fits * sizeof(read_buffer[0]));
+  memcpy(&cirbuf_[cirbuf_head_], read_buffer, cirbuf_fits * sizeof(read_buffer[0]));
 
   // wrapped around
-  memcpy(&cirbuf[0], &read_buffer[cirbuf_fits], (READ_CHUNK_LEN - cirbuf_fits) * sizeof(read_buffer[0]));
+  if (samplesread > cirbuf_fits) {
+    memcpy(&cirbuf_[0], &read_buffer[cirbuf_fits], (samplesread - cirbuf_fits) * sizeof(read_buffer[0]));
+  }
 
   // mirror
-  memcpy(&cirbuf[CIRBUF_LEN], &cirbuf[0], CIRBUF_LEN);
+  memcpy(&cirbuf_[CIRBUF_LEN], &cirbuf_[0], CIRBUF_LEN);
   
-  cirbuf_head = (cirbuf_head + READ_CHUNK_LEN) % CIRBUF_LEN;
+  cirbuf_head_ = (cirbuf_head_ + samplesread) % CIRBUF_LEN;
+  cirbuf_fill_count_ += samplesread;
+  cirbuf_fill_count_ = std::min(cirbuf_fill_count_, CIRBUF_LEN);
 
 }
 
 // move processing window
-void PCMworker::next_moment () {
-  cirbuf_tail = (cirbuf_tail + 1) % CIRBUF_LEN;
-  if ((cirbuf_tail + MOMENT_LEN) % CIRBUF_LEN >= cirbuf_head) {
-    read_more();
+double DSPworker::forward (unsigned nsamples) {
+  for (unsigned i = 0; i < nsamples; i++) {
+    cirbuf_tail_ = (cirbuf_tail_ + 1) % CIRBUF_LEN;
+    cirbuf_fill_count_ -= 1;
+    if (cirbuf_fill_count_ < MOMENT_LEN) {
+      read_more();
+    }
   }
+  return (1.0 * nsamples / samplerate_);
+}
+double DSPworker::forward() {
+  return forward(1);
+}
+double DSPworker::forward_ms(double ms) {
+  return forward(ms / 1000 * samplerate_);
 }
 
 // the current moment, windowed
-vector<short> PCMworker::get_windowed_moment (WindowType win_type) {
-  vector<short> result(MOMENT_LEN);
-
+void DSPworker::get_windowed_moment (WindowType win_type, double *result) {
   for (int i = 0; i < MOMENT_LEN; i++) {
 
-    int win_i = i - MOMENT_LEN/2 + win_lens[win_type]/2 ;
+    int win_i = i - MOMENT_LEN/2 + win_lens_[win_type]/2 ;
 
-    if (win_i >= 0 && win_i < win_lens[win_type]) {
-      result[i] = cirbuf[cirbuf_tail + i] * window[win_type][win_i];
-    } else {
-      result[i] = 0;
+    if (win_i >= 0 && win_i < win_lens_[win_type]) {
+      result[win_i] = cirbuf_[cirbuf_tail_ + i] * window_[win_type][win_i];
     }
   }
+
+}
+
+double DSPworker::get_peak_freq (double minf, double maxf, WindowType wintype) {
+
+  double windowed[win_lens_[wintype]];
+  double Power[fft_len_];
+
+  get_windowed_moment(wintype, windowed);
+  //for (int i=0;i<win_lens_[wintype];i++)
+  //  printf("g %f\n",windowed[i]);
+  memset (fft_inbuf_, 0, fft_len_ * sizeof(double));
+  memcpy(fft_inbuf_, windowed, win_lens_[wintype] * sizeof(double));
+  fftw_execute(fft_plan_);
+  // Find the bin with most power
+  int MaxBin = 0;
+  for (int i = GetBin(minf)-1; i <= GetBin(maxf)+1; i++) {
+    Power[i] = FourierPower(fft_outbuf_[i]);
+    if ( (i >= GetBin(minf) && i < GetBin(maxf)) &&
+         (MaxBin == 0 || Power[i] > Power[MaxBin]))
+      MaxBin = i;
+  }
+
+  // Find the peak frequency by Gaussian interpolation
+  double result = MaxBin +            (log( Power[MaxBin + 1] / Power[MaxBin - 1] )) /
+                           (2 * log( pow(Power[MaxBin], 2) / (Power[MaxBin + 1] * Power[MaxBin - 1])));
+
+  // In Hertz
+  result = result / fft_len_ * samplerate_;
 
   return result;
 

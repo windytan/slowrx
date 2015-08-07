@@ -5,9 +5,11 @@ int main(int argc, char *argv[]) {
   string confpath(string(getenv("HOME")) + "/.config/slowrx/slowrx.ini");
   config.load_from_file(confpath);
 
-  PCMworker worker;
+  DSPworker dsp;
 
-  SlowGUI gui = SlowGUI();
+  GetVideo(GetVIS(&dsp), 44100, &dsp, false);
+
+  //SlowGUI gui = SlowGUI();
   return 0;
 }
 
