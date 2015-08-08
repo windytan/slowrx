@@ -6,6 +6,15 @@
 #define BUFLEN   4096
 #define SYNCPIXLEN 1.5e-3
 
+extern gboolean   Abort;
+extern gboolean   Adaptive;
+extern gboolean  *HasSync;
+extern gboolean   ManualActivated;
+extern gboolean   ManualResync;
+extern guchar    *StoredLum;
+extern pthread_t  thread1;
+extern guchar     VISmap[];
+
 typedef struct _FFTStuff FFTStuff;
 struct _FFTStuff {
   double       *in;
@@ -17,51 +26,49 @@ extern FFTStuff fft;
 
 typedef struct _PcmData PcmData;
 struct _PcmData {
-//  snd_pcm_t *handle;
-  void      *handle;
+  snd_pcm_t *handle;
   gint16    *Buffer;
   int        WindowPtr;
   gboolean   BufferDrop;
 };
-//extern PcmData pcm;
+extern PcmData pcm;
 
 typedef struct _GuiObjs GuiObjs;
 struct _GuiObjs {
-  Gtk::Button *button_abort;
-  Gtk::Button *button_browse;
-  Gtk::Button *button_clear;
-  Gtk::Button *button_start;
-  Gtk::ComboBox *combo_card;
-  Gtk::ComboBox *combo_mode;
-  Gtk::Widget *entry_picdir;
-  Gtk::Widget *eventbox_img;
-  Gtk::Widget *frame_manual;
-  Gtk::Widget *frame_slant;
-  Gtk::Widget *grid_vu;
-  Gtk::Widget *iconview;
-  Gtk::Widget *image_devstatus;
-  Gtk::Widget *image_pwr;
-  Gtk::Widget *image_rx;
-  Gtk::Widget *image_snr;
-  Gtk::Label *label_fskid;
-  Gtk::Label *label_lastmode;
-  Gtk::Label *label_utc;
-  Gtk::MenuItem *menuitem_about;
-  Gtk::MenuItem *menuitem_quit;
-  Gtk::SpinButton *spin_shift;
-  Gtk::Widget *statusbar;
-  Gtk::ToggleButton *tog_adapt;
-  Gtk::ToggleButton *tog_fsk;
-  Gtk::ToggleButton *tog_rx;
-  Gtk::ToggleButton *tog_save;
-  Gtk::ToggleButton *tog_setedge;
-  Gtk::ToggleButton *tog_slant;
-  Gtk::Window *window_about;
-  Gtk::Window *window_main;
+  GtkWidget *button_abort;
+  GtkWidget *button_browse;
+  GtkWidget *button_clear;
+  GtkWidget *button_start;
+  GtkWidget *combo_card;
+  GtkWidget *combo_mode;
+  GtkWidget *entry_picdir;
+  GtkWidget *eventbox_img;
+  GtkWidget *frame_manual;
+  GtkWidget *frame_slant;
+  GtkWidget *grid_vu;
+  GtkWidget *iconview;
+  GtkWidget *image_devstatus;
+  GtkWidget *image_pwr;
+  GtkWidget *image_rx;
+  GtkWidget *image_snr;
+  GtkWidget *label_fskid;
+  GtkWidget *label_lastmode;
+  GtkWidget *label_utc;
+  GtkWidget *menuitem_about;
+  GtkWidget *menuitem_quit;
+  GtkWidget *spin_shift;
+  GtkWidget *statusbar;
+  GtkWidget *tog_adapt;
+  GtkWidget *tog_fsk;
+  GtkWidget *tog_rx;
+  GtkWidget *tog_save;
+  GtkWidget *tog_setedge;
+  GtkWidget *tog_slant;
+  GtkWidget *window_about;
+  GtkWidget *window_main;
 };
 extern GuiObjs   gui;
 
-/*
 extern GdkPixbuf *pixbuf_PWR;
 extern GdkPixbuf *pixbuf_SNR;
 extern GdkPixbuf *pixbuf_rx;
@@ -69,13 +76,13 @@ extern GdkPixbuf *pixbuf_disp;
 
 extern GtkListStore *savedstore;
 
-extern GKeyFile  *config;*/
+extern GKeyFile  *config;
 
 
 typedef struct _PicMeta PicMeta;
 struct _PicMeta {
-  int    HedrShift;
-  int    Mode;
+  gshort HedrShift;
+  guchar Mode;
   double Rate;
   int    Skip;
   GdkPixbuf *thumbbuf;
@@ -100,36 +107,36 @@ enum {
 };
 
 typedef struct ModeSpec {
-  std::string  Name;
-  std::string  ShortName;
+  char   *Name;
+  char   *ShortName;
   double  SyncTime;
   double  PorchTime;
   double  SeptrTime;
   double  PixelTime;
   double  LineTime;
-  int     ImgWidth;
-  int     NumLines;
-  int     LineHeight;
-  int     ColorEnc;
+  gushort ImgWidth;
+  gushort NumLines;
+  guchar  LineHeight;
+  guchar  ColorEnc;
 } _ModeSpec;
 
 extern _ModeSpec ModeSpec[];
 
-double   power         (fftw_complex coeff);
-int      clip          (double a);
+double   power     (fftw_complex coeff);
+guchar   clip          (double a);
 void     createGUI     ();
 double   deg2rad       (double Deg);
-double   FindSync      (int Mode, double Rate, int *Skip);
+double   FindSync      (guchar Mode, double Rate, int *Skip);
 void     GetFSK        (char *dest);
-bool     GetVideo      (int Mode, double Rate, int Skip, bool Redraw);
-int      GetVIS        ();
-int      GetBin        (double Freq, int FFTLen);
-int      initPcmDevice (char *);
+gboolean GetVideo      (guchar Mode, double Rate, int Skip, gboolean Redraw);
+guchar   GetVIS        ();
+guint    GetBin        (double Freq, guint FFTLen);
+int      initPcmDevice ();
 void     *Listen       ();
 void     populateDeviceList ();
-void     readPcm       (int numsamples);
+void     readPcm       (gint numsamples);
 void     saveCurrentPic();
-void     setVU         (double *Power, int FFTLen, int WinIdx, bool ShowWin);
+void     setVU         (double *Power, int FFTLen, int WinIdx, gboolean ShowWin);
 
 void     evt_AbortRx       ();
 void     evt_changeDevices ();

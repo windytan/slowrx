@@ -1,4 +1,7 @@
-#include <gtkmm.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <gtk/gtk.h>
+#include <alsa/asoundlib.h>
 
 #include <fftw3.h>
 
