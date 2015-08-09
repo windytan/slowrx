@@ -9,6 +9,47 @@ typedef struct {
 
 bool sortPixelTime(_Pixel a, _Pixel b) { return a.Time < b.Time; }
 
+void toPixbufRGB(guint8 Image[800][800][3], Glib::RefPtr<Gdk::Pixbuf> pixbuf, SSTVMode Mode) {
+  guint8 *p;
+  guint8 *pixels;
+  pixels = pixbuf->get_pixels();
+  int rowstride = pixbuf->get_rowstride();
+  for (int x = 0; x < ModeSpec[Mode].ImgWidth; x++) {
+    for (int y = 0; y < ModeSpec[Mode].NumLines; y++) {
+      p = pixels + y * rowstride + x * 3;
+
+      switch(ModeSpec[Mode].ColorEnc) {
+
+        case COLOR_RGB:
+          p[0] = Image[x][y][0];
+          p[1] = Image[x][y][1];
+          p[2] = Image[x][y][2];
+          break;
+
+        case COLOR_GBR:
+          p[0] = Image[x][y][2];
+          p[1] = Image[x][y][0];
+          p[2] = Image[x][y][1];
+          break;
+
+        case COLOR_YUV:
+          // TODO chroma filtering
+          p[0] = clip((100 * Image[x][y][0] + 140 * Image[x][y][1] - 17850) / 100.0);
+          p[1] = clip((100 * Image[x][y][0] -  71 * Image[x][y][1] - 33 *
+              Image[x][y][2] + 13260) / 100.0);
+          p[2] = clip((100 * Image[x][y][0] + 178 * Image[x][y][2] - 22695) / 100.0);
+          break;
+
+        case COLOR_MONO:
+          p[0] = p[1] = p[2] = Image[x][y][0];
+          break;
+
+      }
+    }
+  }
+}
+
+
 /* Demodulate the video signal & store all kinds of stuff for later stages
  *  Mode:      M1, M2, S1, S2, R72, R36...
  *  Rate:      exact sampling rate used
@@ -18,94 +59,99 @@ bool sortPixelTime(_Pixel a, _Pixel b) { return a.Time < b.Time; }
  */
 bool GetVideo(SSTVMode Mode, double Rate, DSPworker* dsp, bool Redraw) {
 
+  printf("receive %s\n",ModeSpec[Mode].Name.c_str());
+
   vector<_Pixel> PixelGrid;
 
-  _ModeSpec Spec = ModeSpec[Mode];
+  _ModeSpec s = ModeSpec[Mode];
 
   guint8 Image[800][800][3];
 
-  printf("Mode %d: %dx%d\n",Mode,Spec.ImgWidth, Spec.NumLines);
-
   // Time instants for all pixels
-  for (int y=0; y<Spec.NumLines; y++) {
-    for (int x=0; x<Spec.ImgWidth; x++) {
-      for (int Chan=0; Chan < (Spec.ColorEnc == COLOR_MONO ? 1 : 3); Chan++) {
+  for (int y=0; y<s.NumLines; y++) {
+    for (int x=0; x<s.ImgWidth; x++) {
+      for (int Chan=0; Chan < (s.ColorEnc == COLOR_MONO ? 1 : 3); Chan++) {
         _Pixel px;
         px.X = x;
         px.Y = y;
         px.Channel = Chan;
-        switch(Spec.SubSamp) {
+        switch(s.SubSamp) {
 
-          case (SUBSAMP_NONE):
-            px.Time = y*(Spec.tLine) + (x+0.5) * Spec.tPixel;
+          case (SUBSAMP_444):
+            px.Time = y*(s.tLine) + (x+0.5)/s.ImgWidth * s.tScan;
 
-            switch (Spec.SyncOrder) {
+            switch (s.SyncOrder) {
 
-              case (SYNC_STRAIGHT):
-                px.Time += Spec.tSync + Spec.tPorch + Chan*(Spec.tPixel * Spec.ImgWidth + Spec.tSep);
+              case (SYNC_SIMPLE):
+                px.Time += s.tSync + s.tPorch + Chan*(s.tScan + s.tSep);
                 break;
 
               case (SYNC_SCOTTIE):
-                px.Time += Spec.tSync + (Chan+1) * Spec.tSep + Chan*(Spec.tPixel * Spec.ImgWidth) +
-                  (Chan == 2 ? Spec.tSync : 0);
+                px.Time += s.tSync + (Chan+1) * s.tSep + Chan*s.tScan +
+                  (Chan == 2 ? s.tSync : 0);
                 break;
 
             }
             break;
 
-          case (SUBSAMP_2121):
+          case (SUBSAMP_420_YUYV):
             switch (Chan) {
 
               case (0):
-                px.Time = y*(Spec.tLine) + Spec.tSync + Spec.tPorch + (x+.5) * Spec.tPixel * 2;
+                px.Time = y*(s.tLine) + s.tSync + s.tPorch + (x+.5)/s.ImgWidth * s.tScan;
                 break;
 
               case (1):
-                px.Time = (y-(y % 2)) * (Spec.tLine) + Spec.tSync + Spec.tPorch + Spec.tPixel*2*Spec.ImgWidth + Spec.tSep + (x+0.5) * Spec.tPixel;
+                px.Time = (y-(y % 2)) * (s.tLine) + s.tSync + s.tPorch + s.tScan + s.tSep + 0.5*(x+0.5)/s.ImgWidth * s.tScan;
                 break;
 
               case (2):
-                px.Time = (y+1-(y % 2)) * (Spec.tLine) + Spec.tSync + Spec.tPorch + Spec.tPixel*2*Spec.ImgWidth + Spec.tSep + (x+0.5) * Spec.tPixel;
+                px.Time = (y+1-(y % 2)) * (s.tLine) + s.tSync + s.tPorch + s.tScan + s.tSep + 0.5*(x+0.5)/s.ImgWidth * s.tScan;
                 break;
 
             }
+            break;
 
-          case (SUBSAMP_211):
+          case (SUBSAMP_422_YUV):
             switch (Chan) {
 
               case (0):
-                px.Time = y*(Spec.tLine) + Spec.tSync + Spec.tPorch + (x+.5) * Spec.tPixel * 2;
+                px.Time = y*(s.tLine) + s.tSync + s.tPorch + (x+.5)/s.ImgWidth * s.tScan;
                 break;
 
               case (1):
-                px.Time = 999;//TODO
+                px.Time = y*(s.tLine) + s.tSync + s.tPorch + s.tScan
+                 + s.tSep + (x+.5)/s.ImgWidth * s.tScan/2;
                 break;
 
               case (2):
-                px.Time = 999;
+                px.Time = y*(s.tLine) + s.tSync + s.tPorch + s.tScan
+                  + s.tSep + s.tScan/2 + s.tSep + (x+.5)/s.ImgWidth * s.tScan/2;
                 break;
 
             }
+            break;
 
-          case (SUBSAMP_2112):
+          case (SUBSAMP_440_YUVY):
             switch (Chan) {
 
               case (0):
-                px.Time = (y/2)*(Spec.tLine) + Spec.tSync + Spec.tPorch +
-                  ((y%2 == 1 ? 640*3 : 0)+x+.5) * Spec.tPixel;
+                px.Time = (y/2)*(s.tLine) + s.tSync + s.tPorch +
+                  ((y%2 == 1 ? s.ImgWidth*3 : 0)+x+.5)/s.ImgWidth * s.tScan;
                 break;
 
               case (1):
-                px.Time = (y/2)*(Spec.tLine) + Spec.tSync + Spec.tPorch +
-                  (640+x+.5)*Spec.tPixel;
+                px.Time = (y/2)*(s.tLine) + s.tSync + s.tPorch +
+                  (s.ImgWidth+x+.5)/s.ImgWidth * s.tScan;
                 break;
 
               case (2):
-                px.Time = (y/2)*(Spec.tLine) + Spec.tSync + Spec.tPorch +
-                  (640*2+x+.5)*Spec.tPixel;
+                px.Time = (y/2)*(s.tLine) + s.tSync + s.tPorch +
+                  (s.ImgWidth*2+x+.5)/s.ImgWidth * s.tScan;
                 break;
 
             }
+            break;
         }
         PixelGrid.push_back(px);
       }
@@ -117,7 +163,7 @@ bool GetVideo(SSTVMode Mode, double Rate, DSPworker* dsp, bool Redraw) {
    Glib::RefPtr<Gtk::Application> app =
      Gtk::Application::create("com.windytan.slowrx");
   Glib::RefPtr<Gdk::Pixbuf> pixbuf_rx;
-  pixbuf_rx = Gdk::Pixbuf::create(Gdk::COLORSPACE_RGB, false, 8, Spec.ImgWidth, Spec.NumLines);
+  pixbuf_rx = Gdk::Pixbuf::create(Gdk::COLORSPACE_RGB, false, 8, s.ImgWidth, s.NumLines);
   pixbuf_rx->fill(0x000000ff);
 
   // Initialize pixbuffer
@@ -137,7 +183,7 @@ bool GetVideo(SSTVMode Mode, double Rate, DSPworker* dsp, bool Redraw) {
 */
   //gtk_image_set_from_pixbuf(GTK_IMAGE(gui.image_rx), pixbuf_disp);
 
-  /*int Length        = Spec.tLine * Spec.NumLines * 44100;
+  /*int Length        = s.tLine * s.NumLines * 44100;
   SyncTargetBin = GetBin(1200+CurrentPic.HedrShift, FFTLen);
   Abort         = false;
   SyncSampleNum = 0;*/
@@ -237,12 +283,12 @@ bool GetVideo(SSTVMode Mode, double Rate, DSPworker* dsp, bool Redraw) {
 
       // Adapt window size to SNR
       WindowType WinType;
-      double SNR = 3;
+      double SNR = 10;
       bool Adaptive = true;
 
-      if      (!Adaptive)  WinType = WINDOW_HANN47;
+      if      (!Adaptive)  WinType = WINDOW_CHEB47;
       
-      else if (SNR >=  20) WinType = WINDOW_HANN47;
+      else if (SNR >=  20) WinType = WINDOW_CHEB47;
       else if (SNR >=  10) WinType = WINDOW_HANN63;
       else if (SNR >=   9) WinType = WINDOW_HANN95;
       else if (SNR >=   3) WinType = WINDOW_HANN127;
@@ -260,6 +306,7 @@ bool GetVideo(SSTVMode Mode, double Rate, DSPworker* dsp, bool Redraw) {
 
       // Calculate luminency & store for later use
       Lum = clip((Freq - (1500)) / 3.1372549);
+      measured.push_back({t, Lum});
       //StoredLum[SampleNum] = clip((Freq - (1500 + CurrentPic.HedrShift)) / 3.1372549);
 
     } /* endif (!Redraw) */
@@ -271,51 +318,10 @@ bool GetVideo(SSTVMode Mode, double Rate, DSPworker* dsp, bool Redraw) {
     // Store pixel
     Image[x][y][Channel] = Lum;//StoredLum[SampleNum];
 
-    // Some modes have R-Y & B-Y channels that are twice the height of the Y channel
-    //if (Channel > 0 && (Mode == R36 || Mode == R24))
-    //  Image[x][y+1][Channel] = StoredLum[SampleNum];
-
   }
 
   // Calculate and draw pixels to pixbuf on line change
-  guint8 *p;
-  guint8 *pixels;
-  pixels = pixbuf_rx->get_pixels();
-  int rowstride = pixbuf_rx->get_rowstride();
-  //int tx = x;
-  //if (x == ModeSpec[Mode].ImgWidth-1 || PixelIdx < PixelGrid.size()-1) {
-  for (int tx = 0; tx < ModeSpec[Mode].ImgWidth; tx++) {
-    for (int y = 0; y < Spec.NumLines; y++) {
-      p = pixels + y * rowstride + tx * 3;
-
-      switch(Spec.ColorEnc) {
-
-        case COLOR_RGB:
-          p[0] = Image[tx][y][0];
-          p[1] = Image[tx][y][1];
-          p[2] = Image[tx][y][2];
-          break;
-
-        case COLOR_GBR:
-          p[0] = Image[tx][y][2];
-          p[1] = Image[tx][y][0];
-          p[2] = Image[tx][y][1];
-          break;
-
-        case COLOR_YUV:
-          p[0] = clip((100 * Image[tx][y][0] + 140 * Image[tx][y][1] - 17850) / 100.0);
-          p[1] = clip((100 * Image[tx][y][0] -  71 * Image[tx][y][1] - 33 *
-              Image[tx][y][2] + 13260) / 100.0);
-          p[2] = clip((100 * Image[tx][y][0] + 178 * Image[tx][y][2] - 22695) / 100.0);
-          break;
-
-        case COLOR_MONO:
-          p[0] = p[1] = p[2] = Image[tx][y][0];
-          break;
-
-      }
-    }
-
+  toPixbufRGB(Image, pixbuf_rx, Mode);
     /*if (!Redraw || y % 5 == 0 || PixelIdx == PixelGrid.size()-1) {
       // Scale and update image
       g_object_unref(pixbuf_disp);
@@ -324,7 +330,6 @@ bool GetVideo(SSTVMode Mode, double Rate, DSPworker* dsp, bool Redraw) {
 
       gtk_image_set_from_pixbuf(GTK_IMAGE(gui.image_rx), pixbuf_disp);
     }*/
-  }
 
   
   /*if (!Redraw && SampleNum % 8820 == 0) {

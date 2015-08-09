@@ -21,8 +21,8 @@ vector<thread> threads(2);
 PicMeta      CurrentPic;
 PcmData      pcm;
 
-short DSPworker::win_lens_[7] = { 47, 63, 95, 127, 255, 511, 1023 };
-double DSPworker::window_[7][1024];
+short DSPworker::win_lens_[8] = { 47, 63, 95, 127, 255, 511, 1023, 47 };
+double DSPworker::window_[8][1024];
 
 // Clip to [0..255]
 int clip (double a) {

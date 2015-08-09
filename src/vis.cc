@@ -130,7 +130,7 @@ SSTVMode GetVIS (DSPworker *dsp) {
   //readPcm(20e-3 * 44100);
   //pcm.WindowPtr += 20e-3 * 44100;
   
-  dsp->forward_ms(16); // TODO hack
+  dsp->forward_ms(12); // TODO hack
   
   if (vis2mode.find(vis) != vis2mode.end()) {
     return vis2mode[vis];

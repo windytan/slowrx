@@ -1,10 +1,5 @@
 #include "common.hh"
 
-/*
- * Stuff related to sound card capture
- *
- */
-
 DSPworker::DSPworker() : Mutex(), please_stop_(false) {
 
   fft_len_ = 2048;
@@ -13,6 +8,20 @@ DSPworker::DSPworker() : Mutex(), please_stop_(false) {
     for (int i = 0; i < win_lens_[j]; i++)
       window_[j][i] = 0.5 * (1 - cos( (2 * M_PI * i) / (win_lens_[j] - 1)) );
 
+  vector<double> cheb = {
+    0.0004272315,0.0013212953,0.0032312239,0.0067664313,0.0127521667,0.0222058684,
+    0.0363037629,0.0563165400,0.0835138389,0.1190416120,0.1637810511,0.2182020094,
+    0.2822270091,0.3551233730,0.4354402894,0.5210045495,0.6089834347,0.6960162864,
+    0.7784084484,0.8523735326,0.9143033652,0.9610404797,0.9901263448,1.0000000000,
+    0.9901263448,0.9610404797,0.9143033652,0.8523735326,0.7784084484,0.6960162864,
+    0.6089834347,0.5210045495,0.4354402894,0.3551233730,0.2822270091,0.2182020094,
+    0.1637810511,0.1190416120,0.0835138389,0.0563165400,0.0363037629,0.0222058684,
+    0.0127521667,0.0067664313,0.0032312239,0.0013212953,0.0004272315
+  };
+
+  for (int i = 0; i < win_lens_[WINDOW_CHEB47]; i++)
+    window_[WINDOW_CHEB47][i] = cheb[i];
+  
   fft_inbuf_ = (double*) fftw_alloc_real(sizeof(double) * fft_len_);
   if (fft_inbuf_ == NULL) {
     perror("GetVideo: Unable to allocate memory for FFT");
@@ -35,6 +44,7 @@ DSPworker::DSPworker() : Mutex(), please_stop_(false) {
 
   printf("DSPworker created\n");
 
+  //open_audio_file("/Users/windy/Audio/sig/sstv/robot72-02.wav");
   open_audio_file("/Users/windy/Movies/sstv-iss.wav");
   //open_audio_file("/Users/windy/Audio/sig/1000Hz-800Hz.wav");
 }

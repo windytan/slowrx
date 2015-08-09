@@ -25,7 +25,8 @@ enum WindowType {
   WINDOW_HANN127,
   WINDOW_HANN255,
   WINDOW_HANN511,
-  WINDOW_HANN1023
+  WINDOW_HANN1023,
+  WINDOW_CHEB47
 };
 
 enum SSTVMode {
@@ -43,11 +44,11 @@ enum eColorEnc {
 };
 
 enum eSyncOrder {
-  SYNC_STRAIGHT, SYNC_SCOTTIE
+  SYNC_SIMPLE, SYNC_SCOTTIE
 };
 
 enum eSubSamp {
-  SUBSAMP_NONE, SUBSAMP_211, SUBSAMP_2121, SUBSAMP_2112
+  SUBSAMP_444, SUBSAMP_422_YUV, SUBSAMP_420_YUYV, SUBSAMP_440_YUVY
 };
 
 extern map<int, SSTVMode> vis2mode;
@@ -91,8 +92,8 @@ class DSPworker {
 
     vector<short> getsamples(int);
 
-    static short win_lens_[7];
-    static double window_[7][1024];
+    static short win_lens_[8];
+    static double window_[8][1024];
 
   private:
 
@@ -182,7 +183,7 @@ typedef struct ModeSpec {
   double    tSync;
   double    tPorch;
   double    tSep;
-  double    tPixel;
+  double    tScan;
   double    tLine;
   int       ImgWidth;
   int       NumLines;
