@@ -16,7 +16,7 @@ Glib::RefPtr<Gdk::Pixbuf> pixbuf_disp;
 
 Glib::KeyFile config;
 
-vector<thread> threads(2);
+std::vector<std::thread> threads(2);
 
 PicMeta      CurrentPic;
 PcmData      pcm;
@@ -41,7 +41,7 @@ double rad2deg (double rad) {
   return (180 / M_PI) * rad;
 }
 
-void ensure_dir_exists(string dir) {
+void ensure_dir_exists(std::string dir) {
   struct stat buf;
 
   int i = stat(dir.c_str(), &buf);
@@ -55,23 +55,23 @@ void ensure_dir_exists(string dir) {
 
 // Save current picture as PNG
 void saveCurrentPic() {
-  Glib::RefPtr<Gdk::Pixbuf> scaledpb;
+  /*Glib::RefPtr<Gdk::Pixbuf> scaledpb;
 
-  stringstream ss;
-  string basename = config.get_string("slowrx","rxdir");
+  std::stringstream ss;
+  std::string basename = config.get_std::string("slowrx","rxdir");
 
   ss << basename << "/" << CurrentPic.timestr << "_" << ModeSpec[CurrentPic.Mode].ShortName;
 
-  string pngfilename = ss.str();
+  std::string pngfilename = ss.str();
   cout << "  Saving to " << pngfilename << "\n";
 
-  scaledpb = pixbuf_rx->scale_simple(ModeSpec[CurrentPic.Mode].ImgWidth,
+  scaledpb = pixbuf_rx->scale_simple(ModeSpec[CurrentPic.Mode].ScanPixels,
     ModeSpec[CurrentPic.Mode].NumLines * ModeSpec[CurrentPic.Mode].LineHeight, Gdk::INTERP_HYPER);
 
-  ensure_dir_exists(config.get_string("slowrx","rxdir"));
+  ensure_dir_exists(config.get_std::string("slowrx","rxdir"));
   scaledpb->save(pngfilename, "png");
   //g_object_unref(scaledpb);
-  //g_string_free(pngfilename, true);
+  //g_std::string_free(pngfilename, true);*/
 }
 
 

@@ -16,8 +16,6 @@
 #include "fftw3.h"
 #include "gtkmm.h"
 
-using namespace std;
-
 enum WindowType {
   WINDOW_HANN47 = 0,
   WINDOW_HANN63,
@@ -31,12 +29,11 @@ enum WindowType {
 
 enum SSTVMode {
  MODE_UNKNOWN=0,
- MODE_M1, MODE_M2, MODE_M3, MODE_M4,
- MODE_S1, MODE_S2, MODE_SDX,
- MODE_R72, MODE_R36, MODE_R24, MODE_R24BW, MODE_R12BW, MODE_R8BW,
- MODE_PD50, MODE_PD90, MODE_PD120, MODE_PD160, MODE_PD180, MODE_PD240, MODE_PD290,
- MODE_P3, MODE_P5, MODE_P7,
- MODE_W2120, MODE_W2180
+ MODE_M1,    MODE_M2,    MODE_M3,    MODE_M4,    MODE_S1,
+ MODE_S2,    MODE_SDX,   MODE_R72,   MODE_R36,   MODE_R24,
+ MODE_R24BW, MODE_R12BW, MODE_R8BW,  MODE_PD50,  MODE_PD90,
+ MODE_PD120, MODE_PD160, MODE_PD180, MODE_PD240, MODE_PD290,
+ MODE_P3,    MODE_P5,    MODE_P7,    MODE_W2120, MODE_W2180
 };
 
 enum eColorEnc {
@@ -51,7 +48,7 @@ enum eSubSamp {
   SUBSAMP_444, SUBSAMP_422_YUV, SUBSAMP_420_YUYV, SUBSAMP_440_YUVY
 };
 
-extern map<int, SSTVMode> vis2mode;
+extern std::map<int, SSTVMode> vis2mode;
 
 typedef struct _FFTStuff FFTStuff;
 struct _FFTStuff {
@@ -79,18 +76,19 @@ class DSPworker {
 
     DSPworker();
 
-    void open_audio_file(string);
-    void read_more();
+    void open_audio_file(std::string);
     double forward(unsigned);
     double forward();
     double forward_ms(double);
-    void get_windowed_moment(WindowType, double *);
-    double get_peak_freq (double, double, WindowType);
-    int  GetBin        (double);
-    double FourierPower (fftw_complex coeff);
+    void getWindowedMoment(WindowType, double *);
+    double getPeakFreq (double, double, WindowType);
+    int  getBin        (double);
+    double getFourierPower (fftw_complex coeff);
     bool is_still_listening ();
-
-    vector<short> getsamples(int);
+    std::vector<double> getBandPowerPerHz(std::vector<std::vector<double> >);
+    WindowType getBestWindowFor(SSTVMode, double);
+    WindowType getBestWindowFor(SSTVMode);
+    void readMore();
 
     static short win_lens_[8];
     static double window_[8][1024];
@@ -178,19 +176,19 @@ extern PicMeta CurrentPic;
 
 
 typedef struct ModeSpec {
-  string    Name;
-  string    ShortName;
-  double    tSync;
-  double    tPorch;
-  double    tSep;
-  double    tScan;
-  double    tLine;
-  int       ImgWidth;
-  int       NumLines;
-  int       LineHeight;
-  eColorEnc ColorEnc;
+  std::string     Name;
+  std::string     ShortName;
+  double     tSync;
+  double     tPorch;
+  double     tSep;
+  double     tScan;
+  double     tLine;
+  int        ScanPixels;
+  int        NumLines;
+  int        HeaderLines;
+  eColorEnc  ColorEnc;
   eSyncOrder SyncOrder;
-  eSubSamp  SubSamp;
+  eSubSamp   SubSampling;
 } _ModeSpec;
 
 extern _ModeSpec ModeSpec[];
@@ -200,8 +198,8 @@ int      clip          (double a);
 void     createGUI     ();
 double   deg2rad       (double Deg);
 double   FindSync      (SSTVMode Mode, double Rate, int *Skip);
-string   GetFSK        ();
-bool     GetVideo      (SSTVMode Mode, double Rate, DSPworker *dsp, bool Redraw);
+std::string   GetFSK        ();
+bool     GetVideo      (SSTVMode Mode, DSPworker *dsp);
 SSTVMode GetVIS        (DSPworker*);
 int      initPcmDevice (std::string);
 void     *Listen       ();

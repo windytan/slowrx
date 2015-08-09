@@ -30,7 +30,7 @@ SSTVMode GetVIS (DSPworker *dsp) {
 
     //if (Abort || ManualResync) return(0);
 
-    HedrBuf[HedrPtr] = dsp->get_peak_freq(500, 3300, WINDOW_HANN1023);
+    HedrBuf[HedrPtr] = dsp->getPeakFreq(500, 3300, WINDOW_HANN1023);
     dsp->forward_ms(10);
 
     // Header buffer holds 45 * 10 msec = 450 msec
@@ -123,13 +123,9 @@ SSTVMode GetVIS (DSPworker *dsp) {
       ptr = 0;
     }*/
 
-    //pcm.WindowPtr += 441;
   }
 
   // Skip the rest of the stop bit
-  //readPcm(20e-3 * 44100);
-  //pcm.WindowPtr += 20e-3 * 44100;
-  
   dsp->forward_ms(12); // TODO hack
   
   if (vis2mode.find(vis) != vis2mode.end()) {

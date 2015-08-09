@@ -8,7 +8,7 @@ DSPworker::DSPworker() : Mutex(), please_stop_(false) {
     for (int i = 0; i < win_lens_[j]; i++)
       window_[j][i] = 0.5 * (1 - cos( (2 * M_PI * i) / (win_lens_[j] - 1)) );
 
-  vector<double> cheb = {
+  std::vector<double> cheb = {
     0.0004272315,0.0013212953,0.0032312239,0.0067664313,0.0127521667,0.0222058684,
     0.0363037629,0.0563165400,0.0835138389,0.1190416120,0.1637810511,0.2182020094,
     0.2822270091,0.3551233730,0.4354402894,0.5210045495,0.6089834347,0.6960162864,
@@ -44,12 +44,12 @@ DSPworker::DSPworker() : Mutex(), please_stop_(false) {
 
   printf("DSPworker created\n");
 
-  //open_audio_file("/Users/windy/Audio/sig/sstv/robot72-02.wav");
-  open_audio_file("/Users/windy/Movies/sstv-iss.wav");
+  open_audio_file("/Users/windy/Audio/sig/sstv/scottie2-01-noiseonly.wav");
+  //open_audio_file("/Users/windy/Movies/sstv-iss.wav");
   //open_audio_file("/Users/windy/Audio/sig/1000Hz-800Hz.wav");
 }
 
-void DSPworker::open_audio_file (string fname) {
+void DSPworker::open_audio_file (std::string fname) {
 
   file_ = SndfileHandle(fname.c_str()) ;
 
@@ -59,16 +59,14 @@ void DSPworker::open_audio_file (string fname) {
 
   samplerate_ = file_.samplerate();
 
-  //puts ("") ;
-
   /* RAII takes care of destroying SndfileHandle object. */
 }
 
-int DSPworker::GetBin (double freq) {
+int DSPworker::getBin (double freq) {
   return (freq / samplerate_ * fft_len_);
 }
 
-double DSPworker::FourierPower (fftw_complex coeff) {
+double DSPworker::getFourierPower (fftw_complex coeff) {
   return pow(coeff[0],2) + pow(coeff[1],2);
 }
 
@@ -76,8 +74,7 @@ bool DSPworker::is_still_listening () {
   return is_still_listening_;
 }
 
-
-void DSPworker::read_more () {
+void DSPworker::readMore () {
   short read_buffer[READ_CHUNK_LEN];
 
   sf_count_t samplesread = file_.read(read_buffer, READ_CHUNK_LEN);
@@ -108,7 +105,7 @@ double DSPworker::forward (unsigned nsamples) {
     cirbuf_tail_ = (cirbuf_tail_ + 1) % CIRBUF_LEN;
     cirbuf_fill_count_ -= 1;
     if (cirbuf_fill_count_ < MOMENT_LEN) {
-      read_more();
+      readMore();
     }
   }
   return (1.0 * nsamples / samplerate_);
@@ -121,7 +118,7 @@ double DSPworker::forward_ms(double ms) {
 }
 
 // the current moment, windowed
-void DSPworker::get_windowed_moment (WindowType win_type, double *result) {
+void DSPworker::getWindowedMoment (WindowType win_type, double *result) {
   for (int i = 0; i < MOMENT_LEN; i++) {
 
     int win_i = i - MOMENT_LEN/2 + win_lens_[win_type]/2 ;
@@ -133,22 +130,22 @@ void DSPworker::get_windowed_moment (WindowType win_type, double *result) {
 
 }
 
-double DSPworker::get_peak_freq (double minf, double maxf, WindowType wintype) {
+double DSPworker::getPeakFreq (double minf, double maxf, WindowType wintype) {
 
   double windowed[win_lens_[wintype]];
   double Power[fft_len_];
 
-  get_windowed_moment(wintype, windowed);
+  getWindowedMoment(wintype, windowed);
   //for (int i=0;i<win_lens_[wintype];i++)
   //  printf("g %f\n",windowed[i]);
-  memset (fft_inbuf_, 0, fft_len_ * sizeof(double));
+  memset(fft_inbuf_, 0, fft_len_ * sizeof(double));
   memcpy(fft_inbuf_, windowed, win_lens_[wintype] * sizeof(double));
   fftw_execute(fft_plan_);
   // Find the bin with most power
   int MaxBin = 0;
-  for (int i = GetBin(minf)-1; i <= GetBin(maxf)+1; i++) {
-    Power[i] = FourierPower(fft_outbuf_[i]);
-    if ( (i >= GetBin(minf) && i < GetBin(maxf)) &&
+  for (int i = getBin(minf)-1; i <= getBin(maxf)+1; i++) {
+    Power[i] = getFourierPower(fft_outbuf_[i]);
+    if ( (i >= getBin(minf) && i < getBin(maxf)) &&
          (MaxBin == 0 || Power[i] > Power[MaxBin]))
       MaxBin = i;
   }
@@ -162,6 +159,48 @@ double DSPworker::get_peak_freq (double minf, double maxf, WindowType wintype) {
 
   return result;
 
+}
+
+std::vector<double> DSPworker::getBandPowerPerHz(std::vector<std::vector<double> > bands) {
+  double windowed[win_lens_[WINDOW_HANN1023]];
+
+  getWindowedMoment(WINDOW_HANN1023, windowed);
+  memset(fft_inbuf_, 0, fft_len_ * sizeof(double));
+  memcpy(fft_inbuf_, windowed, win_lens_[WINDOW_HANN1023] * sizeof(double));
+  fftw_execute(fft_plan_);
+
+  std::vector<double> result;
+  for (std::vector<double> band : bands) {
+    double P = 0;
+    int nbins = 0;
+    for (int i = getBin(band[0]); i <= getBin(band[1]); i++) {
+      P += getFourierPower(fft_outbuf_[i]);
+      nbins++;
+    }
+    P = P/nbins;
+    result.push_back(P);
+  }
+  return result;
+}
+
+WindowType DSPworker::getBestWindowFor(SSTVMode Mode, double SNR) {
+  WindowType WinType;
+
+  if      (SNR >=  20) WinType = WINDOW_CHEB47;
+  else if (SNR >=  10) WinType = WINDOW_HANN63;
+  else if (SNR >=   9) WinType = WINDOW_HANN95;
+  else if (SNR >=   3) WinType = WINDOW_HANN127;
+  else if (SNR >=  -5) WinType = WINDOW_HANN255;
+  else if (SNR >= -10) WinType = WINDOW_HANN511;
+  else                 WinType = WINDOW_HANN1023;
+
+  // Minimum winlength can be doubled for Scottie DX
+  //if (Mode == MODE_SDX && WinType < WINDOW_HANN511) WinType++;
+
+  return WinType;
+}
+WindowType DSPworker::getBestWindowFor(SSTVMode Mode) {
+  return getBestWindowFor(Mode, 99);
 }
 
 /*
@@ -247,7 +286,7 @@ void populateDeviceList() {
 //   0 = opened ok
 //  -1 = opened, but suboptimal
 //  -2 = couldn't be opened
-int initPcmDevice(string wanted_dev_name) {
+int initPcmDevice(std::string wanted_dev_name) {
 
   //snd_pcm_hw_params_t *hwparams;
   void         *hwparams;

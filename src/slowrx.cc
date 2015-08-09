@@ -2,12 +2,12 @@
 
 
 int main(int argc, char *argv[]) {
-  string confpath(string(getenv("HOME")) + "/.config/slowrx/slowrx.ini");
+  std::string confpath(std::string(getenv("HOME")) + "/.config/slowrx/slowrx.ini");
   config.load_from_file(confpath);
 
   DSPworker dsp;
 
-  GetVideo(GetVIS(&dsp), 44100, &dsp, false);
+  GetVideo(GetVIS(&dsp), &dsp);
 
   //SlowGUI gui = SlowGUI();
   return 0;
