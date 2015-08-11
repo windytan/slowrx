@@ -7,6 +7,8 @@ int main(int argc, char *argv[]) {
 
   DSPworker dsp;
 
+  //dsp.openAudioFile("/Users/windy/Audio/sig/sstv/scottie2-01-noiseonly.wav");
+  dsp.openPortAudio();
   GetVideo(GetVIS(&dsp), &dsp);
 
   //SlowGUI gui = SlowGUI();

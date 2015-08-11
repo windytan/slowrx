@@ -1,4 +1,5 @@
 #include "common.hh"
+#include "portaudio.h"
 
 DSPworker::DSPworker() : Mutex(), please_stop_(false) {
 
@@ -44,12 +45,9 @@ DSPworker::DSPworker() : Mutex(), please_stop_(false) {
 
   printf("DSPworker created\n");
 
-  open_audio_file("/Users/windy/Audio/sig/sstv/scottie2-01-noiseonly.wav");
-  //open_audio_file("/Users/windy/Movies/sstv-iss.wav");
-  //open_audio_file("/Users/windy/Audio/sig/1000Hz-800Hz.wav");
 }
 
-void DSPworker::open_audio_file (std::string fname) {
+void DSPworker::openAudioFile (std::string fname) {
 
   file_ = SndfileHandle(fname.c_str()) ;
 
@@ -59,8 +57,50 @@ void DSPworker::open_audio_file (std::string fname) {
 
   samplerate_ = file_.samplerate();
 
+  stream_type_ = STREAM_FILE;
+
   /* RAII takes care of destroying SndfileHandle object. */
 }
+
+void DSPworker::openPortAudio () {
+
+  /* -- initialize PortAudio -- */
+  Pa_Initialize();
+
+  /* -- setup input and output -- */
+  PaStreamParameters inputParameters;
+  inputParameters.device = Pa_GetDefaultInputDevice(); /* default input device */
+  inputParameters.channelCount = 1;
+  inputParameters.sampleFormat = paInt16;
+  inputParameters.suggestedLatency = Pa_GetDeviceInfo( inputParameters.device )->defaultHighInputLatency ;
+  inputParameters.hostApiSpecificStreamInfo = NULL;
+
+  const PaDeviceInfo *info;
+  info = Pa_GetDeviceInfo(inputParameters.device);
+
+  /* -- setup stream -- */
+  int err = Pa_OpenStream(
+            &pa_stream_,
+            &inputParameters,
+            NULL,
+            44100,
+            READ_CHUNK_LEN,
+            paClipOff,      /* we won't output out of range samples so don't bother clipping them */
+            NULL, /* no callback, use blocking API */
+            NULL ); /* no callback, so no callback userData */
+
+  if (err == paNoError)
+    printf("opened %s\n",info->name);
+  /* -- start stream -- */
+  err = Pa_StartStream( pa_stream_ );
+  if (err == paNoError)
+    printf("stream started\n");
+
+  samplerate_ = 44100;
+
+  stream_type_ = STREAM_PA;
+}
+
 
 int DSPworker::getBin (double freq) {
   return (freq / samplerate_ * fft_len_);
@@ -77,9 +117,20 @@ bool DSPworker::is_still_listening () {
 void DSPworker::readMore () {
   short read_buffer[READ_CHUNK_LEN];
 
-  sf_count_t samplesread = file_.read(read_buffer, READ_CHUNK_LEN);
-  if (samplesread < READ_CHUNK_LEN)
-    is_still_listening_ = false;
+  sf_count_t samplesread;
+  if (stream_type_ == STREAM_FILE) {
+
+    samplesread = file_.read(read_buffer, READ_CHUNK_LEN);
+    if (samplesread < READ_CHUNK_LEN)
+      is_still_listening_ = false;
+
+  } else {
+
+    samplesread = READ_CHUNK_LEN;
+    int err = Pa_ReadStream( pa_stream_, read_buffer, READ_CHUNK_LEN );
+    if (err != paNoError)
+      is_still_listening_ = false;
+  }
 
   int cirbuf_fits = std::min(CIRBUF_LEN - cirbuf_head_, (int)samplesread);
 
@@ -172,12 +223,13 @@ std::vector<double> DSPworker::getBandPowerPerHz(std::vector<std::vector<double>
   std::vector<double> result;
   for (std::vector<double> band : bands) {
     double P = 0;
+    double binwidth = 1.0 * samplerate_ / fft_len_;
     int nbins = 0;
     for (int i = getBin(band[0]); i <= getBin(band[1]); i++) {
       P += getFourierPower(fft_outbuf_[i]);
       nbins++;
     }
-    P = P/nbins;
+    P = P/(binwidth*nbins);
     result.push_back(P);
   }
   return result;

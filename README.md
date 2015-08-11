@@ -1,7 +1,7 @@
 slowrx
 ======
 
-Slowrx is an SSTV decoder for Linux.
+Slowrx is an SSTV decoder for Unix-like systems.
 
 Created by Oona Räisänen (OH2EIQ [at] sral.fi).
 
@@ -10,7 +10,7 @@ http://windytan.github.io/slowrx/
 Features
 --------
 
-* Support for a multitude of modes (see `modespec.cc` for a list)
+* Support for a multitude of modes (see `src/modespec.cc` for a list)
 * Detect frequency-shifted signals – no need to fine-tune the radio
 * Automatic slant correction, also manual adjustments are simple
 * Adaptive noise reduction
@@ -21,7 +21,8 @@ Features
 Requirements
 ------------
 
-* Linux or OSX
+* Linux, OSX, ...
+* Portaudio
 * gtkmm 3 (`libgtkmm-3.0-dev`)
 * FFTW 3 (`libfftw3-dev`)
 

@@ -171,16 +171,11 @@ bool GetVideo(SSTVMode Mode, DSPworker* dsp) {
   guint8 Image[800][800][3];
 
   Glib::RefPtr<Gtk::Application> app = Gtk::Application::create("com.windytan.slowrx");
+  
+  // Initialize pixbuffer
   Glib::RefPtr<Gdk::Pixbuf> pixbuf_rx;
   pixbuf_rx = Gdk::Pixbuf::create(Gdk::COLORSPACE_RGB, false, 8, s.ScanPixels, s.NumLines);
   pixbuf_rx->fill(0x000000ff);
-
-  // Initialize pixbuffer
-  /*if (!Redraw) {
-    g_object_unref(pixbuf_rx);
-    pixbuf_rx = gdk_pixbuf_new (GDK_COLORSPACE_RGB, false, 8, ModeSpec[Mode].ImgWidth, ModeSpec[Mode].NumLines);
-    gdk_pixbuf_fill(pixbuf_rx, 0);
-  }*/
 
   /*g_object_unref(pixbuf_disp);
   pixbuf_disp = gdk_pixbuf_scale_simple(pixbuf_rx, 500,
@@ -188,8 +183,7 @@ bool GetVideo(SSTVMode Mode, DSPworker* dsp) {
 */
   //gtk_image_set_from_pixbuf(GTK_IMAGE(gui.image_rx), pixbuf_disp);
 
-  /*int Length        = s.tLine * s.NumLines * 44100;
-  SyncTargetBin = GetBin(1200+CurrentPic.HedrShift, FFTLen);
+  /*SyncTargetBin = GetBin(1200+CurrentPic.HedrShift, FFTLen);
   Abort         = false;
   SyncSampleNum = 0;*/
 
@@ -246,8 +240,6 @@ bool GetVideo(SSTVMode Mode, DSPworker* dsp) {
       double Psignal = Pvideo_plus_noise - Pnoise_only;
 
       SNR = ((Psignal / Pnoise_only < .01) ? -20 : 10 * log10(Psignal / Pnoise_only));
-
-      printf("SNR = %f\n",SNR);
 
     }
 

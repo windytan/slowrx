@@ -10,6 +10,7 @@ AC_CONFIG_FILES([
 PKG_CHECK_MODULES([GTKMM], [gtkmm-3.0 >= 3.8.0])
 PKG_CHECK_MODULES([FFTW], [fftw3 >= 3.0])
 PKG_CHECK_MODULES(SNDFILE, sndfile >= 1.0.2, ac_cv_sndfile=1, ac_cv_sndfile=0)
+PKG_CHECK_MODULES([PORTAUDIO], [portaudio-2.0])
 AC_DEFINE_UNQUOTED([HAVE_SNDFILE],${ac_cv_sndfile},
                         [Set to 1 if you have libsndfile.])
 AC_SUBST(SNDFILE_CFLAGS)

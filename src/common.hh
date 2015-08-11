@@ -48,6 +48,10 @@ enum eSubSamp {
   SUBSAMP_444, SUBSAMP_422_YUV, SUBSAMP_420_YUYV, SUBSAMP_440_YUVY
 };
 
+enum {
+  STREAM_FILE, STREAM_PA
+};
+
 extern std::map<int, SSTVMode> vis2mode;
 
 typedef struct _FFTStuff FFTStuff;
@@ -76,7 +80,7 @@ class DSPworker {
 
     DSPworker();
 
-    void open_audio_file(std::string);
+    void openAudioFile(std::string);
     double forward(unsigned);
     double forward();
     double forward_ms(double);
@@ -89,6 +93,7 @@ class DSPworker {
     WindowType getBestWindowFor(SSTVMode, double);
     WindowType getBestWindowFor(SSTVMode);
     void readMore();
+    void openPortAudio();
 
     static short win_lens_[8];
     static double window_[8][1024];
@@ -108,6 +113,8 @@ class DSPworker {
     fftw_plan     fft_plan_;
     int  samplerate_;
     bool is_still_listening_;
+    PaStream *pa_stream_;
+    int stream_type_;
 };
 
 class SlowGUI {
