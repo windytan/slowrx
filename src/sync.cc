@@ -1,126 +1,52 @@
 #include "common.hh"
 
-/* Find the slant angle of the sync singnal and adjust sample rate to cancel it out
- *   Length:  number of PCM samples to process
- *   Mode:    one of M1, M2, S1, S2, R72, R36 ...
- *   Rate:    approximate sampling rate used
- *   Skip:    pointer to variable where the skip amount will be returned
- *   returns  adjusted sample rate
- *
- */
-double FindSync (SSTVMode Mode, double Rate, int *Skip) {
+double findSyncHough (SSTVMode Mode, std::vector<bool> has_sync) {
 
-  int      LineWidth = ModeSpec[Mode].tLine / ModeSpec[Mode].tSync * 4;
-  int      x,y;
-  int      q, d, qMost, dMost;
-  gushort  xAcc[700] = {0};
-  gushort  lines[600][(MAXSLANT-MINSLANT)*2];
-  gushort  cy, cx, Retries = 0;
-  bool     SyncImg[700][630] = {{FALSE}};
-  double   t=0, slantAngle, s;
-  double   ConvoFilter[8] = { 1,1,1,1,-1,-1,-1,-1 };
-  double   convd, maxconvd=0;
-  int      xmax=0;
+}
 
-  // Repeat until slant < 0.5° or until we give up
-  while (TRUE) {
-
-    // Draw the 2D sync signal at current rate
-    
-    for (y=0; y<ModeSpec[Mode].NumLines; y++) {
-      for (x=0; x<LineWidth; x++) {
-        t = (y + 1.0*x/LineWidth) * ModeSpec[Mode].tLine;
-        SyncImg[x][y] = HasSync[ (int)( t * Rate / 13.0) ];
+void findSyncRansac(SSTVMode Mode, std::vector<bool> has_sync) {
+  int line_width = ModeSpec[Mode].NumLines;//ModeSpec[Mode].tLine / ModeSpec[Mode].tSync * 4;
+  std::vector<std::pair<int,int> > sync_pixels;
+  for (int y=0; y<ModeSpec[Mode].NumLines; y++) {
+    for (int x=0; x<line_width; x++) {
+      if (y+x>0 && has_sync[y*line_width + x] && !has_sync[y*line_width + x - 1]) {
+        sync_pixels.push_back({x,y});
+        printf("%d,%d\n",x,y);
       }
     }
+  }
 
-    /** Linear Hough transform **/
+  std::pair<std::pair<int,int>, std::pair<int,int> > best_line;
+  double best_dist = -1;
+  int it_num = 0;
+  while (++it_num < 300) {
 
-    dMost = qMost = 0;
-    memset(lines, 0, sizeof(lines[0][0]) * (MAXSLANT-MINSLANT)*2 * 600);
+    std::random_shuffle(sync_pixels.begin(), sync_pixels.end());
 
-    // Find white pixels
-    for (cy = 0; cy < ModeSpec[Mode].NumLines; cy++) {
-      for (cx = 0; cx < LineWidth; cx++) {
-        if (SyncImg[cx][cy]) {
+    std::pair<std::pair<int,int>, std::pair<int,int> > test_line = {sync_pixels[0], sync_pixels[1]};
+    int x0 = test_line.first.first;
+    int y0 = test_line.first.second;
+    int x1 = test_line.second.first;
+    int y1 = test_line.second.second;
+    double total_sq_dist = 0;
+    int total_good = 0;
 
-          // Slant angles to consider
-          for (q = MINSLANT*2; q < MAXSLANT*2; q ++) {
+    for(std::pair<int,int> pixel : sync_pixels) {
+      int x = pixel.first;
+      int y = pixel.second;
+      // Point distance to line
+      double d = 1.0 * ((y0-y1)*x + (x1-x0)*y + (x0*y1 - x1*y0)) / sqrt(pow(x1-x0,2) + pow(y1-y0,2));
 
-            // Line accumulator
-            d = LineWidth + round( -cx * sin(deg2rad(q/2.0)) + cy * cos(deg2rad(q/2.0)) );
-            if (d > 0 && d < LineWidth) {
-              lines[d][q-MINSLANT*2] ++;
-              if (lines[d][q-MINSLANT*2] > lines[dMost][qMost-MINSLANT*2]) {
-                dMost = d;
-                qMost = q;
-              }
-            }
-          }
-        }
+      if (fabs(d) < 6 || fabs(d-line_width) < 6) {
+        total_good ++;//+= sqrt(fabs(d));
       }
+
     }
-
-    if ( qMost == 0) {
-      printf("    no sync signal; giving up\n");
-      break;
-    }
-
-    slantAngle = qMost / 2.0;
-
-    printf("    %.1f° (d=%d) @ %.1f Hz", slantAngle, dMost, Rate);
-
-    // Adjust sample rate
-    Rate += tan(deg2rad(90 - slantAngle)) / LineWidth * Rate;
-
-    if (slantAngle > 89 && slantAngle < 91) {
-      printf("            slant OK :)\n");
-      break;
-    } else if (Retries == 3) {
-      printf("            still slanted; giving up\n");
-      Rate = 44100;
-      printf("    -> 44100\n");
-      break;
-    }
-    printf(" -> %.1f    recalculating\n", Rate);
-    Retries ++;
-  }
-  
-  // accumulate a 1-dim array of the position of the sync pulse
-  memset(xAcc, 0, sizeof(xAcc[0]) * 700);
-  for (y=0; y<ModeSpec[Mode].NumLines; y++) {
-    for (x=0; x<700; x++) { 
-      t = y * ModeSpec[Mode].tLine + x/700.0 * ModeSpec[Mode].tLine;
-      xAcc[x] += HasSync[ (int)(t / (13.0/44100) * Rate/44100) ];
+    if (best_dist < 0 || total_good > best_dist) {
+      best_line = test_line;
+      best_dist = total_good;
+      printf("(it. %d) for (%d,%d) (%d,%d) total_sq_dist=%f, total_good=%d\n",it_num,x0,y0,x1,y1,total_sq_dist,total_good);
     }
   }
-
-  // find falling edge of the sync pulse by 8-point convolution
-  for (x=0;x<700-8;x++) {
-    convd = 0;
-    for (int i=0;i<8;i++) convd += xAcc[x+i] * ConvoFilter[i];
-    if (convd > maxconvd) {
-      maxconvd = convd;
-      xmax = x+4;
-    }
-  }
-
-  // If pulse is near the right edge of the image, it just probably slipped
-  // out the left edge
-  if (xmax > 350) xmax -= 350;
-
-  // Skip until the start of the line
-  s = xmax / 700.0 * ModeSpec[Mode].tLine - ModeSpec[Mode].tSync;
-  
-  // (Scottie modes don't start lines with sync)
-  if (ModeSpec[Mode].SyncOrder == SYNC_SCOTTIE)
-    s = s - ModeSpec[Mode].tPixel * ModeSpec[Mode].ImgWidth / 2.0
-          + ModeSpec[Mode].tPorch * 2;
-
-  *Skip = s * Rate;
-
-  printf("will return %.2f\n",Rate);
-  
-  return (Rate);
 
 }

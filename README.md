@@ -22,7 +22,7 @@ Requirements
 ------------
 
 * Linux, OSX, ...
-* Portaudio
+* PortAudio
 * gtkmm 3 (`libgtkmm-3.0-dev`)
 * FFTW 3 (`libfftw3-dev`)
 

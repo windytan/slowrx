@@ -3,13 +3,7 @@
 
 DSPworker::DSPworker() : Mutex(), please_stop_(false) {
 
-  fft_len_ = 2048;
-
-  for (int j = 0; j < 7; j++)
-    for (int i = 0; i < win_lens_[j]; i++)
-      window_[j][i] = 0.5 * (1 - cos( (2 * M_PI * i) / (win_lens_[j] - 1)) );
-
-  std::vector<double> cheb = {
+  std::vector<double> cheb47 = {
     0.0004272315,0.0013212953,0.0032312239,0.0067664313,0.0127521667,0.0222058684,
     0.0363037629,0.0563165400,0.0835138389,0.1190416120,0.1637810511,0.2182020094,
     0.2822270091,0.3551233730,0.4354402894,0.5210045495,0.6089834347,0.6960162864,
@@ -19,117 +13,148 @@ DSPworker::DSPworker() : Mutex(), please_stop_(false) {
     0.1637810511,0.1190416120,0.0835138389,0.0563165400,0.0363037629,0.0222058684,
     0.0127521667,0.0067664313,0.0032312239,0.0013212953,0.0004272315
   };
-
-  for (int i = 0; i < win_lens_[WINDOW_CHEB47]; i++)
-    window_[WINDOW_CHEB47][i] = cheb[i];
+  std::vector<double> sq47 = {
+    1,1,1,1,1,1,1,1,1,1,
+    1,1,1,1,1,1,1,1,1,1,
+    1,1,1,1,1,1,1,1,1,1,
+    1,1,1,1,1,1,1,1,1,1,
+    1,1,1,1,1,1,1
+  };
+  //window_[WINDOW_HANN31]   = Hann(31);
+  //window_[WINDOW_HANN47]   = Hann(47);
+  //window_[WINDOW_HANN63]   = Hann(63);
+  window_[WINDOW_HANN95]   = Hann(95);
+  window_[WINDOW_HANN127]  = Hann(127);
+  window_[WINDOW_HANN255]  = Hann(255);
+  window_[WINDOW_HANN511]  = Hann(511);
+  window_[WINDOW_HANN1023] = Hann(1023);
+  window_[WINDOW_HANN2047] = Hann(2047);
+  window_[WINDOW_CHEB47]   = cheb47;
+  //window_[WINDOW_SQUARE47] = sq47;
   
-  fft_inbuf_ = (double*) fftw_alloc_real(sizeof(double) * fft_len_);
+  fft_inbuf_ = (fftw_complex*) fftw_alloc_complex(sizeof(fftw_complex) * FFT_LEN_BIG);
   if (fft_inbuf_ == NULL) {
     perror("GetVideo: Unable to allocate memory for FFT");
     exit(EXIT_FAILURE);
   }
-  fft_outbuf_ = (fftw_complex*) fftw_alloc_complex(sizeof(fftw_complex) * (fft_len_));
+  fft_outbuf_ = (fftw_complex*) fftw_alloc_complex(sizeof(fftw_complex) * FFT_LEN_BIG);
   if (fft_outbuf_ == NULL) {
     perror("GetVideo: Unable to allocate memory for FFT");
     fftw_free(fft_inbuf_);
     exit(EXIT_FAILURE);
   }
-  memset(fft_inbuf_,  0, sizeof(double) * fft_len_);
+  memset(fft_inbuf_,  0, sizeof(fftw_complex) * FFT_LEN_BIG);
 
-  fft_plan_ = fftw_plan_dft_r2c_1d(fft_len_, fft_inbuf_, fft_outbuf_, FFTW_ESTIMATE);
+  fft_plan_small_ = fftw_plan_dft_1d(FFT_LEN_SMALL, fft_inbuf_, fft_outbuf_, FFTW_FORWARD, FFTW_ESTIMATE);
+  fft_plan_big_   = fftw_plan_dft_1d(FFT_LEN_BIG, fft_inbuf_, fft_outbuf_, FFTW_FORWARD, FFTW_ESTIMATE);
 
   cirbuf_tail_ = 0;
   cirbuf_head_ = 0;
   cirbuf_fill_count_ = 0;
-  is_still_listening_ = true;
-
-  printf("DSPworker created\n");
+  is_open_ = false;
+  t_ = 0;
 
 }
 
 void DSPworker::openAudioFile (std::string fname) {
 
-  file_ = SndfileHandle(fname.c_str()) ;
+  if (!is_open_) {
 
-  printf ("Opened file '%s'\n", fname.c_str()) ;
-  printf ("    Sample rate : %d\n", file_.samplerate ()) ;
-  printf ("    Channels    : %d\n", file_.channels ()) ;
+    fprintf (stderr,"Open '%s'\n", fname.c_str()) ;
+    file_ = SndfileHandle(fname.c_str()) ;
 
-  samplerate_ = file_.samplerate();
+    if (file_.error()) {
+      fprintf(stderr,"(sndfile) %s\n", file_.strError());
+    } else {
+      fprintf (stderr,"    Sample rate : %d\n", file_.samplerate ()) ;
+      fprintf (stderr,"    Channels    : %d\n", file_.channels ()) ;
 
-  stream_type_ = STREAM_FILE;
+      samplerate_ = file_.samplerate();
 
-  /* RAII takes care of destroying SndfileHandle object. */
+      stream_type_ = STREAM_TYPE_FILE;
+
+      is_open_ = true;
+      readMore();
+
+      /* RAII takes care of destroying SndfileHandle object. */
+    }
+  }
 }
 
 void DSPworker::openPortAudio () {
 
-  /* -- initialize PortAudio -- */
-  Pa_Initialize();
+  if (!is_open_) {
+    Pa_Initialize();
 
-  /* -- setup input and output -- */
-  PaStreamParameters inputParameters;
-  inputParameters.device = Pa_GetDefaultInputDevice(); /* default input device */
-  inputParameters.channelCount = 1;
-  inputParameters.sampleFormat = paInt16;
-  inputParameters.suggestedLatency = Pa_GetDeviceInfo( inputParameters.device )->defaultHighInputLatency ;
-  inputParameters.hostApiSpecificStreamInfo = NULL;
+    PaStreamParameters inputParameters;
+    inputParameters.device = Pa_GetDefaultInputDevice();
+    inputParameters.channelCount = 1;
+    inputParameters.sampleFormat = paInt16;
+    inputParameters.suggestedLatency = Pa_GetDeviceInfo( inputParameters.device )->defaultHighInputLatency ;
+    inputParameters.hostApiSpecificStreamInfo = NULL;
 
-  const PaDeviceInfo *info;
-  info = Pa_GetDeviceInfo(inputParameters.device);
+    const PaDeviceInfo *devinfo;
+    devinfo = Pa_GetDeviceInfo(inputParameters.device);
 
-  /* -- setup stream -- */
-  int err = Pa_OpenStream(
-            &pa_stream_,
-            &inputParameters,
-            NULL,
-            44100,
-            READ_CHUNK_LEN,
-            paClipOff,      /* we won't output out of range samples so don't bother clipping them */
-            NULL, /* no callback, use blocking API */
-            NULL ); /* no callback, so no callback userData */
+    int err = Pa_OpenStream(
+              &pa_stream_,
+              &inputParameters,
+              NULL,
+              44100,
+              READ_CHUNK_LEN,
+              paClipOff,
+              NULL, /* no callback, use blocking API */
+              NULL ); /* no callback, so no callback userData */
 
-  if (err == paNoError)
-    printf("opened %s\n",info->name);
-  /* -- start stream -- */
-  err = Pa_StartStream( pa_stream_ );
-  if (err == paNoError)
-    printf("stream started\n");
+    if (err == paNoError)
+      printf("opened %s\n",devinfo->name);
+    err = Pa_StartStream( pa_stream_ );
+    if (err == paNoError)
+      printf("stream started\n");
 
-  samplerate_ = 44100;
+    const PaStreamInfo *streaminfo;
+    streaminfo = Pa_GetStreamInfo(pa_stream_);
+    samplerate_ = streaminfo->sampleRate;
+    printf("%f\n",samplerate_);
 
-  stream_type_ = STREAM_PA;
+    stream_type_ = STREAM_TYPE_PA;
+
+    is_open_ = true;
+    readMore();
+  }
 }
 
 
-int DSPworker::getBin (double freq) {
-  return (freq / samplerate_ * fft_len_);
+int DSPworker::freq2bin (double freq, int fft_len) {
+  return (freq / samplerate_ * fft_len);
 }
 
-double DSPworker::getFourierPower (fftw_complex coeff) {
-  return pow(coeff[0],2) + pow(coeff[1],2);
+bool DSPworker::is_open () {
+  return is_open_;
 }
 
-bool DSPworker::is_still_listening () {
-  return is_still_listening_;
+double DSPworker::get_t() {
+  return t_;
 }
 
 void DSPworker::readMore () {
   short read_buffer[READ_CHUNK_LEN];
+  sf_count_t samplesread = 0;
 
-  sf_count_t samplesread;
-  if (stream_type_ == STREAM_FILE) {
+  if (is_open_) {
+    if (stream_type_ == STREAM_TYPE_FILE) {
 
-    samplesread = file_.read(read_buffer, READ_CHUNK_LEN);
-    if (samplesread < READ_CHUNK_LEN)
-      is_still_listening_ = false;
+      samplesread = file_.read(read_buffer, READ_CHUNK_LEN);
+      if (samplesread < READ_CHUNK_LEN)
+        is_open_ = false;
 
-  } else {
+    } else if (stream_type_ == STREAM_TYPE_PA) {
 
-    samplesread = READ_CHUNK_LEN;
-    int err = Pa_ReadStream( pa_stream_, read_buffer, READ_CHUNK_LEN );
-    if (err != paNoError)
-      is_still_listening_ = false;
+      samplesread = READ_CHUNK_LEN;
+      int err = Pa_ReadStream( pa_stream_, read_buffer, READ_CHUNK_LEN );
+      if (err != paNoError)
+        is_open_ = false;
+    }
   }
 
   int cirbuf_fits = std::min(CIRBUF_LEN - cirbuf_head_, (int)samplesread);
@@ -159,74 +184,111 @@ double DSPworker::forward (unsigned nsamples) {
       readMore();
     }
   }
-  return (1.0 * nsamples / samplerate_);
+  double dt = 1.0 * nsamples / samplerate_;
+  t_ += dt;
+  return dt;
 }
-double DSPworker::forward() {
+double DSPworker::forward () {
   return forward(1);
 }
-double DSPworker::forward_ms(double ms) {
-  return forward(ms / 1000 * samplerate_);
+double DSPworker::forward_time(double sec) {
+  double start_t = t_;
+  while (t_ < start_t + sec)
+    forward();
+  return t_ - start_t;
 }
+void DSPworker::forward_to_time(double sec) {
+  while (t_ < sec)
+    forward();
+}
+
 
 // the current moment, windowed
-void DSPworker::getWindowedMoment (WindowType win_type, double *result) {
+void DSPworker::windowedMoment (WindowType win_type, fftw_complex *result) {
+
+  //double if_phi = 0;
   for (int i = 0; i < MOMENT_LEN; i++) {
 
-    int win_i = i - MOMENT_LEN/2 + win_lens_[win_type]/2 ;
+    int win_i = i - MOMENT_LEN/2 + window_[win_type].size()/2 ;
 
-    if (win_i >= 0 && win_i < win_lens_[win_type]) {
-      result[win_i] = cirbuf_[cirbuf_tail_ + i] * window_[win_type][win_i];
+    if (win_i >= 0 && win_i < window_[win_type].size()) {
+      double a;
+      //fftw_complex mixed;
+      a = cirbuf_[cirbuf_tail_ + i] * window_[win_type][win_i];
+      
+      /*// mix to IF
+      mixed[0] = a * cos(if_phi) - a * sin(if_phi);
+      mixed[1] = a * cos(if_phi) + a * sin(if_phi);
+      if_phi += 2 * M_PI * 10000 / samplerate_;*/
+
+      result[win_i][0] = result[win_i][1] = a;
+      //printf("%f\n",a);
+      //std::cout<<result[win_i]<<",";
     }
   }
+ // exit(0);
+  //std::cout<<"\n";
 
 }
 
-double DSPworker::getPeakFreq (double minf, double maxf, WindowType wintype) {
+double DSPworker::peakFreq (double minf, double maxf, WindowType wintype) {
 
-  double windowed[win_lens_[wintype]];
-  double Power[fft_len_];
+  int fft_len = (window_[wintype].size() <= FFT_LEN_SMALL ? FFT_LEN_SMALL : FFT_LEN_BIG);
 
-  getWindowedMoment(wintype, windowed);
-  //for (int i=0;i<win_lens_[wintype];i++)
-  //  printf("g %f\n",windowed[i]);
-  memset(fft_inbuf_, 0, fft_len_ * sizeof(double));
-  memcpy(fft_inbuf_, windowed, win_lens_[wintype] * sizeof(double));
-  fftw_execute(fft_plan_);
-  // Find the bin with most power
-  int MaxBin = 0;
-  for (int i = getBin(minf)-1; i <= getBin(maxf)+1; i++) {
-    Power[i] = getFourierPower(fft_outbuf_[i]);
-    if ( (i >= getBin(minf) && i < getBin(maxf)) &&
-         (MaxBin == 0 || Power[i] > Power[MaxBin]))
-      MaxBin = i;
+  fftw_complex windowed[window_[wintype].size()];
+  double Mag[fft_len/2 + 1];
+
+  windowedMoment(wintype, windowed);
+  memset(fft_inbuf_, 0, fft_len * sizeof(windowed[0]));
+  memcpy(fft_inbuf_, windowed, window_[wintype].size() * sizeof(windowed[0]));
+  fftw_execute(fft_len == FFT_LEN_BIG ? fft_plan_big_ : fft_plan_small_);
+  
+  int peakBin = 0;
+  int lobin = freq2bin(minf, fft_len);
+  int hibin = freq2bin(maxf, fft_len);
+  for (int i = lobin-1; i <= hibin+1; i++) {
+    Mag[i] = complexMag(fft_outbuf_[i]);
+    if ( (i >= lobin && i < hibin) &&
+         (peakBin == 0 || Mag[i] > Mag[peakBin]))
+      peakBin = i;
   }
 
   // Find the peak frequency by Gaussian interpolation
-  double result = MaxBin +            (log( Power[MaxBin + 1] / Power[MaxBin - 1] )) /
-                           (2 * log( pow(Power[MaxBin], 2) / (Power[MaxBin + 1] * Power[MaxBin - 1])));
+  //double result = MaxBin +            (log( Power[MaxBin + 1] / Power[MaxBin - 1] )) /
+  //                         (2 * log( pow(Power[MaxBin], 2) / (Power[MaxBin + 1] * Power[MaxBin - 1])));
+  
+  double y1 = Mag[peakBin-1], y2 = Mag[peakBin], y3 = Mag[peakBin+1];
+  double result = peakBin + (y3 - y1) / (2 * (2*y2 - y3 - y1));
 
   // In Hertz
-  result = result / fft_len_ * samplerate_;
+  result = result / fft_len * samplerate_;
+
+  // cheb47 @ 44100 can't resolve <1800 Hz
+  if (wintype == WINDOW_CHEB47 && result < 1800)
+    result = peakFreq (minf, maxf, WINDOW_HANN95);
 
   return result;
 
 }
 
-std::vector<double> DSPworker::getBandPowerPerHz(std::vector<std::vector<double> > bands) {
-  double windowed[win_lens_[WINDOW_HANN1023]];
+std::vector<double> DSPworker::bandPowerPerHz(std::vector<std::vector<double> > bands) {
 
-  getWindowedMoment(WINDOW_HANN1023, windowed);
-  memset(fft_inbuf_, 0, fft_len_ * sizeof(double));
-  memcpy(fft_inbuf_, windowed, win_lens_[WINDOW_HANN1023] * sizeof(double));
-  fftw_execute(fft_plan_);
+  int fft_len = FFT_LEN_BIG;
+  WindowType wintype = WINDOW_HANN2047;
+  fftw_complex windowed[window_[wintype].size()];
+
+  windowedMoment(wintype, windowed);
+  memset(fft_inbuf_, 0, FFT_LEN_BIG * sizeof(fft_inbuf_[0]));
+  memcpy(fft_inbuf_, windowed, window_[wintype].size() * sizeof(windowed[0]));
+  fftw_execute(fft_len == FFT_LEN_BIG ? fft_plan_big_ : fft_plan_small_);
 
   std::vector<double> result;
   for (std::vector<double> band : bands) {
     double P = 0;
-    double binwidth = 1.0 * samplerate_ / fft_len_;
+    double binwidth = 1.0 * samplerate_ / fft_len;
     int nbins = 0;
-    for (int i = getBin(band[0]); i <= getBin(band[1]); i++) {
-      P += getFourierPower(fft_outbuf_[i]);
+    for (int i = freq2bin(band[0], fft_len); i <= freq2bin(band[1], fft_len); i++) {
+      P += pow(complexMag(fft_outbuf_[i]), 2);
       nbins++;
     }
     P = P/(binwidth*nbins);
@@ -235,74 +297,26 @@ std::vector<double> DSPworker::getBandPowerPerHz(std::vector<std::vector<double>
   return result;
 }
 
-WindowType DSPworker::getBestWindowFor(SSTVMode Mode, double SNR) {
+WindowType DSPworker::bestWindowFor(SSTVMode Mode, double SNR) {
   WindowType WinType;
 
-  if      (SNR >=  20) WinType = WINDOW_CHEB47;
-  else if (SNR >=  10) WinType = WINDOW_HANN63;
-  else if (SNR >=   9) WinType = WINDOW_HANN95;
-  else if (SNR >=   3) WinType = WINDOW_HANN127;
-  else if (SNR >=  -5) WinType = WINDOW_HANN255;
-  else if (SNR >= -10) WinType = WINDOW_HANN511;
-  else                 WinType = WINDOW_HANN1023;
+  double samplesInPixel = 1.0 * samplerate_ * ModeSpec[Mode].tScan / ModeSpec[Mode].ScanPixels;
 
-  // Minimum winlength can be doubled for Scottie DX
-  //if (Mode == MODE_SDX && WinType < WINDOW_HANN511) WinType++;
+  if      (SNR >=  23 && Mode != MODE_PD180 && Mode != MODE_SDX)  WinType = WINDOW_CHEB47;
+  else if (SNR >=  12)  WinType = WINDOW_HANN95;
+  else if (SNR >=   8)  WinType = WINDOW_HANN127;
+  else if (SNR >=   5)  WinType = WINDOW_HANN255;
+  else if (SNR >=   4)  WinType = WINDOW_HANN511;
+  else if (SNR >=  -7)  WinType = WINDOW_HANN1023;
+  else                  WinType = WINDOW_HANN2047;
 
   return WinType;
 }
-WindowType DSPworker::getBestWindowFor(SSTVMode Mode) {
-  return getBestWindowFor(Mode, 99);
-}
+/*WindowType DSPworker::bestWindowFor(SSTVMode Mode) {
+  return bestWindowFor(Mode, 20);
+}*/
 
-/*
-// Capture fresh PCM data to buffer
-void readPcm(int numsamples) {
-
-  int    samplesread, i;
-  gint32 tmp[BUFLEN];  // Holds one or two 16-bit channels, will be ANDed to single channel
-
-  //samplesread = snd_pcm_readi(pcm.handle, tmp, (pcm.WindowPtr == 0 ? BUFLEN : numsamples));
-
-  if (samplesread < numsamples) {
-    
-    if      (samplesread == -EPIPE)
-      printf("ALSA: buffer overrun\n");
-    else if (samplesread < 0) {
-      //printf("ALSA error %d (%s)\n", samplesread, snd_strerror(samplesread));
-      gtk_widget_set_tooltip_text(gui.image_devstatus, "ALSA error");
-      Abort = TRUE;
-      pthread_exit(NULL);
-    }
-    else
-      printf("Can't read %d samples\n", numsamples);
-    
-    // On first appearance of error, update the status icon
-    if (!pcm.BufferDrop) {
-      gtk_image_set_from_stock(GTK_IMAGE(gui.image_devstatus),GTK_STOCK_DIALOG_WARNING,GTK_ICON_SIZE_SMALL_TOOLBAR);
-      gtk_widget_set_tooltip_text(gui.image_devstatus, "Device is dropping samples");
-      pcm.BufferDrop = TRUE;
-    }
-
-  }
-
-  if (pcm.WindowPtr == 0) {
-    // Fill buffer on first run
-    for (i=0; i<BUFLEN; i++)
-      pcm.Buffer[i] = tmp[i] & 0xffff;
-    pcm.WindowPtr = BUFLEN/2;
-  } else {
-
-    // Move buffer and push samples
-    for (i=0; i<BUFLEN-numsamples;      i++) pcm.Buffer[i] = pcm.Buffer[i+numsamples];
-    for (i=BUFLEN-numsamples; i<BUFLEN; i++) pcm.Buffer[i] = tmp[i-(BUFLEN-numsamples)] & 0xffff;
-
-    pcm.WindowPtr -= numsamples;
-  }
-
-}
-
-void populateDeviceList() {
+/*void populateDeviceList() {
   int                  card;
   char                *cardname;
   int                  numcards, row;
@@ -333,98 +347,72 @@ void populateDeviceList() {
   
 }*/
 
-// Initialize sound card
-// Return value:
-//   0 = opened ok
-//  -1 = opened, but suboptimal
-//  -2 = couldn't be opened
-int initPcmDevice(std::string wanted_dev_name) {
+std::vector<double> Hann (std::size_t winlen) {
+  std::vector<double> result(winlen);
+  for (std::size_t i=0; i < winlen; i++)
+    result[i] = 0.5 * (1 - cos( (2 * M_PI * i) / (winlen)) );
+  return result;
+}
 
-  //snd_pcm_hw_params_t *hwparams;
-  void         *hwparams;
-  char          pcm_name[30];
-  unsigned int  exact_rate = 44100;
-  int           card;
-  bool          found;
-  char         *cardname;
+std::vector<double> Blackmann (std::size_t winlen) {
+  std::vector<double> result(winlen);
+  for (std::size_t i=0; i < winlen; i++)
+    result[i] = 0.42 - 0.5*cos(2*M_PI*i/winlen) - 0.08*cos(4*M_PI*i/winlen);
 
-  //pcm.BufferDrop = false;
+  return result;
+}
 
-  //snd_pcm_hw_params_alloca(&hwparams);
+std::vector<double> Rect (std::size_t winlen) {
+  std::vector<double> result(winlen);
+  double sigma = 0.4;
+  for (std::size_t i=0; i < winlen; i++)
+    result[i] = exp(-0.5*((i-(winlen-1)/2)/(sigma*(winlen-1)/2)));
 
-  card  = -1;
-  found = false;
-  if (wanted_dev_name.compare("default") == 0) {
-    found=true;
-  } else {
-    do {
-      //snd_card_next(&card);
-      if (card != -1) {
-        //snd_card_get_name(card,&cardname);
-        if (strcmp(cardname, wanted_dev_name.c_str()) == 0) {
-          found=true;
-          break;
-        }
+  return result;
+}
+
+std::vector<double> Gauss (std::size_t winlen) {
+  std::vector<double> result(winlen);
+  for (std::size_t i=0; i < winlen; i++)
+    result[i] = 1;
+
+  return result;
+}
+
+double complexMag (fftw_complex coeff) {
+  return sqrt(pow(coeff[0],2) + pow(coeff[1],2));
+}
+
+guint8 freq2lum (double freq) {
+  return clip((freq - 1500.0) / (2300.0-1500.0) * 255 + .5);
+}
+
+std::vector<double> upsampleLanczos(std::vector<double> orig, int factor) {
+  std::vector<double> result(orig.size()*factor);
+  int alpha = 4;
+  int sinclen = (factor*alpha % 2 == 0 ? factor*alpha+1 : factor*alpha);
+  double middle = 1500;
+
+  std::vector<double> sinc(sinclen);
+  for (int i=0; i<sinclen; i++) {
+    double x1 = 1.0*i/factor - alpha/2;
+    double x2 = 2.0*i/sinclen - 1;
+    sinc[i] = (x1 == 0 ? 1 : sin(M_PI*x1) / (M_PI*x1)) *
+              (x2 == 0 ? 1 : sin(M_PI*x2) / (M_PI*x2));
+  }
+
+  for (int i=0; i<orig.size(); i++) {
+    if (orig[i] != 0) {
+      for (int j=0; j<sinclen; j++) {
+        int i_new = i*factor + (j-sinclen/2);
+        if (i_new > 0 && i_new < result.size())
+          result[i_new] += (orig[i] - middle) * sinc[j];
       }
-    } while (card != -1);
-  }
-
-  if (!found) {
-    perror("Device disconnected?\n");
-    return(-2);
-  }
-
-  if (wanted_dev_name.compare("default") == 0) {
-    sprintf(pcm_name,"default");
-  } else {
-    sprintf(pcm_name,"hw:%d",card);
-  }
-  
-  /*if (snd_pcm_open(&pcm.handle, pcm_name, SND_PCM_STREAM_CAPTURE, 0) < 0) {
-    perror("ALSA: Error opening PCM device");
-    return(-2);
-  }*/
-
-  /* Init hwparams with full configuration space */
-  /*if (snd_pcm_hw_params_any(pcm.handle, hwparams) < 0) {
-    perror("ALSA: Can not configure this PCM device.");
-    return(-2);
-  }
-
-  if (snd_pcm_hw_params_set_access(pcm.handle, hwparams, SND_PCM_ACCESS_RW_INTERLEAVED) < 0) {
-    perror("ALSA: Error setting interleaved access.");
-    return(-2);
-  }
-  if (snd_pcm_hw_params_set_format(pcm.handle, hwparams, SND_PCM_FORMAT_S16_LE) < 0) {
-    perror("ALSA: Error setting format S16_LE.");
-    return(-2);
-  }
-  if (snd_pcm_hw_params_set_rate_near(pcm.handle, hwparams, &exact_rate, 0) < 0) {
-    perror("ALSA: Error setting sample rate.");
-    return(-2);
-  }*/
-
-  // Try stereo first
-  /*if (snd_pcm_hw_params_set_channels(pcm.handle, hwparams, 2) < 0) {
-    // Fall back to mono
-    if (snd_pcm_hw_params_set_channels(pcm.handle, hwparams, 1) < 0) {
-      perror("ALSA: Error setting channels.");
-      return(-2);
     }
   }
-  if (snd_pcm_hw_params(pcm.handle, hwparams) < 0) {
-    perror("ALSA: Error setting HW params.");
-    return(-2);
-  }*/
 
-  /*pcm.Buffer = calloc( BUFLEN, sizeof(gint16));
-  memset(pcm.Buffer, 0, BUFLEN);*/
+  for (int i=0; i<result.size(); i++)
+    result[i] += middle;
   
-  if (exact_rate != 44100) {
-    fprintf(stderr, "ALSA: Got %d Hz instead of 44100. Expect artifacts.\n", exact_rate);
-    return(-1);
-  }
-
-  return(0);
-
+  return result;
 }

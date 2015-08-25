@@ -3,12 +3,16 @@
 
 #define MINSLANT   30
 #define MAXSLANT   150
-#define CIRBUF_LEN 4096
-#define READ_CHUNK_LEN 1024
-
-// moment length only affects length of delay and maximum window size.
-#define MOMENT_LEN 1023
 #define SYNCPIXLEN 1.5e-3
+
+// moment length only affects length of delay, read interval,
+// and maximum window size.
+#define READ_CHUNK_LEN 1024
+#define MOMENT_LEN     2047
+#define FFT_LEN_SMALL  1024
+#define FFT_LEN_BIG    2048
+#define CIRBUF_LEN_FACTOR 4
+#define CIRBUF_LEN ((MOMENT_LEN+1)*CIRBUF_LEN_FACTOR)
 
 #include <iostream>
 #include "portaudio.h"
@@ -17,14 +21,16 @@
 #include "gtkmm.h"
 
 enum WindowType {
-  WINDOW_HANN47 = 0,
-  WINDOW_HANN63,
+  WINDOW_CHEB47 = 0,
   WINDOW_HANN95,
   WINDOW_HANN127,
   WINDOW_HANN255,
   WINDOW_HANN511,
   WINDOW_HANN1023,
-  WINDOW_CHEB47
+  WINDOW_HANN2047,
+  WINDOW_HANN31,
+  WINDOW_HANN63,
+  WINDOW_SQUARE47
 };
 
 enum SSTVMode {
@@ -48,8 +54,12 @@ enum eSubSamp {
   SUBSAMP_444, SUBSAMP_422_YUV, SUBSAMP_420_YUYV, SUBSAMP_440_YUVY
 };
 
-enum {
-  STREAM_FILE, STREAM_PA
+enum eStreamType {
+  STREAM_TYPE_FILE, STREAM_TYPE_PA, STREAM_TYPE_STDIN
+};
+
+enum eVISParity {
+  PARITY_EVEN=0, PARITY_ODD=1
 };
 
 extern std::map<int, SSTVMode> vis2mode;
@@ -80,23 +90,22 @@ class DSPworker {
 
     DSPworker();
 
-    void openAudioFile(std::string);
-    double forward(unsigned);
-    double forward();
-    double forward_ms(double);
-    void getWindowedMoment(WindowType, double *);
-    double getPeakFreq (double, double, WindowType);
-    int  getBin        (double);
-    double getFourierPower (fftw_complex coeff);
-    bool is_still_listening ();
-    std::vector<double> getBandPowerPerHz(std::vector<std::vector<double> >);
-    WindowType getBestWindowFor(SSTVMode, double);
-    WindowType getBestWindowFor(SSTVMode);
-    void readMore();
-    void openPortAudio();
+    void openAudioFile (std::string);
+    void openPortAudio ();
+    void readMore ();
+    double forward (unsigned);
+    double forward ();
+    double forward_time (double);
+    void forward_to_time (double);
 
-    static short win_lens_[8];
-    static double window_[8][1024];
+    void windowedMoment (WindowType, fftw_complex *);
+    double peakFreq (double, double, WindowType);
+    int  freq2bin        (double, int);
+    std::vector<double> bandPowerPerHz (std::vector<std::vector<double> >);
+    WindowType bestWindowFor (SSTVMode, double SNR=99);
+    
+    bool is_open ();
+    double get_t ();
 
   private:
 
@@ -107,14 +116,17 @@ class DSPworker {
     int   cirbuf_fill_count_;
     bool  please_stop_;
     SndfileHandle file_;
-    int fft_len_;
-    double *fft_inbuf_;
+    fftw_complex *fft_inbuf_;
     fftw_complex *fft_outbuf_;
-    fftw_plan     fft_plan_;
-    int  samplerate_;
-    bool is_still_listening_;
+    fftw_plan     fft_plan_small_;
+    fftw_plan     fft_plan_big_;
+    double  samplerate_;
     PaStream *pa_stream_;
-    int stream_type_;
+    eStreamType stream_type_;
+    bool is_open_;
+    double t_;
+    
+    static std::vector<std::vector<double> > window_;
 };
 
 class SlowGUI {
@@ -196,6 +208,7 @@ typedef struct ModeSpec {
   eColorEnc  ColorEnc;
   eSyncOrder SyncOrder;
   eSubSamp   SubSampling;
+  eVISParity VISParity;
 } _ModeSpec;
 
 extern _ModeSpec ModeSpec[];
@@ -204,7 +217,6 @@ double   power         (fftw_complex coeff);
 int      clip          (double a);
 void     createGUI     ();
 double   deg2rad       (double Deg);
-double   FindSync      (SSTVMode Mode, double Rate, int *Skip);
 std::string   GetFSK        ();
 bool     GetVideo      (SSTVMode Mode, DSPworker *dsp);
 SSTVMode GetVIS        (DSPworker*);
@@ -215,6 +227,18 @@ void     readPcm       (int numsamples);
 void     saveCurrentPic();
 void     setVU         (double *Power, int FFTLen, int WinIdx, bool ShowWin);
 int      startGui      (int, char**);
+void     findSyncRansac (SSTVMode, std::vector<bool>);
+void     findSyncHough  (SSTVMode, std::vector<bool>);
+std::vector<double> upsampleLanczos    (std::vector<double>, int);
+std::vector<double> Hann    (std::size_t);
+std::vector<double> Blackmann    (std::size_t);
+std::vector<double> Rect    (std::size_t);
+std::vector<double> Gauss    (std::size_t);
+
+void runTest(const char*);
+
+double complexMag (fftw_complex coeff);
+guint8 freq2lum(double);
 
 void     evt_AbortRx       ();
 void     evt_changeDevices ();

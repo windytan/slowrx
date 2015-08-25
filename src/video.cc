@@ -169,13 +169,20 @@ bool GetVideo(SSTVMode Mode, DSPworker* dsp) {
   _ModeSpec s = ModeSpec[Mode];
 
   guint8 Image[800][800][3];
+  guint8 Imagesnr[800][800][3];
 
   Glib::RefPtr<Gtk::Application> app = Gtk::Application::create("com.windytan.slowrx");
   
-  // Initialize pixbuffer
   Glib::RefPtr<Gdk::Pixbuf> pixbuf_rx;
   pixbuf_rx = Gdk::Pixbuf::create(Gdk::COLORSPACE_RGB, false, 8, s.ScanPixels, s.NumLines);
   pixbuf_rx->fill(0x000000ff);
+  
+  Glib::RefPtr<Gdk::Pixbuf> pixbuf_snr;
+  pixbuf_snr = Gdk::Pixbuf::create(Gdk::COLORSPACE_RGB, false, 8, s.ScanPixels, s.NumLines);
+  pixbuf_snr->fill(0x000000ff);
+
+  double next_sync_sample_time = 0;
+  std::vector<bool> has_sync;
 
   /*g_object_unref(pixbuf_disp);
   pixbuf_disp = gdk_pixbuf_scale_simple(pixbuf_rx, 500,
@@ -192,99 +199,53 @@ bool GetVideo(SSTVMode Mode, DSPworker* dsp) {
   double t = 0;
   for (int PixelIdx = 0; PixelIdx < PixelGrid.size(); PixelIdx++) {
 
-    double Lum = 0;
+    /*printf("expecting %d (%d,%d,%d)\n",PixelIdx,
+        PixelGrid[PixelIdx].X,
+        PixelGrid[PixelIdx].Y,
+        PixelGrid[PixelIdx].Channel
+        );*/
 
-    while (t < PixelGrid[PixelIdx].Time && dsp->is_still_listening()) {
+    while (t < PixelGrid[PixelIdx].Time && dsp->is_open()) {
       t += dsp->forward();
     }
 
+    /*if (dsp->is_open()) {
+      printf("got it\n");
+    } else {
+      printf("didn't get it\n");
+    }*/
+
     /*** Store the sync band for later adjustments ***/
 
-    /*if (SampleNum == NextSyncTime) {
+    if (dsp->get_t() >= next_sync_sample_time) {
 
-      Praw = Psync = 0;
+      int line_width = ModeSpec[Mode].NumLines;
 
-      memset(fft.in, 0, sizeof(double)*FFTLen);
-     
-      // Hann window
-      for (i = 0; i < 64; i++) fft.in[i] = pcm.Buffer[pcm.WindowPtr+i-32] / 32768.0 * Hann[1][i];
-
-      fftw_execute(fft.Plan1024);
-
-      for (i=GetBin(1500+CurrentPic.HedrShift,FFTLen); i<=GetBin(2300+CurrentPic.HedrShift, FFTLen); i++)
-        Praw += power(fft.out[i]);
-
-      for (i=SyncTargetBin-1; i<=SyncTargetBin+1; i++)
-        Psync += power(fft.out[i]) * (1- .5*abs(SyncTargetBin-i));
-
-      Praw  /= (GetBin(2300+CurrentPic.HedrShift, FFTLen) - GetBin(1500+CurrentPic.HedrShift, FFTLen));
-      Psync /= 2.0;
+      std::vector<double> bands = dsp->bandPowerPerHz({{1150,1250}, {1500,2300}});
 
       // If there is more than twice the amount of power per Hz in the
       // sync band than in the video band, we have a sync signal here
-      HasSync[SyncSampleNum] = (Psync > 2*Praw);
+      has_sync.push_back(bands[0] > bands[1]);
 
-      NextSyncTime += 13;
-      SyncSampleNum ++;
 
-    }*/
+      next_sync_sample_time += ModeSpec[Mode].tLine / line_width;
+
+    }
 
     /*** Estimate SNR ***/
 
     double SNR;
+    bool Adaptive = true;
 
-    if (PixelIdx == 0 || PixelGrid[PixelIdx].X == s.ScanPixels/2) {
-      std::vector<double> bands = dsp->getBandPowerPerHz({{400,800}, {1500,2300}, {2700, 3400}});
+    if (PixelIdx == 0 || (Adaptive && PixelGrid[PixelIdx].X == s.ScanPixels/2)) {
+      std::vector<double> bands = dsp->bandPowerPerHz({{300,1100}, {1500,2300}, {2500, 2700}});
       double Pvideo_plus_noise = bands[1];
       double Pnoise_only       = (bands[0] + bands[2]) / 2;
       double Psignal = Pvideo_plus_noise - Pnoise_only;
 
-      SNR = ((Psignal / Pnoise_only < .01) ? -20 : 10 * log10(Psignal / Pnoise_only));
+      SNR = ((Pnoise_only == 0 || Psignal / Pnoise_only < .01) ? -20 : 10 * log10(Psignal / Pnoise_only));
 
     }
-
-    /*if (SampleNum == NextSNRtime) {
-      
-      memset(fft.in, 0, sizeof(double)*FFTLen);
-
-      // Apply Hann window
-      for (i = 0; i < FFTLen; i++) fft.in[i] = pcm.Buffer[pcm.WindowPtr + i - FFTLen/2] / 32768.0 * Hann[6][i];
-
-      fftw_execute(fft.Plan1024);
-
-      // Calculate video-plus-noise power (1500-2300 Hz)
-
-      Pvideo_plus_noise = 0;
-      for (n = GetBin(1500+CurrentPic.HedrShift, FFTLen); n <= GetBin(2300+CurrentPic.HedrShift, FFTLen); n++)
-        Pvideo_plus_noise += power(fft.out[n]);
-
-      // Calculate noise-only power (400-800 Hz + 2700-3400 Hz)
-
-      Pnoise_only = 0;
-      for (n = GetBin(400+CurrentPic.HedrShift,  FFTLen); n <= GetBin(800+CurrentPic.HedrShift, FFTLen);  n++)
-        Pnoise_only += power(fft.out[n]);
-
-      for (n = GetBin(2700+CurrentPic.HedrShift, FFTLen); n <= GetBin(3400+CurrentPic.HedrShift, FFTLen); n++)
-        Pnoise_only += power(fft.out[n]);
-
-      // Bandwidths
-      VideoPlusNoiseBins = GetBin(2300, FFTLen) - GetBin(1500, FFTLen) + 1;
-
-      NoiseOnlyBins      = GetBin(800,  FFTLen) - GetBin(400,  FFTLen) + 1 +
-                           GetBin(3400, FFTLen) - GetBin(2700, FFTLen) + 1;
-
-      ReceiverBins       = GetBin(3400, FFTLen) - GetBin(400,  FFTLen);
-
-      // Eq 15
-      Pnoise  = Pnoise_only * (1.0 * ReceiverBins / NoiseOnlyBins);
-      Psignal = Pvideo_plus_noise - Pnoise_only * (1.0 * VideoPlusNoiseBins / NoiseOnlyBins);
-
-      // Lower bound to -20 dB
-      SNR = ((Psignal / Pnoise < .01) ? -20 : 10 * log10(Psignal / Pnoise));
-
-      NextSNRtime += 256;
-    }*/
-
 
 
     /*** FM demodulation ***/
@@ -292,19 +253,18 @@ bool GetVideo(SSTVMode Mode, DSPworker* dsp) {
     //PrevFreq = Freq;
 
     // Adapt window size to SNR
-    bool Adaptive = true;
     WindowType WinType;
 
-    if   (Adaptive) WinType = dsp->getBestWindowFor(Mode, SNR);
-    else            WinType = dsp->getBestWindowFor(Mode);
+    if   (Adaptive) WinType = dsp->bestWindowFor(Mode, SNR);
+    else            WinType = dsp->bestWindowFor(Mode);
 
-    double Freq = dsp->getPeakFreq(1500, 2300, WinType);
+    double Freq = dsp->peakFreq(1500, 2300, WinType);
 
     // Linear interpolation of (chronologically) intermediate frequencies, for redrawing
     //InterpFreq = PrevFreq + (Freq-PrevFreq) * ...  // TODO!
 
     // Calculate luminency & store for later use
-    Lum = clip((Freq - (1500)) / 3.1372549);
+    guint8 Lum = freq2lum(Freq);
     //measured.push_back({t, Lum});
     //StoredLum[SampleNum] = clip((Freq - (1500 + CurrentPic.HedrShift)) / 3.1372549);
 
@@ -314,11 +274,15 @@ bool GetVideo(SSTVMode Mode, DSPworker* dsp) {
     
     // Store pixel
     Image[x][y][Channel] = Lum;//StoredLum[SampleNum];
+    Imagesnr[x][y][Channel] = WinType;//StoredLum[SampleNum];
 
   }
 
-  // Calculate and draw pixels to pixbuf on line change
+  /* sync */
+  findSyncRansac(Mode, has_sync);
+  
   toPixbufRGB(Image, pixbuf_rx, Mode);
+  toPixbufRGB(Imagesnr, pixbuf_snr, Mode);
     /*if (!Redraw || y % 5 == 0 || PixelIdx == PixelGrid.size()-1) {
       // Scale and update image
       g_object_unref(pixbuf_disp);
@@ -329,11 +293,8 @@ bool GetVideo(SSTVMode Mode, DSPworker* dsp) {
     }*/
 
   
-  /*if (!Redraw && SampleNum % 8820 == 0) {
-    setVU(Power, FFTLen, WinIdx, true);
-  }*/
-
   pixbuf_rx->save("testi.png", "png");
+  pixbuf_snr->save("snr.png", "png");
 
   return true;
 

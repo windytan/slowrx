@@ -19,6 +19,7 @@
  * SubSampling Chroma subsampling mode for YUV (SUBSAMP_444, SUBSAMP_2121,
  *             SUBSAMP_2112, SUBSAMP_211)
  * ColorEnc    Color format (COLOR_GBR, COLOR_RGB, COLOR_YUV, COLOR_MONO)
+ * VISParity   Parity mode in VIS (normally PARITY_EVEN - with one exception)
  *
  *
  * All timings are in seconds.
@@ -50,7 +51,8 @@ _ModeSpec ModeSpec[]  = {
     .tLine       = 446.446e-3,
     .SyncOrder   = SYNC_SIMPLE,
     .SubSampling = SUBSAMP_444,
-    .ColorEnc    = COLOR_GBR },
+    .ColorEnc    = COLOR_GBR,
+    .VISParity   = PARITY_EVEN },
 
   [MODE_M2]  = {  // N7CXI, 2000
     .Name        = "Martin M2",
@@ -65,7 +67,8 @@ _ModeSpec ModeSpec[]  = {
     .tSep        = 0.572e-3,
     .SyncOrder   = SYNC_SIMPLE,
     .SubSampling = SUBSAMP_444,
-    .ColorEnc    = COLOR_GBR },
+    .ColorEnc    = COLOR_GBR,
+    .VISParity   = PARITY_EVEN },
 
   [MODE_M3]  = {   // KB4YZ, 1999
     .Name        = "Martin M3",
@@ -80,7 +83,8 @@ _ModeSpec ModeSpec[]  = {
     .tSep        = 0.572e-3,
     .SyncOrder   = SYNC_SIMPLE,
     .SubSampling = SUBSAMP_444,
-    .ColorEnc    = COLOR_GBR },
+    .ColorEnc    = COLOR_GBR,
+    .VISParity   = PARITY_EVEN },
 
   [MODE_M4]  = {   // KB4YZ, 1999
     .Name        = "Martin M4",
@@ -95,7 +99,8 @@ _ModeSpec ModeSpec[]  = {
     .tSep        = 0.572e-3,
     .SyncOrder   = SYNC_SIMPLE,
     .SubSampling = SUBSAMP_444,
-    .ColorEnc    = COLOR_GBR },
+    .ColorEnc    = COLOR_GBR,
+    .VISParity   = PARITY_EVEN },
 
   [MODE_S1]  = {  // N7CXI, 2000
     .Name        = "Scottie S1",
@@ -110,7 +115,8 @@ _ModeSpec ModeSpec[]  = {
     .tLine       = 428.22e-3,
     .SyncOrder   = SYNC_SCOTTIE,
     .SubSampling = SUBSAMP_444,
-    .ColorEnc    = COLOR_GBR },
+    .ColorEnc    = COLOR_GBR,
+    .VISParity   = PARITY_EVEN },
 
   [MODE_S2]  = {  // N7CXI, 2000
     .Name        = "Scottie S2",
@@ -125,7 +131,8 @@ _ModeSpec ModeSpec[]  = {
     .tSep        = 1.5e-3,
     .SyncOrder   = SYNC_SCOTTIE,
     .SubSampling = SUBSAMP_444,
-    .ColorEnc    = COLOR_GBR },
+    .ColorEnc    = COLOR_GBR,
+    .VISParity   = PARITY_EVEN },
 
   [MODE_SDX]  = {  // N7CXI, 2000
     .Name        = "Scottie DX",
@@ -140,7 +147,8 @@ _ModeSpec ModeSpec[]  = {
     .tSep        = 1.5e-3,
     .SyncOrder   = SYNC_SCOTTIE,
     .SubSampling = SUBSAMP_444,
-    .ColorEnc    = COLOR_GBR },
+    .ColorEnc    = COLOR_GBR,
+    .VISParity   = PARITY_EVEN },
 
   [MODE_R72]  = {  // N7CXI, 2000
     .Name        = "Robot 72",
@@ -155,7 +163,8 @@ _ModeSpec ModeSpec[]  = {
     .tSep        = 6e-3,
     .SyncOrder   = SYNC_SIMPLE,
     .SubSampling = SUBSAMP_422_YUV,
-    .ColorEnc    = COLOR_YUV },
+    .ColorEnc    = COLOR_YUV,
+    .VISParity   = PARITY_EVEN },
 
   [MODE_R36]  = {  // N7CXI, 2000
     .Name        = "Robot 36",
@@ -170,7 +179,8 @@ _ModeSpec ModeSpec[]  = {
     .tSep        = 6e-3,
     .SyncOrder   = SYNC_SIMPLE,
     .SubSampling = SUBSAMP_420_YUYV,
-    .ColorEnc    = COLOR_YUV },
+    .ColorEnc    = COLOR_YUV,
+    .VISParity   = PARITY_EVEN },
 
   [MODE_R24]  = {  // KB4YZ, 1999
     .Name        = "Robot 24",
@@ -185,7 +195,8 @@ _ModeSpec ModeSpec[]  = {
     .tSep        = 6e-3,
     .SyncOrder   = SYNC_SIMPLE,
     .SubSampling = SUBSAMP_420_YUYV,
-    .ColorEnc    = COLOR_YUV },
+    .ColorEnc    = COLOR_YUV,
+    .VISParity   = PARITY_EVEN },
 
   [MODE_R24BW]  = {  // KB4YZ, 1999
     .Name        = "Robot 24 B/W",
@@ -200,7 +211,8 @@ _ModeSpec ModeSpec[]  = {
     .tSep        = 0,
     .SyncOrder   = SYNC_SIMPLE,
     .SubSampling = SUBSAMP_444,
-    .ColorEnc    = COLOR_MONO },
+    .ColorEnc    = COLOR_MONO,
+    .VISParity   = PARITY_EVEN },
 
   [MODE_R12BW]  = {  // KB4YZ, 1999
     .Name        = "Robot 12 B/W",
@@ -215,7 +227,8 @@ _ModeSpec ModeSpec[]  = {
     .tSep        = 0,
     .SyncOrder   = SYNC_SIMPLE,
     .SubSampling = SUBSAMP_444,
-    .ColorEnc    = COLOR_MONO },
+    .ColorEnc    = COLOR_MONO,
+    .VISParity   = PARITY_ODD },
 
   [MODE_R8BW]  = {  // KB4YZ, 1999
     .Name        = "Robot 8 B/W",
@@ -230,7 +243,8 @@ _ModeSpec ModeSpec[]  = {
     .tSep        = 0,
     .SyncOrder   = SYNC_SIMPLE,
     .SubSampling = SUBSAMP_444,
-    .ColorEnc    = COLOR_MONO },
+    .ColorEnc    = COLOR_MONO,
+    .VISParity   = PARITY_EVEN },
   
   [MODE_W2120]  = { // KB4YZ, 1999
     .Name        = "Wraase SC-2 120",
@@ -245,7 +259,8 @@ _ModeSpec ModeSpec[]  = {
     .tSep        = 0,
     .SyncOrder   = SYNC_SIMPLE,
     .SubSampling = SUBSAMP_444,
-    .ColorEnc    = COLOR_RGB },
+    .ColorEnc    = COLOR_RGB,
+    .VISParity   = PARITY_EVEN },
 
   [MODE_W2180]  = {  // N7CXI, 2000
     .Name        = "Wraase SC-2 180",
@@ -260,7 +275,8 @@ _ModeSpec ModeSpec[]  = {
     .tSep        = 0,
     .SyncOrder   = SYNC_SIMPLE,
     .SubSampling = SUBSAMP_444,
-    .ColorEnc    = COLOR_RGB },
+    .ColorEnc    = COLOR_RGB,
+    .VISParity   = PARITY_EVEN },
 
   [MODE_PD50]  = {  // N7CXI, 2000
     .Name        = "PD-50",
@@ -275,7 +291,8 @@ _ModeSpec ModeSpec[]  = {
     .tSep        = 0,
     .SyncOrder   = SYNC_SIMPLE,
     .SubSampling = SUBSAMP_440_YUVY,
-    .ColorEnc    = COLOR_YUV },
+    .ColorEnc    = COLOR_YUV,
+    .VISParity   = PARITY_EVEN },
 
   [MODE_PD90]  = {  // N7CXI, 2000
     .Name        = "PD-90",
@@ -290,7 +307,8 @@ _ModeSpec ModeSpec[]  = {
     .tSep        = 0,
     .SyncOrder   = SYNC_SIMPLE,
     .SubSampling = SUBSAMP_440_YUVY,
-    .ColorEnc    = COLOR_YUV },
+    .ColorEnc    = COLOR_YUV,
+    .VISParity   = PARITY_EVEN },
 
   [MODE_PD120]  = {  // N7CXI, 2000
     .Name        = "PD-120",
@@ -305,7 +323,8 @@ _ModeSpec ModeSpec[]  = {
     .tSep        = 0,
     .SyncOrder   = SYNC_SIMPLE,
     .SubSampling = SUBSAMP_440_YUVY,
-    .ColorEnc    = COLOR_YUV },
+    .ColorEnc    = COLOR_YUV,
+    .VISParity   = PARITY_EVEN },
 
   [MODE_PD160]  = {  // N7CXI, 2000
     .Name        = "PD-160",
@@ -320,7 +339,8 @@ _ModeSpec ModeSpec[]  = {
     .tSep        = 0,
     .SyncOrder   = SYNC_SIMPLE,
     .SubSampling = SUBSAMP_440_YUVY,
-    .ColorEnc    = COLOR_YUV },
+    .ColorEnc    = COLOR_YUV,
+    .VISParity   = PARITY_EVEN },
 
   [MODE_PD180]  = {  // N7CXI, 2000
     .Name        = "PD-180",
@@ -335,7 +355,8 @@ _ModeSpec ModeSpec[]  = {
     .tSep        = 0,
     .SyncOrder   = SYNC_SIMPLE,
     .SubSampling = SUBSAMP_440_YUVY,
-    .ColorEnc    = COLOR_YUV },
+    .ColorEnc    = COLOR_YUV,
+    .VISParity   = PARITY_EVEN },
 
   [MODE_PD240]  = {  // N7CXI, 2000
     .Name        = "PD-240",
@@ -350,7 +371,8 @@ _ModeSpec ModeSpec[]  = {
     .tSep        = 0,
     .SyncOrder   = SYNC_SIMPLE,
     .SubSampling = SUBSAMP_440_YUVY,
-    .ColorEnc    = COLOR_YUV },
+    .ColorEnc    = COLOR_YUV,
+    .VISParity   = PARITY_EVEN },
 
   [MODE_PD290]  = {  // N7CXI, 2000
     .Name        = "PD-290",
@@ -365,7 +387,8 @@ _ModeSpec ModeSpec[]  = {
     .tSep        = 0,
     .SyncOrder   = SYNC_SIMPLE,
     .SubSampling = SUBSAMP_440_YUVY,
-    .ColorEnc    = COLOR_YUV },
+    .ColorEnc    = COLOR_YUV,
+    .VISParity   = PARITY_EVEN },
 
   [MODE_P3]  = {  // N7CXI, 2000
     .Name        = "Pasokon P3",
@@ -380,7 +403,8 @@ _ModeSpec ModeSpec[]  = {
     .tSep        = 1.042e-3,
     .SyncOrder   = SYNC_SIMPLE,
     .SubSampling = SUBSAMP_444,
-    .ColorEnc    = COLOR_RGB },
+    .ColorEnc    = COLOR_RGB,
+    .VISParity   = PARITY_EVEN },
 
   [MODE_P5]  = {  // N7CXI, 2000
     .Name        = "Pasokon P5",
@@ -395,7 +419,8 @@ _ModeSpec ModeSpec[]  = {
     .tSep        = 1.563e-3,
     .SyncOrder   = SYNC_SIMPLE,
     .SubSampling = SUBSAMP_444,
-    .ColorEnc    = COLOR_RGB },
+    .ColorEnc    = COLOR_RGB,
+    .VISParity   = PARITY_EVEN },
 
   [MODE_P7]  = {  // N7CXI, 2000
     .Name        = "Pasokon P7",
@@ -410,7 +435,8 @@ _ModeSpec ModeSpec[]  = {
     .tSep        = 2.083e-3,
     .SyncOrder   = SYNC_SIMPLE,
     .SubSampling = SUBSAMP_444,
-    .ColorEnc    = COLOR_RGB }
+    .ColorEnc    = COLOR_RGB,
+    .VISParity   = PARITY_EVEN }
  
 };
 
