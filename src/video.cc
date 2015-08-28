@@ -1,13 +1,11 @@
 #include "common.hh"
 
 typedef struct {
-  int X;
-  int Y;
+  Point pt;
   int Channel;
   double Time;
 } PixelSample;
 
-bool sortPixelSamples(PixelSample a, PixelSample b) { return a.Time < b.Time; }
 
 // Map to RGB & store in pixbuf
 void toPixbufRGB(guint8 Image[800][800][3], Glib::RefPtr<Gdk::Pixbuf> pixbuf, SSTVMode Mode) {
@@ -58,8 +56,7 @@ std::vector<PixelSample> getPixelSamplingPoints(SSTVMode Mode) {
     for (int x=0; x<s.ScanPixels; x++) {
       for (int Chan=0; Chan < (s.ColorEnc == COLOR_MONO ? 1 : 3); Chan++) {
         PixelSample px;
-        px.X = x;
-        px.Y = y;
+        px.pt = Point(x,y);
         px.Channel = Chan;
         switch(s.SubSampling) {
 
@@ -150,7 +147,9 @@ std::vector<PixelSample> getPixelSamplingPoints(SSTVMode Mode) {
     }
   }
 
-  std::sort(PixelGrid.begin(), PixelGrid.end(), sortPixelSamples);
+  std::sort(PixelGrid.begin(), PixelGrid.end(), [](PixelSample a, PixelSample b) {
+      return a.Time < b.Time;
+  });
 
   return PixelGrid;
 }
@@ -199,21 +198,9 @@ bool GetVideo(SSTVMode Mode, DSPworker* dsp) {
   double t = 0;
   for (int PixelIdx = 0; PixelIdx < PixelGrid.size(); PixelIdx++) {
 
-    /*printf("expecting %d (%d,%d,%d)\n",PixelIdx,
-        PixelGrid[PixelIdx].X,
-        PixelGrid[PixelIdx].Y,
-        PixelGrid[PixelIdx].Channel
-        );*/
-
     while (t < PixelGrid[PixelIdx].Time && dsp->is_open()) {
       t += dsp->forward();
     }
-
-    /*if (dsp->is_open()) {
-      printf("got it\n");
-    } else {
-      printf("didn't get it\n");
-    }*/
 
     /*** Store the sync band for later adjustments ***/
 
@@ -225,7 +212,7 @@ bool GetVideo(SSTVMode Mode, DSPworker* dsp) {
 
       // If there is more than twice the amount of power per Hz in the
       // sync band than in the video band, we have a sync signal here
-      has_sync.push_back(bands[0] > bands[1]);
+      has_sync.push_back(bands[0] > 2 * bands[1]);
 
 
       next_sync_sample_time += ModeSpec[Mode].tLine / line_width;
@@ -237,7 +224,7 @@ bool GetVideo(SSTVMode Mode, DSPworker* dsp) {
     double SNR;
     bool Adaptive = true;
 
-    if (PixelIdx == 0 || (Adaptive && PixelGrid[PixelIdx].X == s.ScanPixels/2)) {
+    if (PixelIdx == 0 || (Adaptive && PixelGrid[PixelIdx].pt.x == s.ScanPixels/2)) {
       std::vector<double> bands = dsp->bandPowerPerHz({{300,1100}, {1500,2300}, {2500, 2700}});
       double Pvideo_plus_noise = bands[1];
       double Pnoise_only       = (bands[0] + bands[2]) / 2;
@@ -268,8 +255,8 @@ bool GetVideo(SSTVMode Mode, DSPworker* dsp) {
     //measured.push_back({t, Lum});
     //StoredLum[SampleNum] = clip((Freq - (1500 + CurrentPic.HedrShift)) / 3.1372549);
 
-    int x = PixelGrid[PixelIdx].X;
-    int y = PixelGrid[PixelIdx].Y;
+    int x = PixelGrid[PixelIdx].pt.x;
+    int y = PixelGrid[PixelIdx].pt.y;
     int Channel = PixelGrid[PixelIdx].Channel;
     
     // Store pixel
@@ -279,7 +266,7 @@ bool GetVideo(SSTVMode Mode, DSPworker* dsp) {
   }
 
   /* sync */
-  findSyncRansac(Mode, has_sync);
+  findSyncAutocorr(Mode, has_sync);
   
   toPixbufRGB(Image, pixbuf_rx, Mode);
   toPixbufRGB(Imagesnr, pixbuf_snr, Mode);

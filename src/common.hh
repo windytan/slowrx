@@ -1,24 +1,35 @@
 #ifndef _COMMON_H_
 #define _COMMON_H_
 
-#define MINSLANT   30
-#define MAXSLANT   150
-#define SYNCPIXLEN 1.5e-3
-
-// moment length only affects length of delay, read interval,
+// moment length only affects length of global delay, I/O interval,
 // and maximum window size.
-#define READ_CHUNK_LEN 1024
 #define MOMENT_LEN     2047
 #define FFT_LEN_SMALL  1024
 #define FFT_LEN_BIG    2048
 #define CIRBUF_LEN_FACTOR 4
 #define CIRBUF_LEN ((MOMENT_LEN+1)*CIRBUF_LEN_FACTOR)
+#define READ_CHUNK_LEN ((MOMENT_LEN+1)/2)
 
 #include <iostream>
 #include "portaudio.h"
 #include "sndfile.hh"
 #include "fftw3.h"
 #include "gtkmm.h"
+
+struct Point {
+  int x;
+  int y;
+  explicit Point(int x = 0.0, int y=0.0) : x(x), y(y) {}
+};
+
+struct Tone {
+  double dur;
+  double freq;
+  explicit Tone(double dur = 0.0, double freq=0.0) : dur(dur), freq(freq) {}
+};
+
+using Wave = std::vector<double>;
+using Melody = std::vector<Tone>;
 
 enum WindowType {
   WINDOW_CHEB47 = 0,
@@ -63,26 +74,6 @@ enum eVISParity {
 };
 
 extern std::map<int, SSTVMode> vis2mode;
-
-typedef struct _FFTStuff FFTStuff;
-struct _FFTStuff {
-  double       *in;
-  fftw_complex *out;
-  fftw_plan     Plan1024;
-  fftw_plan     Plan2048;
-};
-extern FFTStuff fft;
-
-typedef struct _PcmData PcmData;
-struct _PcmData {
-//  snd_pcm_t *handle;
-  void      *handle;
-  gint16    *Buffer;
-  int        WindowPtr;
-  bool   BufferDrop;
-};
-//extern PcmData pcm;
-
 
 class DSPworker {
 
@@ -219,7 +210,7 @@ void     createGUI     ();
 double   deg2rad       (double Deg);
 std::string   GetFSK        ();
 bool     GetVideo      (SSTVMode Mode, DSPworker *dsp);
-SSTVMode GetVIS        (DSPworker*);
+SSTVMode modeFromNextHeader       (DSPworker*);
 int      initPcmDevice (std::string);
 void     *Listen       ();
 void     populateDeviceList ();
@@ -229,16 +220,24 @@ void     setVU         (double *Power, int FFTLen, int WinIdx, bool ShowWin);
 int      startGui      (int, char**);
 void     findSyncRansac (SSTVMode, std::vector<bool>);
 void     findSyncHough  (SSTVMode, std::vector<bool>);
-std::vector<double> upsampleLanczos    (std::vector<double>, int);
-std::vector<double> Hann    (std::size_t);
-std::vector<double> Blackmann    (std::size_t);
-std::vector<double> Rect    (std::size_t);
-std::vector<double> Gauss    (std::size_t);
+double     findSyncAutocorr  (SSTVMode, std::vector<bool>);
+double   gaussianPeak  (double y1, double y2, double y3);
+Wave upsampleLanczos    (Wave orig, int factor, double middle=1500, int a=3);
+Wave Hann    (std::size_t);
+Wave Blackmann    (std::size_t);
+Wave Rect    (std::size_t);
+Wave Gauss    (std::size_t);
 
+Wave deriv (Wave);
+Wave peaks (Wave, int);
+Wave derivPeaks (Wave, int);
+Wave rms (Wave, int);
 void runTest(const char*);
 
 double complexMag (fftw_complex coeff);
 guint8 freq2lum(double);
+
+void printWave(Wave, double);
 
 void     evt_AbortRx       ();
 void     evt_changeDevices ();

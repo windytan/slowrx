@@ -27,7 +27,7 @@ int main(int argc, char *argv[]) {
   if (!dsp.is_open())
     dsp.openPortAudio();
   
-  GetVideo(GetVIS(&dsp), &dsp);
+  GetVideo(modeFromNextHeader(&dsp), &dsp);
 
   //SlowGUI gui = SlowGUI();
   return 0;

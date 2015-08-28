@@ -3,7 +3,7 @@
 
 DSPworker::DSPworker() : Mutex(), please_stop_(false) {
 
-  std::vector<double> cheb47 = {
+  Wave cheb47 = {
     0.0004272315,0.0013212953,0.0032312239,0.0067664313,0.0127521667,0.0222058684,
     0.0363037629,0.0563165400,0.0835138389,0.1190416120,0.1637810511,0.2182020094,
     0.2822270091,0.3551233730,0.4354402894,0.5210045495,0.6089834347,0.6960162864,
@@ -13,7 +13,7 @@ DSPworker::DSPworker() : Mutex(), please_stop_(false) {
     0.1637810511,0.1190416120,0.0835138389,0.0563165400,0.0363037629,0.0222058684,
     0.0127521667,0.0067664313,0.0032312239,0.0013212953,0.0004272315
   };
-  std::vector<double> sq47 = {
+  Wave sq47 = {
     1,1,1,1,1,1,1,1,1,1,
     1,1,1,1,1,1,1,1,1,1,
     1,1,1,1,1,1,1,1,1,1,
@@ -138,15 +138,22 @@ double DSPworker::get_t() {
 }
 
 void DSPworker::readMore () {
-  short read_buffer[READ_CHUNK_LEN];
+  int numchans = file_.channels();
+  short read_buffer[READ_CHUNK_LEN * numchans];
   sf_count_t samplesread = 0;
 
   if (is_open_) {
     if (stream_type_ == STREAM_TYPE_FILE) {
 
-      samplesread = file_.read(read_buffer, READ_CHUNK_LEN);
+      samplesread = file_.readf(read_buffer, READ_CHUNK_LEN);
       if (samplesread < READ_CHUNK_LEN)
         is_open_ = false;
+
+      if (numchans > 1) {
+        for (int i=0; i<READ_CHUNK_LEN; i++) {
+          read_buffer[i] = read_buffer[i*numchans];
+        }
+      }
 
     } else if (stream_type_ == STREAM_TYPE_PA) {
 
@@ -222,12 +229,8 @@ void DSPworker::windowedMoment (WindowType win_type, fftw_complex *result) {
       if_phi += 2 * M_PI * 10000 / samplerate_;*/
 
       result[win_i][0] = result[win_i][1] = a;
-      //printf("%f\n",a);
-      //std::cout<<result[win_i]<<",";
     }
   }
- // exit(0);
-  //std::cout<<"\n";
 
 }
 
@@ -253,25 +256,22 @@ double DSPworker::peakFreq (double minf, double maxf, WindowType wintype) {
       peakBin = i;
   }
 
-  // Find the peak frequency by Gaussian interpolation
-  //double result = MaxBin +            (log( Power[MaxBin + 1] / Power[MaxBin - 1] )) /
-  //                         (2 * log( pow(Power[MaxBin], 2) / (Power[MaxBin + 1] * Power[MaxBin - 1])));
-  
-  double y1 = Mag[peakBin-1], y2 = Mag[peakBin], y3 = Mag[peakBin+1];
-  double result = peakBin + (y3 - y1) / (2 * (2*y2 - y3 - y1));
+  double result = peakBin + gaussianPeak(Mag[peakBin-1], Mag[peakBin], Mag[peakBin+1]);
+  /*double y1 = Mag[peakBin-1], y2 = Mag[peakBin], y3 = Mag[peakBin+1];
+  double result = peakBin + (y3 - y1) / (2 * (2*y2 - y3 - y1));*/
 
   // In Hertz
   result = result / fft_len * samplerate_;
 
   // cheb47 @ 44100 can't resolve <1800 Hz
-  if (wintype == WINDOW_CHEB47 && result < 1800)
+  if (result < 1800 && wintype == WINDOW_CHEB47)
     result = peakFreq (minf, maxf, WINDOW_HANN95);
 
   return result;
 
 }
 
-std::vector<double> DSPworker::bandPowerPerHz(std::vector<std::vector<double> > bands) {
+Wave DSPworker::bandPowerPerHz(std::vector<std::vector<double> > bands) {
 
   int fft_len = FFT_LEN_BIG;
   WindowType wintype = WINDOW_HANN2047;
@@ -282,8 +282,8 @@ std::vector<double> DSPworker::bandPowerPerHz(std::vector<std::vector<double> > 
   memcpy(fft_inbuf_, windowed, window_[wintype].size() * sizeof(windowed[0]));
   fftw_execute(fft_len == FFT_LEN_BIG ? fft_plan_big_ : fft_plan_small_);
 
-  std::vector<double> result;
-  for (std::vector<double> band : bands) {
+  Wave result;
+  for (Wave band : bands) {
     double P = 0;
     double binwidth = 1.0 * samplerate_ / fft_len;
     int nbins = 0;
@@ -311,6 +311,12 @@ WindowType DSPworker::bestWindowFor(SSTVMode Mode, double SNR) {
   else                  WinType = WINDOW_HANN2047;
 
   return WinType;
+}
+
+// param:  y values around peak
+// return: peak x position (-1 .. 1)
+double gaussianPeak (double y1, double y2, double y3) {
+  return ((y3 - y1) / (2 * (2*y2 - y3 - y1)));
 }
 /*WindowType DSPworker::bestWindowFor(SSTVMode Mode) {
   return bestWindowFor(Mode, 20);
@@ -347,33 +353,33 @@ WindowType DSPworker::bestWindowFor(SSTVMode Mode, double SNR) {
   
 }*/
 
-std::vector<double> Hann (std::size_t winlen) {
-  std::vector<double> result(winlen);
-  for (std::size_t i=0; i < winlen; i++)
+Wave Hann (size_t winlen) {
+  Wave result(winlen);
+  for (size_t i=0; i < winlen; i++)
     result[i] = 0.5 * (1 - cos( (2 * M_PI * i) / (winlen)) );
   return result;
 }
 
-std::vector<double> Blackmann (std::size_t winlen) {
-  std::vector<double> result(winlen);
-  for (std::size_t i=0; i < winlen; i++)
+Wave Blackmann (size_t winlen) {
+  Wave result(winlen);
+  for (size_t i=0; i < winlen; i++)
     result[i] = 0.42 - 0.5*cos(2*M_PI*i/winlen) - 0.08*cos(4*M_PI*i/winlen);
 
   return result;
 }
 
-std::vector<double> Rect (std::size_t winlen) {
-  std::vector<double> result(winlen);
+Wave Rect (size_t winlen) {
+  Wave result(winlen);
   double sigma = 0.4;
-  for (std::size_t i=0; i < winlen; i++)
+  for (size_t i=0; i < winlen; i++)
     result[i] = exp(-0.5*((i-(winlen-1)/2)/(sigma*(winlen-1)/2)));
 
   return result;
 }
 
-std::vector<double> Gauss (std::size_t winlen) {
-  std::vector<double> result(winlen);
-  for (std::size_t i=0; i < winlen; i++)
+Wave Gauss (size_t winlen) {
+  Wave result(winlen);
+  for (size_t i=0; i < winlen; i++)
     result[i] = 1;
 
   return result;
@@ -387,32 +393,98 @@ guint8 freq2lum (double freq) {
   return clip((freq - 1500.0) / (2300.0-1500.0) * 255 + .5);
 }
 
-std::vector<double> upsampleLanczos(std::vector<double> orig, int factor) {
-  std::vector<double> result(orig.size()*factor);
-  int alpha = 4;
-  int sinclen = (factor*alpha % 2 == 0 ? factor*alpha+1 : factor*alpha);
-  double middle = 1500;
+double sinc (double x) {
+  return (x == 0 ? 1 : sin(M_PI*x) / (M_PI*x));
+}
 
-  std::vector<double> sinc(sinclen);
-  for (int i=0; i<sinclen; i++) {
-    double x1 = 1.0*i/factor - alpha/2;
-    double x2 = 2.0*i/sinclen - 1;
-    sinc[i] = (x1 == 0 ? 1 : sin(M_PI*x1) / (M_PI*x1)) *
-              (x2 == 0 ? 1 : sin(M_PI*x2) / (M_PI*x2));
+Wave upsampleLanczos(Wave orig, int factor, double middle_freq, int a) {
+  Wave result(orig.size()*factor);
+  int kernel_len = factor*a*2 + 1;
+
+  // make kernel
+  Wave lanczos(kernel_len);
+  for (int i=0; i<kernel_len; i++) {
+    double x_kern = (1.0*i/(kernel_len-1) - .5)*2*a;
+    double x_wind = 2.0*i/(kernel_len-1) - 1;
+    lanczos[i] = sinc(x_kern) * sinc(x_wind);
   }
 
-  for (int i=0; i<orig.size(); i++) {
-    if (orig[i] != 0) {
-      for (int j=0; j<sinclen; j++) {
-        int i_new = i*factor + (j-sinclen/2);
-        if (i_new > 0 && i_new < result.size())
-          result[i_new] += (orig[i] - middle) * sinc[j];
+  // convolution
+  for (int i=-a; i<int(orig.size()+a); i++) {
+    double orig_sample;
+    if (i < 0)
+      orig_sample = orig[0];
+    else if (i > orig.size()-1)
+      orig_sample = orig[orig.size()-1];
+    else
+      orig_sample = orig[i];
+
+    if (orig_sample != 0) {
+      for (int kernel_idx=0; kernel_idx<kernel_len; kernel_idx++) {
+        int i_new = i*factor + (kernel_idx-kernel_len/2);
+        if (i_new >= 0 && i_new <= result.size()-1)
+          result[i_new] += (orig_sample - middle_freq) * lanczos[kernel_idx];
       }
     }
   }
 
   for (int i=0; i<result.size(); i++)
-    result[i] += middle;
+    result[i] += middle_freq;
   
+  return result;
+}
+
+Wave deriv (Wave wave) {
+  Wave result;
+  for (int i=1; i<wave.size(); i++)
+    result.push_back(wave[i] - wave[i-1]);
+  return result;
+}
+
+std::vector<double> peaks (Wave wave, int n) {
+  std::vector<std::pair<double,double> > peaks;
+  for (int i=0; i<wave.size(); i++) {
+    double y1 = (i==0 ? wave[0] : wave[i-1]);
+    double y2 = wave[i];
+    double y3 = (i==wave.size()-1 ? wave[wave.size()-1] : wave[i+1]);
+    if ( fabs(y2) >= fabs(y1) && fabs(y2) >= fabs(y3) )
+      peaks.push_back({ i + gaussianPeak(y1, y2, y3), wave[i]});
+  }
+  std::sort(peaks.begin(), peaks.end(),
+    [](std::pair<double,double> a, std::pair<double,double> b) {
+      return fabs(b.second) < fabs(a.second);
+    });
+
+  Wave result;
+  for (int i=0;i<n && i<peaks.size(); i++)
+    result.push_back(peaks[i].first);
+
+  std::sort(result.begin(), result.end());
+
+  return result;
+}
+
+
+std::vector<double> derivPeaks (Wave wave, int n) {
+  std::vector<double> result = peaks(deriv(wave), n);
+  for (int i=0; i<result.size(); i++) {
+    result[i] += .5;
+  }
+  return result;
+}
+
+Wave rms(Wave orig, int window_width) {
+  Wave result(orig.size());
+  Wave pool(window_width);
+  int pool_ptr = 0;
+  double total = 0;
+  
+  for (int i=0; i<orig.size(); i++) {
+    total -= pool[pool_ptr];
+    pool[pool_ptr] = pow(orig[i], 2);
+    total += pool[pool_ptr];
+    result[i] = sqrt(total / window_width);
+    pool_ptr = (pool_ptr+1) % window_width;
+  }
   return result;
 }

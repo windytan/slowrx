@@ -19,7 +19,6 @@ Glib::KeyFile config;
 std::vector<std::thread> threads(2);
 
 PicMeta      CurrentPic;
-PcmData      pcm;
 
 std::vector<std::vector<double> > DSPworker::window_ (16);
 
@@ -102,7 +101,6 @@ void evt_changeDevices() {
 
   int status;
 
-  pcm.BufferDrop = false;
   Abort = true;
 
   static int init;
