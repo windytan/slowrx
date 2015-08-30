@@ -19,13 +19,13 @@
 struct Point {
   int x;
   int y;
-  explicit Point(int x = 0.0, int y=0.0) : x(x), y(y) {}
+  explicit Point(int _x = 0, int _y=0) : x(_x), y(_y) {}
 };
 
 struct Tone {
   double dur;
   double freq;
-  explicit Tone(double dur = 0.0, double freq=0.0) : dur(dur), freq(freq) {}
+  explicit Tone(double _dur = 0.0, double _freq=0.0) : dur(_dur), freq(_freq) {}
 };
 
 using Wave = std::vector<double>;
@@ -75,6 +75,39 @@ enum eVISParity {
 
 extern std::map<int, SSTVMode> vis2mode;
 
+typedef struct ModeSpec {
+  std::string     Name;
+  std::string     ShortName;
+  double     tSync;
+  double     tPorch;
+  double     tSep;
+  double     tScan;
+  double     tLine;
+  size_t     ScanPixels;
+  size_t     NumLines;
+  size_t     HeaderLines;
+  eColorEnc  ColorEnc;
+  eSyncOrder SyncOrder;
+  eSubSamp   SubSampling;
+  eVISParity VISParity;
+} _ModeSpec;
+
+extern _ModeSpec ModeSpec[];
+
+
+struct Picture {
+  SSTVMode mode;
+  Wave video_signal;
+  double video_dt;
+  std::vector<bool> sync_signal;
+  double sync_dt;
+  double speed;
+  double starts_at;
+  explicit Picture(SSTVMode _mode)
+    : mode(_mode), video_dt(ModeSpec[_mode].tScan/ModeSpec[_mode].ScanPixels/2),
+      sync_dt(ModeSpec[_mode].tLine / ModeSpec[_mode].ScanPixels/3), speed(1) {}
+};
+
 class DSPworker {
 
   public:
@@ -88,15 +121,20 @@ class DSPworker {
     double forward ();
     double forward_time (double);
     void forward_to_time (double);
+    void set_fshift (double);
 
     void windowedMoment (WindowType, fftw_complex *);
     double peakFreq (double, double, WindowType);
     int  freq2bin        (double, int);
-    std::vector<double> bandPowerPerHz (std::vector<std::vector<double> >);
+    std::vector<double> bandPowerPerHz (std::vector<std::vector<double> >, WindowType wintype=WINDOW_HANN2047);
     WindowType bestWindowFor (SSTVMode, double SNR=99);
+    double videoSNR();
+    double lum(SSTVMode, bool is_adaptive=false);
     
-    bool is_open ();
+    bool   is_open ();
     double get_t ();
+    bool isLive();
+    bool hasSync();
 
   private:
 
@@ -106,16 +144,22 @@ class DSPworker {
     int   cirbuf_tail_;
     int   cirbuf_fill_count_;
     bool  please_stop_;
+    short *read_buffer_;
     SndfileHandle file_;
     fftw_complex *fft_inbuf_;
     fftw_complex *fft_outbuf_;
     fftw_plan     fft_plan_small_;
     fftw_plan     fft_plan_big_;
     double  samplerate_;
+    size_t num_chans_;
     PaStream *pa_stream_;
     eStreamType stream_type_;
     bool is_open_;
     double t_;
+    double fshift_;
+    double next_snr_time_;
+    double SNR_;
+    WindowType sync_window_;
     
     static std::vector<std::vector<double> > window_;
 };
@@ -173,44 +217,22 @@ extern Gtk::ListStore *savedstore;
 extern Glib::KeyFile config;
 
 
-typedef struct _PicMeta PicMeta;
-struct _PicMeta {
-  int    HedrShift;
-  int    Mode;
-  double Rate;
-  int    Skip;
-  Gdk::Pixbuf *thumbbuf;
-  char   timestr[40];
-};
-extern PicMeta CurrentPic;
+typedef struct {
+  Point pt;
+  int Channel;
+  double Time;
+} PixelSample;
 
-
-typedef struct ModeSpec {
-  std::string     Name;
-  std::string     ShortName;
-  double     tSync;
-  double     tPorch;
-  double     tSep;
-  double     tScan;
-  double     tLine;
-  int        ScanPixels;
-  int        NumLines;
-  int        HeaderLines;
-  eColorEnc  ColorEnc;
-  eSyncOrder SyncOrder;
-  eSubSamp   SubSampling;
-  eVISParity VISParity;
-} _ModeSpec;
-
-extern _ModeSpec ModeSpec[];
+std::vector<PixelSample> getPixelSamplingPoints(SSTVMode mode);
 
 double   power         (fftw_complex coeff);
-int      clip          (double a);
+guint8   clip          (double a);
+double   fclip         (double a);
 void     createGUI     ();
 double   deg2rad       (double Deg);
 std::string   GetFSK        ();
-bool     GetVideo      (SSTVMode Mode, DSPworker *dsp);
-SSTVMode modeFromNextHeader       (DSPworker*);
+bool     rxVideo      (SSTVMode Mode, DSPworker *dsp);
+SSTVMode nextHeader       (DSPworker*);
 int      initPcmDevice (std::string);
 void     *Listen       ();
 void     populateDeviceList ();
@@ -218,24 +240,27 @@ void     readPcm       (int numsamples);
 void     saveCurrentPic();
 void     setVU         (double *Power, int FFTLen, int WinIdx, bool ShowWin);
 int      startGui      (int, char**);
-void     findSyncRansac (SSTVMode, std::vector<bool>);
-void     findSyncHough  (SSTVMode, std::vector<bool>);
-double     findSyncAutocorr  (SSTVMode, std::vector<bool>);
+void     resync  (Picture* pic);
 double   gaussianPeak  (double y1, double y2, double y3);
-Wave upsampleLanczos    (Wave orig, int factor, double middle=1500, int a=3);
+std::tuple<bool,double,double> findMelody (Wave, Melody, double);
+std::vector<int> readFSK (DSPworker*, double, double, double, size_t);
+SSTVMode readVIS (DSPworker*, double fshift=0);
+Wave upsampleLanczos    (Wave orig, int factor, size_t a=3);
 Wave Hann    (std::size_t);
 Wave Blackmann    (std::size_t);
 Wave Rect    (std::size_t);
 Wave Gauss    (std::size_t);
 
 Wave deriv (Wave);
-Wave peaks (Wave, int);
-Wave derivPeaks (Wave, int);
+Wave peaks (Wave, size_t);
+Wave derivPeaks (Wave, size_t);
 Wave rms (Wave, int);
 void runTest(const char*);
 
 double complexMag (fftw_complex coeff);
 guint8 freq2lum(double);
+
+void renderPixbuf(Picture* pic);
 
 void printWave(Wave, double);
 

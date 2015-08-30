@@ -21,13 +21,14 @@ int main(int argc, char *argv[]) {
         break;
     }
 
-  upsampleLanczos({0},10);
-
 
   if (!dsp.is_open())
     dsp.openPortAudio();
   
-  GetVideo(modeFromNextHeader(&dsp), &dsp);
+  SSTVMode mode = nextHeader(&dsp);
+  if (mode != MODE_UNKNOWN) {
+    rxVideo(mode, &dsp);
+  }
 
   //SlowGUI gui = SlowGUI();
   return 0;

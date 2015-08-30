@@ -3,11 +3,8 @@
 
 bool     Abort           = false;
 bool     Adaptive        = true;
-bool    *HasSync         = NULL;
-uint16_t HedrShift       = 0;
 bool     ManualActivated = false;
 bool     ManualResync    = false;
-int      *StoredLum      = NULL;
 
 Glib::RefPtr<Gdk::Pixbuf> pixbuf_PWR;
 Glib::RefPtr<Gdk::Pixbuf> pixbuf_SNR;
@@ -18,15 +15,18 @@ Glib::KeyFile config;
 
 std::vector<std::thread> threads(2);
 
-PicMeta      CurrentPic;
-
 std::vector<std::vector<double> > DSPworker::window_ (16);
 
 // Clip to [0..255]
-int clip (double a) {
+guint8 clip (double a) {
   if      (a < 0)   return 0;
   else if (a > 255) return 255;
   return  round(a);
+}
+double fclip (double a) {
+  if      (a < 0.0) return 0.0;
+  else if (a > 1.0) return 1.0;
+  return  a;
 }
 
 // Convert degrees -> radians
@@ -97,15 +97,15 @@ void evt_AbortRx() {
 }
 
 // Another device selected from list
-void evt_changeDevices() {
+void evt_changeDevices() {/*
 
   int status;
 
   Abort = true;
 
   static int init;
-  /*if (init)
-    threads[0].join;*/
+  if (init)
+    threads[0].join;
   init = 1;
 
 //  if (pcm.handle != NULL) snd_pcm_close(pcm.handle);
@@ -130,7 +130,7 @@ void evt_changeDevices() {
 
   //config->set_string("slowrx","device",gui.combo_card->get_active_text());
 
-  //threads[0] =  thread(Listen);
+  //threads[0] =  thread(Listen);*/
 
 }
 
@@ -145,13 +145,13 @@ void evt_clearPix() {
 
 // Manual slant adjust
 void evt_clickimg(Gtk::Widget *widget, GdkEventButton* event, Gdk::WindowEdge edge) {
-  static double prevx=0,prevy=0,newrate;
+  /*static double prevx=0,prevy=0,newrate;
   static bool   secondpress=false;
   double        x,y,dx,dy,xic;
 
   (void)widget;
   (void)edge;
-/*
+
   if (event->type == Gdk::BUTTON_PRESS && event->button == 1 && gui.tog_setedge->get_active()) {
 
     x = event->x * (ModeSpec[CurrentPic.Mode].ImgWidth / 500.0);

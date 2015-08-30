@@ -1,60 +1,104 @@
 #include "common.hh"
 
-typedef struct {
-  Point pt;
-  int Channel;
-  double Time;
-} PixelSample;
 
+void renderPixbuf(Picture *pic) {
 
-// Map to RGB & store in pixbuf
-void toPixbufRGB(guint8 Image[800][800][3], Glib::RefPtr<Gdk::Pixbuf> pixbuf, SSTVMode Mode) {
+  int upsample_factor = 4;
+
+  std::vector<PixelSample> pixel_grid = getPixelSamplingPoints(pic->mode);
+
+  guint8 lum[800][800][3];
+
+  Glib::RefPtr<Gdk::Pixbuf> pixbuf_rx;
+  pixbuf_rx = Gdk::Pixbuf::create(Gdk::COLORSPACE_RGB, false, 8, ModeSpec[pic->mode].ScanPixels, ModeSpec[pic->mode].NumLines);
+  pixbuf_rx->fill(0x000000ff);
+
   guint8 *p;
   guint8 *pixels;
-  pixels = pixbuf->get_pixels();
-  int rowstride = pixbuf->get_rowstride();
-  for (int x = 0; x < ModeSpec[Mode].ScanPixels; x++) {
-    for (int y = 0; y < ModeSpec[Mode].NumLines; y++) {
+  pixels = pixbuf_rx->get_pixels();
+  int rowstride = pixbuf_rx->get_rowstride();
+  Wave signal_up = upsampleLanczos(pic->video_signal, upsample_factor, 3);
+
+  for (size_t pixel_idx = 0; pixel_idx <= pixel_grid.size(); pixel_idx ++) {
+
+    PixelSample px = pixel_grid[pixel_idx];
+
+    double signal_t = (px.Time/pic->speed + pic->starts_at) / pic->video_dt * upsample_factor;
+    double val;
+    if (signal_t < 0 || signal_t >= signal_up.size()-1) {
+      val = 0;
+    } else {
+      double d = signal_t - int(signal_t);
+      val = (1-d) * signal_up[signal_t] +
+                d * signal_up[signal_t+1];
+    }
+    int x  = pixel_grid[pixel_idx].pt.x;
+    int y  = pixel_grid[pixel_idx].pt.y;
+    int ch = pixel_grid[pixel_idx].Channel;
+
+    lum[x][y][ch] = clip(val*255);
+  }
+
+  if (ModeSpec[pic->mode].SubSampling == SUBSAMP_420_YUYV) {
+    for (size_t x=0; x < ModeSpec[pic->mode].ScanPixels; x++) {
+      std::vector<double> column_u, column_u_filtered;
+      std::vector<double> column_v, column_v_filtered;
+      for (size_t y=0; y < ModeSpec[pic->mode].NumLines; y+=2) {
+        column_u.push_back(lum[x][y][1]);
+        column_v.push_back(lum[x][y][2]);
+      }
+      column_u_filtered = upsampleLanczos(column_u, 2, 2);
+      column_v_filtered = upsampleLanczos(column_v, 2, 2);
+      for (size_t y=0; y < ModeSpec[pic->mode].NumLines; y++) {
+        lum[x][y][1] = column_u_filtered[y];
+        lum[x][y][2] = column_v_filtered[y];
+      }
+    }
+  }
+
+  for (size_t x = 0; x < ModeSpec[pic->mode].ScanPixels; x++) {
+    for (size_t y = 0; y < ModeSpec[pic->mode].NumLines; y++) {
+
       p = pixels + y * rowstride + x * 3;
 
-      switch(ModeSpec[Mode].ColorEnc) {
+      switch(ModeSpec[pic->mode].ColorEnc) {
 
         case COLOR_RGB:
-          p[0] = Image[x][y][0];
-          p[1] = Image[x][y][1];
-          p[2] = Image[x][y][2];
+          p[0] = lum[x][y][0];
+          p[1] = lum[x][y][1];
+          p[2] = lum[x][y][2];
           break;
 
         case COLOR_GBR:
-          p[0] = Image[x][y][2];
-          p[1] = Image[x][y][0];
-          p[2] = Image[x][y][1];
+          p[0] = lum[x][y][2];
+          p[1] = lum[x][y][0];
+          p[2] = lum[x][y][1];
           break;
 
         case COLOR_YUV:
           // TODO chroma filtering
-          p[0] = clip((100 * Image[x][y][0] + 140 * Image[x][y][1] - 17850) / 100.0);
-          p[1] = clip((100 * Image[x][y][0] -  71 * Image[x][y][1] - 33 *
-              Image[x][y][2] + 13260) / 100.0);
-          p[2] = clip((100 * Image[x][y][0] + 178 * Image[x][y][2] - 22695) / 100.0);
+          p[0] = clip((100 * lum[x][y][0] + 140 * lum[x][y][1] - 17850) / 100.0);
+          p[1] = clip((100 * lum[x][y][0] -  71 * lum[x][y][1] - 33 *
+              lum[x][y][2] + 13260) / 100.0);
+          p[2] = clip((100 * lum[x][y][0] + 178 * lum[x][y][2] - 22695) / 100.0);
           break;
 
         case COLOR_MONO:
-          p[0] = p[1] = p[2] = Image[x][y][0];
+          p[0] = p[1] = p[2] = lum[x][y][0];
           break;
-
       }
     }
   }
+  pixbuf_rx->save("testi.png", "png");
 }
 
 // Time instants for all pixels
-std::vector<PixelSample> getPixelSamplingPoints(SSTVMode Mode) {
-  _ModeSpec s = ModeSpec[Mode];
-  std::vector<PixelSample> PixelGrid;
-  for (int y=0; y<s.NumLines; y++) {
-    for (int x=0; x<s.ScanPixels; x++) {
-      for (int Chan=0; Chan < (s.ColorEnc == COLOR_MONO ? 1 : 3); Chan++) {
+std::vector<PixelSample> getPixelSamplingPoints(SSTVMode mode) {
+  _ModeSpec s = ModeSpec[mode];
+  std::vector<PixelSample> pixel_grid;
+  for (size_t y=0; y<s.NumLines; y++) {
+    for (size_t x=0; x<s.ScanPixels; x++) {
+      for (size_t Chan=0; Chan < (s.ColorEnc == COLOR_MONO ? 1 : 3); Chan++) {
         PixelSample px;
         px.pt = Point(x,y);
         px.Channel = Chan;
@@ -142,16 +186,16 @@ std::vector<PixelSample> getPixelSamplingPoints(SSTVMode Mode) {
             }
             break;
         }
-        PixelGrid.push_back(px);
+        pixel_grid.push_back(px);
       }
     }
   }
 
-  std::sort(PixelGrid.begin(), PixelGrid.end(), [](PixelSample a, PixelSample b) {
+  std::sort(pixel_grid.begin(), pixel_grid.end(), [](PixelSample a, PixelSample b) {
       return a.Time < b.Time;
   });
 
-  return PixelGrid;
+  return pixel_grid;
 }
 
 /* Demodulate the video signal & store all kinds of stuff for later stages
@@ -161,127 +205,73 @@ std::vector<PixelSample> getPixelSamplingPoints(SSTVMode Mode) {
  *  Redraw:    false = Apply windowing and FFT to the signal, true = Redraw from cached FFT data
  *  returns:   true when finished, false when aborted
  */
-bool GetVideo(SSTVMode Mode, DSPworker* dsp) {
+bool rxVideo(SSTVMode mode, DSPworker* dsp) {
 
-  printf("receive %s\n",ModeSpec[Mode].Name.c_str());
+  printf("receive %s\n",ModeSpec[mode].Name.c_str());
 
-  _ModeSpec s = ModeSpec[Mode];
-
-  guint8 Image[800][800][3];
-  guint8 Imagesnr[800][800][3];
+  _ModeSpec s = ModeSpec[mode];
+  Picture pic(mode);
 
   Glib::RefPtr<Gtk::Application> app = Gtk::Application::create("com.windytan.slowrx");
-  
-  Glib::RefPtr<Gdk::Pixbuf> pixbuf_rx;
-  pixbuf_rx = Gdk::Pixbuf::create(Gdk::COLORSPACE_RGB, false, 8, s.ScanPixels, s.NumLines);
-  pixbuf_rx->fill(0x000000ff);
-  
-  Glib::RefPtr<Gdk::Pixbuf> pixbuf_snr;
-  pixbuf_snr = Gdk::Pixbuf::create(Gdk::COLORSPACE_RGB, false, 8, s.ScanPixels, s.NumLines);
-  pixbuf_snr->fill(0x000000ff);
 
   double next_sync_sample_time = 0;
-  std::vector<bool> has_sync;
+  double next_video_sample_time = 0;
 
-  /*g_object_unref(pixbuf_disp);
-  pixbuf_disp = gdk_pixbuf_scale_simple(pixbuf_rx, 500,
-      500.0/ModeSpec[Mode].ImgWidth * ModeSpec[Mode].NumLines * ModeSpec[Mode].LineHeight, GDK_INTERP_BILINEAR);
-*/
-  //gtk_image_set_from_pixbuf(GTK_IMAGE(gui.image_rx), pixbuf_disp);
+  double t_total = (s.SyncOrder == SYNC_SCOTTIE ? s.tSync : 0) + s.NumLines * s.tLine;
+  size_t idx = 0;
 
-  /*SyncTargetBin = GetBin(1200+CurrentPic.HedrShift, FFTLen);
-  Abort         = false;
-  SyncSampleNum = 0;*/
+  for (double t=0; t < t_total && dsp->is_open(); t += dsp->forward()) {
 
-  // Loop through signal
-  std::vector<PixelSample> PixelGrid = getPixelSamplingPoints(Mode);
-  double t = 0;
-  for (int PixelIdx = 0; PixelIdx < PixelGrid.size(); PixelIdx++) {
+    if (t >= next_sync_sample_time) {
+      pic.sync_signal.push_back(dsp->hasSync());
 
-    while (t < PixelGrid[PixelIdx].Time && dsp->is_open()) {
-      t += dsp->forward();
+      next_sync_sample_time += pic.sync_dt;
     }
 
-    /*** Store the sync band for later adjustments ***/
+    bool is_adaptive = true;
 
-    if (dsp->get_t() >= next_sync_sample_time) {
+    if ( t >= next_video_sample_time ) {
 
-      int line_width = ModeSpec[Mode].NumLines;
+      pic.video_signal.push_back(dsp->lum(pic.mode, is_adaptive));
 
-      std::vector<double> bands = dsp->bandPowerPerHz({{1150,1250}, {1500,2300}});
+      if ((idx+1) % 1000 == 0) {
+        size_t prog_width = 50;
+        fprintf(stderr,"  [");
+        double prog = t / t_total;
+        size_t prog_points = prog * prog_width + .5;
+        for (size_t i=0;i<prog_points;i++) {
+          fprintf(stderr,"=");
+        }
+        for (size_t i=prog_points;i<prog_width;i++) {
+          fprintf(stderr," ");
+        }
+        fprintf(stderr,"] %.1f %%\r",prog*100);
+      }
 
-      // If there is more than twice the amount of power per Hz in the
-      // sync band than in the video band, we have a sync signal here
-      has_sync.push_back(bands[0] > 2 * bands[1]);
-
-
-      next_sync_sample_time += ModeSpec[Mode].tLine / line_width;
-
+      if (dsp->isLive() && (idx+1) % 10000 == 0) {
+        resync(&pic);
+        renderPixbuf(&pic);
+      }
+      next_video_sample_time += pic.video_dt;
+      idx++;
     }
-
-    /*** Estimate SNR ***/
-
-    double SNR;
-    bool Adaptive = true;
-
-    if (PixelIdx == 0 || (Adaptive && PixelGrid[PixelIdx].pt.x == s.ScanPixels/2)) {
-      std::vector<double> bands = dsp->bandPowerPerHz({{300,1100}, {1500,2300}, {2500, 2700}});
-      double Pvideo_plus_noise = bands[1];
-      double Pnoise_only       = (bands[0] + bands[2]) / 2;
-      double Psignal = Pvideo_plus_noise - Pnoise_only;
-
-      SNR = ((Pnoise_only == 0 || Psignal / Pnoise_only < .01) ? -20 : 10 * log10(Psignal / Pnoise_only));
-
-    }
-
-
-    /*** FM demodulation ***/
-
-    //PrevFreq = Freq;
-
-    // Adapt window size to SNR
-    WindowType WinType;
-
-    if   (Adaptive) WinType = dsp->bestWindowFor(Mode, SNR);
-    else            WinType = dsp->bestWindowFor(Mode);
-
-    double Freq = dsp->peakFreq(1500, 2300, WinType);
-
-    // Linear interpolation of (chronologically) intermediate frequencies, for redrawing
-    //InterpFreq = PrevFreq + (Freq-PrevFreq) * ...  // TODO!
-
-    // Calculate luminency & store for later use
-    guint8 Lum = freq2lum(Freq);
-    //measured.push_back({t, Lum});
-    //StoredLum[SampleNum] = clip((Freq - (1500 + CurrentPic.HedrShift)) / 3.1372549);
-
-    int x = PixelGrid[PixelIdx].pt.x;
-    int y = PixelGrid[PixelIdx].pt.y;
-    int Channel = PixelGrid[PixelIdx].Channel;
-    
-    // Store pixel
-    Image[x][y][Channel] = Lum;//StoredLum[SampleNum];
-    Imagesnr[x][y][Channel] = WinType;//StoredLum[SampleNum];
-
   }
 
-  /* sync */
-  findSyncAutocorr(Mode, has_sync);
-  
-  toPixbufRGB(Image, pixbuf_rx, Mode);
-  toPixbufRGB(Imagesnr, pixbuf_snr, Mode);
-    /*if (!Redraw || y % 5 == 0 || PixelIdx == PixelGrid.size()-1) {
+  resync(&pic);
+  renderPixbuf(&pic);
+
+    /*if (!Redraw || y % 5 == 0 || PixelIdx == pixel_grid.size()-1) {
       // Scale and update image
       g_object_unref(pixbuf_disp);
       pixbuf_disp = gdk_pixbuf_scale_simple(pixbuf_rx, 500,
-          500.0/ModeSpec[Mode].ImgWidth * ModeSpec[Mode].NumLines * ModeSpec[Mode].LineHeight, GDK_INTERP_BILINEAR);
+          500.0/ModeSpec[mode].ImgWidth * ModeSpec[mode].NumLines * ModeSpec[mode].LineHeight, GDK_INTERP_BILINEAR);
 
       gtk_image_set_from_pixbuf(GTK_IMAGE(gui.image_rx), pixbuf_disp);
     }*/
 
   
-  pixbuf_rx->save("testi.png", "png");
-  pixbuf_snr->save("snr.png", "png");
+
+  fprintf(stderr, "\n");
 
   return true;
 
