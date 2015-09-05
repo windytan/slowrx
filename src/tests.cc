@@ -1,4 +1,5 @@
-#include "common.hh"
+#include "common.h"
+#include "dsp.h"
 
 void printWave (Wave wave, double dt) {
   for (int i=0;i<wave.size();i++)

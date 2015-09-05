@@ -1,9 +1,16 @@
-#include "common.hh"
-#include "portaudio.h"
+#include <cmath>
+#include "dsp.h"
+#include "gui.h"
 
-DSPworker::DSPworker() : Mutex(), please_stop_(false) {
+DSPworker::DSPworker() : cirbuf_head_(MOMENT_LEN/2), cirbuf_tail_(0), cirbuf_fill_count_(0), is_open_(false), t_(0), fshift_(0), sync_window_(WINDOW_HANN511)   {
 
-  Wave cheb47 = {
+  window_[WINDOW_HANN95]   = window::Hann(95);
+  window_[WINDOW_HANN127]  = window::Hann(127);
+  window_[WINDOW_HANN255]  = window::Hann(255);
+  window_[WINDOW_HANN511]  = window::Hann(511);
+  window_[WINDOW_HANN1023] = window::Hann(1023);
+  window_[WINDOW_HANN2047] = window::Hann(2047);
+  window_[WINDOW_CHEB47]   = {
     0.0004272315,0.0013212953,0.0032312239,0.0067664313,0.0127521667,0.0222058684,
     0.0363037629,0.0563165400,0.0835138389,0.1190416120,0.1637810511,0.2182020094,
     0.2822270091,0.3551233730,0.4354402894,0.5210045495,0.6089834347,0.6960162864,
@@ -13,49 +20,37 @@ DSPworker::DSPworker() : Mutex(), please_stop_(false) {
     0.1637810511,0.1190416120,0.0835138389,0.0563165400,0.0363037629,0.0222058684,
     0.0127521667,0.0067664313,0.0032312239,0.0013212953,0.0004272315
   };
-  Wave sq47 = {
-    1,1,1,1,1,1,1,1,1,1,
-    1,1,1,1,1,1,1,1,1,1,
-    1,1,1,1,1,1,1,1,1,1,
-    1,1,1,1,1,1,1,1,1,1,
-    1,1,1,1,1,1,1
-  };
-  //window_[WINDOW_HANN31]   = Hann(31);
-  //window_[WINDOW_HANN47]   = Hann(47);
-  //window_[WINDOW_HANN63]   = Hann(63);
-  window_[WINDOW_HANN95]   = Hann(95);
-  window_[WINDOW_HANN127]  = Hann(127);
-  window_[WINDOW_HANN255]  = Hann(255);
-  window_[WINDOW_HANN511]  = Hann(511);
-  window_[WINDOW_HANN1023] = Hann(1023);
-  window_[WINDOW_HANN2047] = Hann(2047);
-  window_[WINDOW_CHEB47]   = cheb47;
-  //window_[WINDOW_SQUARE47] = sq47;
-  
-  fft_inbuf_ = (fftw_complex*) fftw_alloc_complex(sizeof(fftw_complex) * FFT_LEN_BIG);
+
+  fft_inbuf_ = new fftw_complex[FFT_LEN_BIG];//fftw_alloc_complex(FFT_LEN_BIG);
   if (fft_inbuf_ == NULL) {
-    perror("GetVideo: Unable to allocate memory for FFT");
+    perror("unable to allocate memory for FFT");
     exit(EXIT_FAILURE);
   }
-  fft_outbuf_ = (fftw_complex*) fftw_alloc_complex(sizeof(fftw_complex) * FFT_LEN_BIG);
+  fft_outbuf_ = new fftw_complex[FFT_LEN_BIG];//fftw_alloc_complex(FFT_LEN_BIG);
   if (fft_outbuf_ == NULL) {
-    perror("GetVideo: Unable to allocate memory for FFT");
+    perror("unable to allocate memory for FFT");
     fftw_free(fft_inbuf_);
     exit(EXIT_FAILURE);
   }
-  memset(fft_inbuf_,  0, sizeof(fftw_complex) * FFT_LEN_BIG);
+  for (size_t i=0; i<FFT_LEN_BIG; i++) {
+    fft_inbuf_[i][0] = fft_inbuf_[i][1] = 0;
+    fft_outbuf_[i][0] = fft_outbuf_[i][1] = 0;
+  }
 
   fft_plan_small_ = fftw_plan_dft_1d(FFT_LEN_SMALL, fft_inbuf_, fft_outbuf_, FFTW_FORWARD, FFTW_ESTIMATE);
   fft_plan_big_   = fftw_plan_dft_1d(FFT_LEN_BIG, fft_inbuf_, fft_outbuf_, FFTW_FORWARD, FFTW_ESTIMATE);
 
-  cirbuf_tail_ = 0;
-  cirbuf_head_ = MOMENT_LEN/2;
-  cirbuf_fill_count_ = 0;
-  is_open_ = false;
-  fshift_ = 0;
-  t_ = 0;
-  sync_window_ = WINDOW_HANN511;
+}
 
+void DSPworker::listenLoop (SlowGUI* caller) {
+  if (!is_open_)
+    openPortAudio();
+
+  while (is_open_) {
+    SSTVMode mode = nextHeader(this);
+    if (mode != MODE_UNKNOWN)
+      rxVideo(mode, this);
+  }
 }
 
 void DSPworker::openAudioFile (std::string fname) {
@@ -74,9 +69,8 @@ void DSPworker::openAudioFile (std::string fname) {
 
       stream_type_ = STREAM_TYPE_FILE;
 
-      t_ = 0;
       num_chans_ = file_.channels();
-      read_buffer_ = new short [READ_CHUNK_LEN * num_chans_];
+      read_buffer_ = new int16_t [READ_CHUNK_LEN * num_chans_];
       is_open_ = true;
       readMore();
 
@@ -111,7 +105,7 @@ void DSPworker::openPortAudio () {
               NULL, /* no callback, use blocking API */
               NULL ); /* no callback, so no callback userData */
 
-    if (err == paNoError) {
+    if (!err) {
       err = Pa_StartStream( pa_stream_ );
 
       const PaStreamInfo *streaminfo;
@@ -121,7 +115,7 @@ void DSPworker::openPortAudio () {
 
       stream_type_ = STREAM_TYPE_PA;
       num_chans_ = 1;
-      read_buffer_ = new short [READ_CHUNK_LEN * num_chans_];
+      read_buffer_ = new int16_t [READ_CHUNK_LEN * num_chans_]();
 
       if (err == paNoError) {
         is_open_ = true;
@@ -156,44 +150,55 @@ bool DSPworker::isLive() {
 }
 
 void DSPworker::readMore () {
-  sf_count_t samplesread = 0;
+  size_t framesread = 0;
 
   if (is_open_) {
     if (stream_type_ == STREAM_TYPE_FILE) {
 
-      samplesread = file_.readf(read_buffer_, READ_CHUNK_LEN);
-      if (samplesread < READ_CHUNK_LEN)
+      sf_count_t fr = file_.readf(read_buffer_, READ_CHUNK_LEN);
+      if (fr < READ_CHUNK_LEN) {
         is_open_ = false;
+        if (fr < 0) {
+          framesread = 0;
+        } else {
+          framesread = fr;
+        }
+      }
 
       if (num_chans_ > 1) {
-        for (int i=0; i<READ_CHUNK_LEN; i++) {
+        for (size_t i=0; i<READ_CHUNK_LEN; i++) {
           read_buffer_[i] = read_buffer_[i*num_chans_];
         }
       }
 
     } else if (stream_type_ == STREAM_TYPE_PA) {
 
-      samplesread = READ_CHUNK_LEN;
+      framesread = READ_CHUNK_LEN;
       int err = Pa_ReadStream( pa_stream_, read_buffer_, READ_CHUNK_LEN );
-      if (err != paNoError)
+      if (err) {
+        fprintf(stderr,"\nPortAudio: %s\n",Pa_GetErrorText(err));
         is_open_ = false;
+      }
     }
   }
 
-  int cirbuf_fits = std::min(CIRBUF_LEN - cirbuf_head_, (int)samplesread);
+  size_t cirbuf_fits = std::min(CIRBUF_LEN - cirbuf_head_, (int)framesread);
 
-  memcpy(&cirbuf_[cirbuf_head_], read_buffer_, cirbuf_fits * sizeof(read_buffer_[0]));
+  for (size_t i=0; i<cirbuf_fits; i++)
+    cirbuf_[cirbuf_head_ + i] = read_buffer_[i];
 
-  // wrapped around
-  if (samplesread > cirbuf_fits) {
-    memcpy(&cirbuf_[0], &read_buffer_[cirbuf_fits], (samplesread - cirbuf_fits) * sizeof(read_buffer_[0]));
+  // wrap around
+  if (framesread > cirbuf_fits) {
+    for (size_t i=0; i<(framesread - cirbuf_fits); i++)
+      cirbuf_[i] = read_buffer_[cirbuf_fits + i];
   }
 
   // mirror
-  memcpy(&cirbuf_[CIRBUF_LEN], &cirbuf_[0], CIRBUF_LEN);
+  for (size_t i=0; i<CIRBUF_LEN; i++)
+    cirbuf_[CIRBUF_LEN + i] = cirbuf_[i];
   
-  cirbuf_head_ = (cirbuf_head_ + samplesread) % CIRBUF_LEN;
-  cirbuf_fill_count_ += samplesread;
+  cirbuf_head_ = (cirbuf_head_ + framesread) % CIRBUF_LEN;
+  cirbuf_fill_count_ += framesread;
   cirbuf_fill_count_ = std::min(cirbuf_fill_count_, CIRBUF_LEN);
 
 }
@@ -227,7 +232,12 @@ void DSPworker::forward_to_time(double sec) {
 
 
 // the current moment, windowed
-void DSPworker::windowedMoment (WindowType win_type, fftw_complex *result) {
+// will be written over buf
+// which MUST fit FFT_LEN_BIG * fftw_complex
+void DSPworker::windowedMoment (WindowType win_type, fftw_complex* buf) {
+
+  for (size_t i=0; i<FFT_LEN_BIG; i++)
+    buf[i][0] = buf[i][1] = 0;
 
   //double if_phi = 0;
   for (int i = 0; i < MOMENT_LEN; i++) {
@@ -244,7 +254,7 @@ void DSPworker::windowedMoment (WindowType win_type, fftw_complex *result) {
       mixed[1] = a * cos(if_phi) + a * sin(if_phi);
       if_phi += 2 * M_PI * 10000 / samplerate_;*/
 
-      result[win_i][0] = result[win_i][1] = a;
+      buf[win_i][0] = buf[win_i][1] = a;
     }
   }
 
@@ -252,32 +262,32 @@ void DSPworker::windowedMoment (WindowType win_type, fftw_complex *result) {
 
 double DSPworker::peakFreq (double minf, double maxf, WindowType wintype) {
 
-  int fft_len = (window_[wintype].size() <= FFT_LEN_SMALL ? FFT_LEN_SMALL : FFT_LEN_BIG);
+  unsigned fft_len = (window_[wintype].size() <= FFT_LEN_SMALL ? FFT_LEN_SMALL : FFT_LEN_BIG);
 
-  fftw_complex windowed[window_[wintype].size()];
-  double Mag[fft_len/2 + 1];
+  double* mag;
+  mag = new double [fft_len/2 + 1]();
 
-  windowedMoment(wintype, windowed);
-  memset(fft_inbuf_, 0, fft_len * sizeof(windowed[0]));
-  memcpy(fft_inbuf_, windowed, window_[wintype].size() * sizeof(windowed[0]));
+  windowedMoment(wintype, fft_inbuf_);
+  //memset(fft_inbuf_, 0, fft_len * sizeof(windowed[0]));
+  //memcpy(fft_inbuf_, windowed, window_[wintype].size() * sizeof(windowed[0]));
   fftw_execute(fft_len == FFT_LEN_BIG ? fft_plan_big_ : fft_plan_small_);
   
-  int peakBin = 0;
-  int lobin = freq2bin(minf, fft_len);
-  int hibin = freq2bin(maxf, fft_len);
-  for (int i = lobin-1; i <= hibin+1; i++) {
-    Mag[i] = complexMag(fft_outbuf_[i]);
-    if ( (i >= lobin && i < hibin) &&
-         (peakBin == 0 || Mag[i] > Mag[peakBin]))
+  size_t peakBin = 0;
+  unsigned lobin = freq2bin(minf, fft_len);
+  unsigned hibin = freq2bin(maxf, fft_len);
+  for (size_t i = lobin-1; i <= hibin+1; i++) {
+    mag[i] = complexMag(fft_outbuf_[i]);
+    if ( (i >= lobin && i <= hibin && i<(fft_len/2+1) ) &&
+         (peakBin == 0 || mag[i] > mag[peakBin]))
       peakBin = i;
   }
 
-  double result = peakBin + gaussianPeak(Mag[peakBin-1], Mag[peakBin], Mag[peakBin+1]);
+  double result = peakBin + gaussianPeak(mag[peakBin-1], mag[peakBin], mag[peakBin+1]);
 
   // In Hertz
   result = result / fft_len * samplerate_ + fshift_;
 
-  // cheb47 @ 44100 can't resolve <1700 Hz nominal
+  // cheb47 @ 44100 can't resolve <1700 Hz
   if (result < 1700 && wintype == WINDOW_CHEB47)
     result = peakFreq (minf, maxf, WINDOW_HANN95);
 
@@ -287,12 +297,13 @@ double DSPworker::peakFreq (double minf, double maxf, WindowType wintype) {
 
 Wave DSPworker::bandPowerPerHz(std::vector<std::vector<double> > bands, WindowType wintype) {
 
-  int fft_len = (window_[wintype].size() <= FFT_LEN_SMALL ? FFT_LEN_SMALL : FFT_LEN_BIG);
-  fftw_complex windowed[window_[wintype].size()];
+  unsigned fft_len = (window_[wintype].size() <= FFT_LEN_SMALL ? FFT_LEN_SMALL : FFT_LEN_BIG);
+  //fftw_complex* windowed;
+  //windowed = new fftw_complex[window_[wintype].size()]();
 
-  windowedMoment(wintype, windowed);
-  memset(fft_inbuf_, 0, FFT_LEN_BIG * sizeof(fft_inbuf_[0]));
-  memcpy(fft_inbuf_, windowed, window_[wintype].size() * sizeof(windowed[0]));
+  windowedMoment(wintype, fft_inbuf_);
+  //memset(fft_inbuf_, 0, FFT_LEN_BIG * sizeof(fft_inbuf_[0]));
+  //memcpy(fft_inbuf_, windowed, window_[wintype].size() * sizeof(windowed[0]));
   fftw_execute(fft_len == FFT_LEN_BIG ? fft_plan_big_ : fft_plan_small_);
 
   Wave result;
@@ -304,7 +315,7 @@ Wave DSPworker::bandPowerPerHz(std::vector<std::vector<double> > bands, WindowTy
       P += pow(complexMag(fft_outbuf_[i]), 2);
       nbins++;
     }
-    P = P/(binwidth*nbins);
+    P = (binwidth*nbins == 0 ? 0 : P/(binwidth*nbins));
     result.push_back(P);
   }
   return result;
@@ -320,7 +331,7 @@ WindowType DSPworker::bestWindowFor(SSTVMode Mode, double SNR) {
   else if (SNR >=   8)  WinType = WINDOW_HANN127;
   else if (SNR >=   5)  WinType = WINDOW_HANN255;
   else if (SNR >=   4)  WinType = WINDOW_HANN511;
-  else if (SNR >=  -3)  WinType = WINDOW_HANN1023;
+  else if (SNR >=  -7)  WinType = WINDOW_HANN1023;
   else                  WinType = WINDOW_HANN2047;
 
   return WinType;
@@ -328,7 +339,7 @@ WindowType DSPworker::bestWindowFor(SSTVMode Mode, double SNR) {
 
 double DSPworker::videoSNR () {
   if (t_ >= next_snr_time_) {
-    std::vector<double> bands = bandPowerPerHz({{200,1000}, {1500,2300}, {2700, 2900}});
+    std::vector<double> bands = bandPowerPerHz({{FREQ_SYNC-1000,FREQ_SYNC-200}, {FREQ_BLACK,FREQ_WHITE}, {FREQ_WHITE+400, FREQ_WHITE+700}});
     double Pvideo_plus_noise = bands[1];
     double Pnoise_only       = (bands[0] + bands[2]) / 2;
     double Psignal = Pvideo_plus_noise - Pnoise_only;
@@ -341,11 +352,15 @@ double DSPworker::videoSNR () {
   return SNR_;
 }
 
-bool DSPworker::hasSync () {
-  std::vector<double> bands = bandPowerPerHz({{1150,1250}, {1500,2300}}, sync_window_);
-
-  return (bands[0] > 2 * bands[1]);
-
+double DSPworker::syncPower () {
+  std::vector<double> bands = bandPowerPerHz({{FREQ_SYNC-50,FREQ_SYNC+50}, {FREQ_BLACK,FREQ_WHITE}}, sync_window_);
+  double sync;
+  if (bands[1] == 0.0 || bands[0] > 4 * bands[1]) {
+    sync = 2.0;
+  } else {
+    sync = bands[0] / (2 * bands[1]);
+  }
+  return sync;
 }
 
 double DSPworker::lum (SSTVMode mode, bool is_adaptive) {
@@ -354,8 +369,8 @@ double DSPworker::lum (SSTVMode mode, bool is_adaptive) {
   if (is_adaptive) win_type = bestWindowFor(mode, videoSNR());
   else             win_type = bestWindowFor(mode);
 
-  double freq = peakFreq(1500, 2300, win_type);
-  return fclip((freq - 1500.0) / (2300.0-1500.0));
+  double freq = peakFreq(FREQ_BLACK, FREQ_WHITE, win_type);
+  return fclip((freq - FREQ_BLACK) / (FREQ_WHITE - FREQ_BLACK));
 }
 
 // param:  y values around peak
@@ -402,78 +417,120 @@ double gaussianPeak (double y1, double y2, double y3) {
   
 }*/
 
-Wave Hann (size_t winlen) {
-  Wave result(winlen);
-  for (size_t i=0; i < winlen; i++)
-    result[i] = 0.5 * (1 - cos( (2 * M_PI * i) / (winlen)) );
-  return result;
-}
+namespace window {
+  Wave Hann (size_t winlen) {
+    Wave result(winlen);
+    for (size_t i=0; i < winlen; i++)
+      result[i] = 0.5 * (1 - cos( (2 * M_PI * i) / (winlen)) );
+    return result;
+  }
 
-Wave Blackmann (size_t winlen) {
-  Wave result(winlen);
-  for (size_t i=0; i < winlen; i++)
-    result[i] = 0.42 - 0.5*cos(2*M_PI*i/winlen) - 0.08*cos(4*M_PI*i/winlen);
+  Wave Blackmann (size_t winlen) {
+    Wave result(winlen);
+    for (size_t i=0; i < winlen; i++)
+      result[i] = 0.42 - 0.5*cos(2*M_PI*i/winlen) - 0.08*cos(4*M_PI*i/winlen);
 
-  return result;
-}
+    return result;
+  }
 
-Wave Rect (size_t winlen) {
-  Wave result(winlen);
-  double sigma = 0.4;
-  for (size_t i=0; i < winlen; i++)
-    result[i] = exp(-0.5*((i-(winlen-1)/2)/(sigma*(winlen-1)/2)));
+  Wave Rect (size_t winlen) {
+    Wave result(winlen);
+    double sigma = 0.4;
+    for (size_t i=0; i < winlen; i++)
+      result[i] = exp(-0.5*((i-(winlen-1)/2)/(sigma*(winlen-1)/2)));
 
-  return result;
-}
+    return result;
+  }
 
-Wave Gauss (size_t winlen) {
-  Wave result(winlen);
-  for (size_t i=0; i < winlen; i++)
-    result[i] = 1;
+  Wave Gauss (size_t winlen) {
+    Wave result(winlen);
+    for (size_t i=0; i < winlen; i++)
+      result[i] = 1;
 
-  return result;
-}
-
-double complexMag (fftw_complex coeff) {
-  return sqrt(pow(coeff[0],2) + pow(coeff[1],2));
+    return result;
+  }
 }
 
 double sinc (double x) {
   return (x == 0 ? 1 : sin(M_PI*x) / (M_PI*x));
 }
 
-Wave upsampleLanczos(Wave orig, int factor, size_t a) {
-  Wave result(orig.size()*factor);
-  int kernel_len = factor*a*2 + 1;
-
-  // make kernel
-  Wave lanczos(kernel_len);
-  for (int i=0; i<kernel_len; i++) {
-    double x_kern = (1.0*i/(kernel_len-1) - .5)*2*a;
-    double x_wind = 2.0*i/(kernel_len-1) - 1;
-    lanczos[i] = sinc(x_kern) * sinc(x_wind);
+namespace kernel {
+  Wave Lanczos (size_t kernel_len, size_t a) {
+    Wave kern(kernel_len);
+    for (size_t i=0; i<kernel_len; i++) {
+      double x_kern = (1.0*i/(kernel_len-1) - .5)*2*a;
+      double x_wind = 2.0*i/(kernel_len-1) - 1;
+      kern[i] = sinc(x_kern) * sinc(x_wind);
+    }
+    return kern;
   }
 
-  // convolution
-  for (int orig_i=-a; orig_i<int(orig.size()+a); orig_i++) {
-    double orig_sample;
-    if (orig_i < 0)
-      orig_sample = orig[0];
-    else if (orig_i > int(orig.size()-1))
-      orig_sample = orig[orig.size()-1];
-    else
-      orig_sample = orig[orig_i];
+  Wave Tent (size_t kernel_len) {
+    Wave kern(kernel_len);
+    for (size_t i=0; i<kernel_len; i++) {
+      double x = 1.0*i/(kernel_len-1);
+      kern[i] = 1-2*fabs(x-0.5);
+    }
+    return kern;
+  }
+}
 
-    if (orig_sample != 0) {
-      for (int kernel_idx=0; kernel_idx<kernel_len; kernel_idx++) {
-        int i_new = (orig_i+.5)*factor -kernel_len/2  + kernel_idx;
+double complexMag (fftw_complex coeff) {
+  return sqrt(pow(coeff[0],2) + pow(coeff[1],2));
+}
+
+
+Wave convolve (Wave sig, Wave kernel, bool wrap_around) {
+
+  assert (kernel.size() % 2 == 1);
+
+  Wave result(sig.size());
+
+  for (size_t i=0; i<sig.size(); i++) {
+
+    for (size_t i_kern=0; i_kern<kernel.size(); i_kern++) {
+      int i_new = i - kernel.size()/2  + i_kern;
+      if (wrap_around) {
+        if (i_new < 0)
+          i_new += result.size();
+        result[i_new % result.size()] += sig[i] * kernel[i_kern];
+      } else {
         if (i_new >= 0 && i_new <= int(result.size()-1))
-          result[i_new] += orig_sample * lanczos[kernel_idx];
+          result[i_new] += sig[i] * kernel[i_kern];
       }
     }
+
   }
 
   return result;
+}
+
+Wave* upsample (Wave orig, size_t factor, int kern_type) {
+
+  Wave kern;
+  if (kern_type == KERNEL_LANCZOS2) {
+    kern = kernel::Lanczos(factor*2*2 + 1, 2);
+  } else if (kern_type == KERNEL_LANCZOS3) {
+    kern = kernel::Lanczos(factor*3*2 + 1, 3);
+  } else if (kern_type == KERNEL_TENT) {
+    kern = kernel::Tent(factor*2 + 1);
+  }
+
+  Wave padded(orig.size() * factor);
+  for (size_t i=0; i<orig.size(); i++) {
+    padded[i * factor] = orig[i];
+  }
+  padded.insert(padded.begin(), factor-1, 0);
+  padded.insert(padded.begin(), orig[0]);
+  padded.push_back(orig[orig.size()-1]);
+
+  Wave* filtered = new Wave(convolve(padded, kern));
+
+  filtered->erase(filtered->begin(), filtered->begin()+factor/2);
+  filtered->erase(filtered->end()-factor/2, filtered->end());
+
+  return filtered;
 }
 
 Wave deriv (Wave wave) {
@@ -515,22 +572,6 @@ std::vector<double> derivPeaks (Wave wave, size_t n) {
   return result;
 }
 
-Wave rms(Wave orig, int window_width) {
-  Wave result(orig.size());
-  Wave pool(window_width);
-  int pool_ptr = 0;
-  double total = 0;
-  
-  for (size_t i=0; i<orig.size(); i++) {
-    total -= pool[pool_ptr];
-    pool[pool_ptr] = pow(orig[i], 2);
-    total += pool[pool_ptr];
-    result[i] = sqrt(total / window_width);
-    pool_ptr = (pool_ptr+1) % window_width;
-  }
-  return result;
-}
-
 /* returns: vector of bits */
 std::vector<int> readFSK (DSPworker *dsp, double baud_rate, double cent_freq, double shift, size_t nbits) {
   std::vector<int> result;
@@ -556,7 +597,7 @@ std::vector<int> readFSK (DSPworker *dsp, double baud_rate, double cent_freq, do
  *           (double)  at which frequency shift
  *           (double)  started how many seconds before the last sample
  */
-std::tuple<bool,double,double> findMelody (Wave wave, Melody melody, double dt) {
+std::tuple<bool,double,double> findMelody (Wave wave, Melody melody, double dt, double min_shift, double max_shift) {
   bool   was_found = true;
   int    start_at = 0;
   double avg_fdiff = 0;
@@ -569,8 +610,8 @@ std::tuple<bool,double,double> findMelody (Wave wave, Melody melody, double dt) 
     if (melody[i].freq != 0) {
       double delta_f_ref = melody[i].freq - melody[melody.size()-1].freq;
       double delta_f     = wave[wave.size()-1 - (t/dt)] - wave[wave.size()-1];
-      double fshift       = delta_f - delta_f_ref;
-      was_found &= fabs(fshift) < freq_margin;
+      double err_f       = delta_f - delta_f_ref;
+      was_found = was_found && (fabs(err_f) < freq_margin);
     }
     start_at = wave.size() - (t / dt);
     t += melody[i].dur;
@@ -615,6 +656,9 @@ std::tuple<bool,double,double> findMelody (Wave wave, Melody melody, double dt) 
     }
 
   }
+
+  if (avg_fdiff < min_shift || avg_fdiff > max_shift)
+    was_found = false;
 
 
   return { was_found, avg_fdiff, tshift };

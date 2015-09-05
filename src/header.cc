@@ -1,10 +1,11 @@
-#include "common.hh"
+#include "common.h"
+#include "dsp.h"
+
 #include <cmath>
 
 SSTVMode nextHeader (DSPworker *dsp) {
 
   double dt = 5e-3;
-  int bitlen = 30e-3 / dt;
   SSTVMode mode = MODE_UNKNOWN;
 
   int        ptr_read = 0;
@@ -28,14 +29,14 @@ SSTVMode nextHeader (DSPworker *dsp) {
 
   while ( dsp->is_open() ) {
 
-    cirbuf_header[ptr_read]     = dsp->peakFreq(500, 3300, WINDOW_HANN1023);
+    cirbuf_header[ptr_read]     = dsp->peakFreq(FREQ_MIN, FREQ_MAX, WINDOW_HANN1023);
 
     for (size_t i = 0; i < cirbuf_header.size(); i++) {
       freq[i]     = cirbuf_header[(ptr_read + 1 + i) % cirbuf_header.size()];
     }
 
     double fshift;
-    std::tuple<bool,double,double> has = findMelody(freq, mmsstv_vox, dt);
+    std::tuple<bool,double,double> has = findMelody(freq, mmsstv_vox, dt, -800, 800);
     if (std::get<0>(has)) {
       fshift = std::get<1>(has);
       double tshift = std::get<2>(has);
@@ -53,7 +54,7 @@ SSTVMode nextHeader (DSPworker *dsp) {
       }
     }
 
-    has = findMelody(freq, robot_vox, dt);
+    has = findMelody(freq, robot_vox, dt, -800, 800);
     if (std::get<0>(has)) {
       fshift = std::get<1>(has);
       double tshift = std::get<2>(has);
@@ -81,7 +82,7 @@ SSTVMode nextHeader (DSPworker *dsp) {
 
 SSTVMode readVIS(DSPworker* dsp, double fshift) {
 
-  int vis = 0;
+  unsigned vis = 0;
   SSTVMode mode = MODE_UNKNOWN;
   std::vector<int> bits = readFSK(dsp, 33.333, 1200+fshift, 100, 8);
   int parity_rx=0;
@@ -91,17 +92,19 @@ SSTVMode readVIS(DSPworker* dsp, double fshift) {
   }
   vis &= 0x7F;
 
-  if (vis2mode.find(vis) == vis2mode.end()) {
+  mode = vis2mode(vis);
+
+  if (mode == MODE_UNKNOWN) {
     fprintf(stderr,"(unknown mode %dd=%02Xh)\n",vis,vis);
   } else {
-    if ((parity_rx % 2) != ModeSpec[vis2mode[vis]].VISParity) {
+    if ((parity_rx % 2) != ModeSpec[mode].vis_parity) {
       fprintf(stderr,"(parity fail)\n");
     } else {
       fprintf(stderr,"  got VIS: %dd / %02Xh (%s)", vis, vis,
-          ModeSpec[vis2mode[vis]].Name.c_str());
-      mode = vis2mode[vis];
+          ModeSpec[mode].name.c_str());
     }
   }
 
   return mode;
 }
+

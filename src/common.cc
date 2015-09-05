@@ -1,4 +1,6 @@
-#include "common.hh"
+#include "common.h"
+#include "dsp.h"
+#include "gui.h"
 #include <thread>
 
 bool     Abort           = false;
@@ -16,6 +18,10 @@ Glib::KeyFile config;
 std::vector<std::thread> threads(2);
 
 std::vector<std::vector<double> > DSPworker::window_ (16);
+
+std::string version_string() {
+  return "0.7-dev";
+}
 
 // Clip to [0..255]
 guint8 clip (double a) {
@@ -37,6 +43,11 @@ double deg2rad (double Deg) {
 // Convert radians -> degrees
 double rad2deg (double rad) {
   return (180 / M_PI) * rad;
+}
+
+size_t maxIndex (std::vector<double> v) {
+  const int n = sizeof(v) / sizeof(double);
+  return distance(v.begin(), max_element(v.begin(), v.end()));
 }
 
 void ensure_dir_exists(std::string dir) {

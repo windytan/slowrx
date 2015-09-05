@@ -1,6 +1,6 @@
-#include "gui.hh"
+#include "gui.h"
 
-SlowGUI::SlowGUI() {
+SlowGUI::SlowGUI() : worker_thread_(nullptr), worker_() {
   Glib::RefPtr<Gtk::Application> app =
     Gtk::Application::create("com.windytan.slowrx");
 
@@ -74,6 +74,9 @@ SlowGUI::SlowGUI() {
   //setVU(0, 6);
 
   window_main->show_all();
+
+  worker_thread_ = Glib::Threads::Thread::create(
+      sigc::bind(sigc::mem_fun(worker_, &DSPworker::listenLoop), this));
 
   app->run(*window_main);
 }

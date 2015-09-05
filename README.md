@@ -16,13 +16,14 @@ Features
 * Adaptive noise reduction
 * Decode digital FSK ID
 * Save received pictures as PNG
-* Written in C++11
+* Written in C++/C
 
 Requirements
 ------------
 
 * Linux, OSX, ...
 * PortAudio
+* libsndfile
 * gtkmm 3 (`libgtkmm-3.0-dev`)
 * FFTW 3 (`libfftw3-dev`)
 
@@ -35,7 +36,6 @@ And, obviously:
 Compiling
 ---------
 
-    autoreconf --install
     ./configure
     make
 

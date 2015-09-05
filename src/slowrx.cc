@@ -1,37 +1,25 @@
 #include <getopt.h>
-#include "common.hh"
-
+#include "common.h"
+#include "gui.h"
+#include "dsp.h"
 
 int main(int argc, char *argv[]) {
 
   std::string confpath(std::string(getenv("HOME")) + "/.config/slowrx/slowrx.ini");
   config.load_from_file(confpath);
 
-  DSPworker dsp;
-  
   int opt_char;
   while ((opt_char = getopt (argc, argv, "t:f:")) != EOF)
     switch (opt_char) {
       case 't':
-        runTest(optarg);
         return(0);
         break;
       case 'f':
-        dsp.openAudioFile(optarg);
+        //dsp.openAudioFile(optarg);
         break;
     }
 
+  SlowGUI gui = SlowGUI();
 
-  if (!dsp.is_open())
-    dsp.openPortAudio();
-  
-  SSTVMode mode = nextHeader(&dsp);
-  if (mode != MODE_UNKNOWN) {
-    rxVideo(mode, &dsp);
-  }
-
-  //SlowGUI gui = SlowGUI();
   return 0;
 }
-
-
