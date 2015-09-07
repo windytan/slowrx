@@ -10,20 +10,19 @@ void Picture::pushToVideoSignal(double s) {
   video_signal_.push_back(s);
 }
 
-SSTVMode Picture::getMode() { return mode_; }
-double Picture::getDrift () { return drift_; }
-double Picture::getStartsAt () { return starts_at_; }
-double Picture::getVideoDt () { return video_dt_; }
-double Picture::getSyncDt () { return sync_dt_; }
-double Picture::getSyncSignalAt (size_t i) { return sync_signal_[i]; }
-double Picture::getVideoSignalAt (size_t i) { return video_signal_[i]; }
+SSTVMode Picture::getMode          ()         { return mode_; }
+double   Picture::getDrift         ()         { return drift_; }
+double   Picture::getStartsAt      ()         { return starts_at_; }
+double   Picture::getVideoDt       ()         { return video_dt_; }
+double   Picture::getSyncDt        ()         { return sync_dt_; }
+double   Picture::getSyncSignalAt  (size_t i) { return sync_signal_[i]; }
+double   Picture::getVideoSignalAt (size_t i) { return video_signal_[i]; }
 
 
-void Picture::renderPixbuf(unsigned min_width) {
+Glib::RefPtr<Gdk::Pixbuf> Picture::renderPixbuf(unsigned min_width) {
 
   int upsample_factor = 4;
   _ModeSpec m = ModeSpec[mode_];
-
 
   std::vector<PixelSample> pixel_grid = pixelSamplingPoints(mode_);
   
@@ -35,38 +34,28 @@ void Picture::renderPixbuf(unsigned min_width) {
     }
   }
 
-  Glib::RefPtr<Gdk::Pixbuf> pixbuf_rx;
-  pixbuf_rx = Gdk::Pixbuf::create(Gdk::COLORSPACE_RGB, false, 8, m.scan_pixels, m.num_lines);
-  pixbuf_rx->fill(0x000000ff);
-
-  guint8 *p;
-  guint8 *pixels;
-  pixels = pixbuf_rx->get_pixels();
-  int rowstride = pixbuf_rx->get_rowstride();
   Wave* signal_up = upsample(video_signal_, upsample_factor, KERNEL_TENT);
 
   for (size_t pixel_idx = 0; pixel_idx < pixel_grid.size(); pixel_idx ++) {
 
     PixelSample px = pixel_grid[pixel_idx];
 
-    if (px.exists) {
-
-      double signal_t = (px.t/drift_ + starts_at_) / video_dt_ * upsample_factor;
-      double val;
-      if (signal_t < 0 || signal_t >= signal_up->size()-1) {
-        val = 0;
-      } else {
-        val = signal_up->at(signal_t);
-      }
-      
-      int x  = pixel_grid[pixel_idx].pt.x;
-      int y  = pixel_grid[pixel_idx].pt.y;
-      int ch = pixel_grid[pixel_idx].ch;
-
-      img[x][y][ch] = clip(round(val*255));
+    double signal_t = (px.t/drift_ + starts_at_) / video_dt_ * upsample_factor;
+    double val;
+    if (signal_t < 0 || signal_t >= signal_up->size()-1) {
+      val = 0;
+    } else {
+      val = signal_up->at(signal_t);
     }
+    
+    int x  = pixel_grid[pixel_idx].pt.x;
+    int y  = pixel_grid[pixel_idx].pt.y;
+    int ch = pixel_grid[pixel_idx].ch;
+
+    img[x][y][ch] = clip(round(val*255));
   }
 
+  /* chroma reconstruction from 4:2:0 */
   if (mode_ == MODE_R36 || m.family == MODE_PD) {
     for (size_t x=0; x < m.scan_pixels; x++) {
       Wave column_u, column_v;
@@ -84,6 +73,15 @@ void Picture::renderPixbuf(unsigned min_width) {
       }
     }
   }
+
+  Glib::RefPtr<Gdk::Pixbuf> pixbuf_rx;
+  pixbuf_rx = Gdk::Pixbuf::create(Gdk::COLORSPACE_RGB, false, 8, m.scan_pixels, m.num_lines);
+  pixbuf_rx->fill(0x000000ff);
+
+  guint8 *p;
+  guint8 *pixels;
+  pixels = pixbuf_rx->get_pixels();
+  int rowstride = pixbuf_rx->get_rowstride();
 
   for (size_t x = 0; x < m.scan_pixels; x++) {
     for (size_t y = 0; y < m.num_lines; y++) {
@@ -127,14 +125,20 @@ void Picture::renderPixbuf(unsigned min_width) {
     }
   }
 
-  unsigned img_width = std::max(min_width, m.scan_pixels);
-  double scale = 1.0*img_width/m.scan_pixels;
-  unsigned img_height = round(m.num_lines * scale);
+  double aspect_ratio = 4.0/3.0;
+  unsigned img_width = round((m.num_lines - m.header_lines) * aspect_ratio);
+  if (img_width < min_width)
+    img_width = min_width;
+  unsigned img_height = round(1.0*img_width/aspect_ratio + m.header_lines);
 
   Glib::RefPtr<Gdk::Pixbuf> pixbuf_scaled;
   pixbuf_scaled = pixbuf_rx->scale_simple(img_width, img_height, Gdk::INTERP_BILINEAR);
 
-  pixbuf_scaled->save("testi.png", "png");
+  delete signal_up;
+
+  //pixbuf_scaled->save("testi.png", "png");
+
+  return pixbuf_scaled;
 }
 
 
@@ -189,7 +193,7 @@ void Picture::resync () {
   double min_drift  = 0.998;
   double max_drift  = 1.002;
   double drift_step = 0.00005;
-  
+
   for (double d = min_drift; d <= max_drift; d += drift_step) {
     std::vector<double> acc(line_width);
     int peak_x = 0;

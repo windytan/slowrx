@@ -3,6 +3,7 @@
 
 #include "portaudio.h"
 #include <sndfile.hh>
+#include <gtkmm.h>
 #include "fftw3.h"
 #include "common.h"
 
@@ -21,8 +22,6 @@
 #define FREQ_WHITE 2300.0
 #define FREQ_SYNC  1200.0
 
-class SlowGUI;
-
 namespace window {
   Wave Hann (size_t);
   Wave Blackmann (size_t);
@@ -30,11 +29,11 @@ namespace window {
   Wave Gauss (size_t);
 }
 
-class DSPworker {
+class DSP {
 
   public:
 
-    DSPworker();
+    DSP();
 
     void   openAudioFile (std::string);
     void   openPortAudio ();
@@ -58,7 +57,8 @@ class DSPworker {
     bool   isLive ();
     double syncPower ();
 
-    void   listenLoop (SlowGUI* caller);
+    void setLatestPixbuf(Glib::RefPtr<Gdk::Pixbuf>);
+    Glib::RefPtr<Gdk::Pixbuf> getLatestPixbuf();
 
   private:
 
@@ -83,9 +83,12 @@ class DSPworker {
     double fshift_;
     double next_snr_time_;
     double SNR_;
+    Glib::RefPtr<Gdk::Pixbuf> latest_pixbuf_;
     WindowType sync_window_;
+
+    mutable Glib::Threads::Mutex mutex_;
     
-    static std::vector<std::vector<double> > window_;
+    std::vector<Wave> window_;
 };
 
 class MyPortaudioClass{
@@ -112,7 +115,6 @@ Wave peaks (Wave, size_t);
 Wave derivPeaks (Wave, size_t);
 Wave rms (Wave, int);
 Wave* upsample    (Wave orig, size_t factor, int kern_type);
-std::vector<int> readFSK (DSPworker*, double, double, double, size_t);
 double   gaussianPeak  (double y1, double y2, double y3);
 double   power         (fftw_complex coeff);
 double complexMag (fftw_complex coeff);

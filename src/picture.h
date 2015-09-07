@@ -2,6 +2,7 @@
 #define PICTURE_H_
 
 #include "common.h"
+#include "gui.h"
 
 class Picture {
 
@@ -24,7 +25,7 @@ class Picture {
     double getSyncSignalAt(size_t i);
     double getVideoSignalAt(size_t i);
 
-    void renderPixbuf(unsigned min_width=320);
+    Glib::RefPtr<Gdk::Pixbuf> renderPixbuf(unsigned min_width=320);
     void resync();
     void saveSync();
 

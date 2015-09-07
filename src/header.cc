@@ -3,7 +3,7 @@
 
 #include <cmath>
 
-SSTVMode nextHeader (DSPworker *dsp) {
+/*SSTVMode nextHeader (DSPworker *dsp) {
 
   double dt = 5e-3;
   SSTVMode mode = MODE_UNKNOWN;
@@ -107,4 +107,4 @@ SSTVMode readVIS(DSPworker* dsp, double fshift) {
 
   return mode;
 }
-
+*/

@@ -1,6 +1,8 @@
 #include "gui.h"
+#include "listener.h"
+#include "picture.h"
 
-SlowGUI::SlowGUI() : worker_thread_(nullptr), worker_() {
+SlowGUI::SlowGUI() : worker_thread_(nullptr), worker_(), dispatcher_() {
   Glib::RefPtr<Gtk::Application> app =
     Gtk::Application::create("com.windytan.slowrx");
 
@@ -72,14 +74,22 @@ SlowGUI::SlowGUI() : worker_thread_(nullptr), worker_() {
   }
 
   //setVU(0, 6);
-
+  
   window_main->show_all();
 
+  dispatcher_.connect(sigc::mem_fun(*this, &SlowGUI::onNotify));
+
   worker_thread_ = Glib::Threads::Thread::create(
-      sigc::bind(sigc::mem_fun(worker_, &DSPworker::listenLoop), this));
+      sigc::bind(sigc::mem_fun(worker_, &Listener::listen), this));
 
   app->run(*window_main);
 }
+
+void SlowGUI::notify()
+{
+    dispatcher_.emit();
+}
+
 
 // Draw signal level meters according to given values
 void setVU (double *Power, int FFTLen, int WinIdx, bool ShowWin) {
@@ -147,6 +157,13 @@ void setVU (double *Power, int FFTLen, int WinIdx, bool ShowWin) {
   //gui.image_pwr->set(pixbuf_PWR);
   //gui.image_snr->set(pixbuf_SNR);
 
+}
+
+void SlowGUI::onNotify() {
+  Picture* pic = worker_.getCurrentPic();
+  pic->resync();
+  image_rx->set(pic->renderPixbuf(500));
+  //image_rx->set(worker_.getLatestPixbuf());
 }
 
 void evt_chooseDir() {

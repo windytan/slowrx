@@ -1,9 +1,9 @@
 #ifndef GUI_H
 #define GUI_H
 
-#include "gtkmm.h"
+#include <gtkmm.h>
 #include "common.h"
-#include "dsp.h"
+#include "listener.h"
 
 class SlowGUI {
 
@@ -12,6 +12,8 @@ class SlowGUI {
     SlowGUI();
 
     void ping();
+    void onNotify();
+    void notify();
 
   private:
 
@@ -47,8 +49,9 @@ class SlowGUI {
     Gtk::Window *window_about;
     Gtk::Window *window_main;
 
+    Glib::Dispatcher dispatcher_;
     Glib::Threads::Thread* worker_thread_;
-    DSPworker worker_;
+    Listener worker_;
 };
 
 extern Glib::RefPtr<Gdk::Pixbuf> pixbuf_PWR;

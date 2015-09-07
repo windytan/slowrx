@@ -19,7 +19,9 @@ int main(int argc, char *argv[]) {
         break;
     }
 
-  SlowGUI gui = SlowGUI();
+  //Glib::RefPtr<Gtk::Application> app = Gtk::Application::create(argc, argv, "com.windytan.slowrx");
+
+  SlowGUI gui;
 
   return 0;
 }

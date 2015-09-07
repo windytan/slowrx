@@ -3,7 +3,6 @@
 
 #include <iostream>
 #include <cassert>
-
 #include <vector>
 
 #include "modespec.h"
@@ -19,8 +18,6 @@ struct Tone {
   double freq;
   explicit Tone(double _dur = 0.0, double _freq=0.0) : dur(_dur), freq(_freq) {}
 };
-
-class DSPworker;
 
 using Wave = std::vector<double>;
 using Melody = std::vector<Tone>;
@@ -51,7 +48,6 @@ typedef struct {
   Point pt;
   int ch;
   double t;
-  bool exists;
 } PixelSample;
 
 std::vector<PixelSample> pixelSamplingPoints(SSTVMode mode);
@@ -61,8 +57,6 @@ double   fclip         (double a);
 void     createGUI     ();
 double   deg2rad       (double Deg);
 std::string   GetFSK        ();
-bool     rxVideo      (SSTVMode Mode, DSPworker *dsp);
-SSTVMode nextHeader       (DSPworker*);
 int      initPcmDevice (std::string);
 void     populateDeviceList ();
 void     readPcm       (int numsamples);
@@ -70,8 +64,6 @@ void     saveCurrentPic();
 void     setVU         (double *Power, int FFTLen, int WinIdx, bool ShowWin);
 int      startGui      (int, char**);
 std::tuple<bool,double,double> findMelody (Wave, Melody, double, double, double);
-SSTVMode readVIS (DSPworker*, double fshift=0);
-Wave* upsample    (Wave orig, size_t factor, int kern_type);
 
 SSTVMode vis2mode (int);
 

@@ -2,7 +2,11 @@
 #include "dsp.h"
 #include "gui.h"
 
-DSPworker::DSPworker() : cirbuf_head_(MOMENT_LEN/2), cirbuf_tail_(0), cirbuf_fill_count_(0), is_open_(false), t_(0), fshift_(0), sync_window_(WINDOW_HANN511)   {
+DSP::DSP() :
+  cirbuf_head_(MOMENT_LEN/2), cirbuf_tail_(0), cirbuf_fill_count_(0),
+  is_open_(false), t_(0), fshift_(0), sync_window_(WINDOW_HANN511),
+  window_(16)
+{
 
   window_[WINDOW_HANN95]   = window::Hann(95);
   window_[WINDOW_HANN127]  = window::Hann(127);
@@ -42,18 +46,8 @@ DSPworker::DSPworker() : cirbuf_head_(MOMENT_LEN/2), cirbuf_tail_(0), cirbuf_fil
 
 }
 
-void DSPworker::listenLoop (SlowGUI* caller) {
-  if (!is_open_)
-    openPortAudio();
 
-  while (is_open_) {
-    SSTVMode mode = nextHeader(this);
-    if (mode != MODE_UNKNOWN)
-      rxVideo(mode, this);
-  }
-}
-
-void DSPworker::openAudioFile (std::string fname) {
+void DSP::openAudioFile (std::string fname) {
 
   if (!is_open_) {
 
@@ -78,7 +72,7 @@ void DSPworker::openAudioFile (std::string fname) {
   }
 }
 
-void DSPworker::openPortAudio () {
+void DSP::openPortAudio () {
 
   if (!is_open_) {
     fprintf(stderr,"open PortAudio\n");
@@ -129,27 +123,27 @@ void DSPworker::openPortAudio () {
   }
 }
 
-void DSPworker::set_fshift(double fshift) {
+void DSP::set_fshift (double fshift) {
   fshift_ = fshift;
 }
 
-int DSPworker::freq2bin (double freq, int fft_len) {
+int DSP::freq2bin (double freq, int fft_len) {
   return (freq / samplerate_ * fft_len);
 }
 
-bool DSPworker::is_open () {
+bool DSP::is_open () {
   return is_open_;
 }
 
-double DSPworker::get_t() {
+double DSP::get_t() {
   return t_;
 }
 
-bool DSPworker::isLive() {
+bool DSP::isLive() {
   return (stream_type_ == STREAM_TYPE_PA);
 }
 
-void DSPworker::readMore () {
+void DSP::readMore () {
   size_t framesread = 0;
 
   if (is_open_) {
@@ -204,7 +198,7 @@ void DSPworker::readMore () {
 }
 
 // move processing window
-double DSPworker::forward (unsigned nsamples) {
+double DSP::forward (unsigned nsamples) {
   for (unsigned i = 0; i < nsamples; i++) {
     cirbuf_tail_ = (cirbuf_tail_ + 1) % CIRBUF_LEN;
     cirbuf_fill_count_ -= 1;
@@ -216,25 +210,21 @@ double DSPworker::forward (unsigned nsamples) {
   t_ += dt;
   return dt;
 }
-double DSPworker::forward () {
+double DSP::forward () {
   return forward(1);
 }
-double DSPworker::forward_time(double sec) {
+double DSP::forward_time(double sec) {
   double start_t = t_;
   while (t_ < start_t + sec)
     forward();
   return t_ - start_t;
-}
-void DSPworker::forward_to_time(double sec) {
-  while (t_ < sec)
-    forward();
 }
 
 
 // the current moment, windowed
 // will be written over buf
 // which MUST fit FFT_LEN_BIG * fftw_complex
-void DSPworker::windowedMoment (WindowType win_type, fftw_complex* buf) {
+void DSP::windowedMoment (WindowType win_type, fftw_complex* buf) {
 
   for (size_t i=0; i<FFT_LEN_BIG; i++)
     buf[i][0] = buf[i][1] = 0;
@@ -260,7 +250,7 @@ void DSPworker::windowedMoment (WindowType win_type, fftw_complex* buf) {
 
 }
 
-double DSPworker::peakFreq (double minf, double maxf, WindowType wintype) {
+double DSP::peakFreq (double minf, double maxf, WindowType wintype) {
 
   unsigned fft_len = (window_[wintype].size() <= FFT_LEN_SMALL ? FFT_LEN_SMALL : FFT_LEN_BIG);
 
@@ -268,8 +258,6 @@ double DSPworker::peakFreq (double minf, double maxf, WindowType wintype) {
   mag = new double [fft_len/2 + 1]();
 
   windowedMoment(wintype, fft_inbuf_);
-  //memset(fft_inbuf_, 0, fft_len * sizeof(windowed[0]));
-  //memcpy(fft_inbuf_, windowed, window_[wintype].size() * sizeof(windowed[0]));
   fftw_execute(fft_len == FFT_LEN_BIG ? fft_plan_big_ : fft_plan_small_);
   
   size_t peakBin = 0;
@@ -295,15 +283,11 @@ double DSPworker::peakFreq (double minf, double maxf, WindowType wintype) {
 
 }
 
-Wave DSPworker::bandPowerPerHz(std::vector<std::vector<double> > bands, WindowType wintype) {
+Wave DSP::bandPowerPerHz(std::vector<std::vector<double> > bands, WindowType wintype) {
 
   unsigned fft_len = (window_[wintype].size() <= FFT_LEN_SMALL ? FFT_LEN_SMALL : FFT_LEN_BIG);
-  //fftw_complex* windowed;
-  //windowed = new fftw_complex[window_[wintype].size()]();
 
   windowedMoment(wintype, fft_inbuf_);
-  //memset(fft_inbuf_, 0, FFT_LEN_BIG * sizeof(fft_inbuf_[0]));
-  //memcpy(fft_inbuf_, windowed, window_[wintype].size() * sizeof(windowed[0]));
   fftw_execute(fft_len == FFT_LEN_BIG ? fft_plan_big_ : fft_plan_small_);
 
   Wave result;
@@ -321,7 +305,7 @@ Wave DSPworker::bandPowerPerHz(std::vector<std::vector<double> > bands, WindowTy
   return result;
 }
 
-WindowType DSPworker::bestWindowFor(SSTVMode Mode, double SNR) {
+WindowType DSP::bestWindowFor(SSTVMode Mode, double SNR) {
   WindowType WinType;
 
   //double samplesInPixel = 1.0 * samplerate_ * ModeSpec[Mode].tScan / ModeSpec[Mode].ScanPixels;
@@ -337,7 +321,7 @@ WindowType DSPworker::bestWindowFor(SSTVMode Mode, double SNR) {
   return WinType;
 }
 
-double DSPworker::videoSNR () {
+double DSP::videoSNR () {
   if (t_ >= next_snr_time_) {
     std::vector<double> bands = bandPowerPerHz({{FREQ_SYNC-1000,FREQ_SYNC-200}, {FREQ_BLACK,FREQ_WHITE}, {FREQ_WHITE+400, FREQ_WHITE+700}});
     double Pvideo_plus_noise = bands[1];
@@ -352,7 +336,7 @@ double DSPworker::videoSNR () {
   return SNR_;
 }
 
-double DSPworker::syncPower () {
+double DSP::syncPower () {
   std::vector<double> bands = bandPowerPerHz({{FREQ_SYNC-50,FREQ_SYNC+50}, {FREQ_BLACK,FREQ_WHITE}}, sync_window_);
   double sync;
   if (bands[1] == 0.0 || bands[0] > 4 * bands[1]) {
@@ -363,7 +347,7 @@ double DSPworker::syncPower () {
   return sync;
 }
 
-double DSPworker::lum (SSTVMode mode, bool is_adaptive) {
+double DSP::lum (SSTVMode mode, bool is_adaptive) {
   WindowType win_type;
 
   if (is_adaptive) win_type = bestWindowFor(mode, videoSNR());
@@ -372,6 +356,16 @@ double DSPworker::lum (SSTVMode mode, bool is_adaptive) {
   double freq = peakFreq(FREQ_BLACK, FREQ_WHITE, win_type);
   return fclip((freq - FREQ_BLACK) / (FREQ_WHITE - FREQ_BLACK));
 }
+
+void DSP::setLatestPixbuf(Glib::RefPtr<Gdk::Pixbuf> pb) {
+  Glib::Threads::Mutex::Lock lock (mutex_);
+  latest_pixbuf_ = pb;
+}
+Glib::RefPtr<Gdk::Pixbuf> DSP::getLatestPixbuf() {
+  Glib::Threads::Mutex::Lock lock (mutex_);
+  return latest_pixbuf_;
+}
+
 
 // param:  y values around peak
 // return: peak x position (-1 .. 1)
@@ -568,22 +562,6 @@ std::vector<double> derivPeaks (Wave wave, size_t n) {
   std::vector<double> result = peaks(deriv(wave), n);
   for (size_t i=0; i<result.size(); i++) {
     result[i] += .5;
-  }
-  return result;
-}
-
-/* returns: vector of bits */
-std::vector<int> readFSK (DSPworker *dsp, double baud_rate, double cent_freq, double shift, size_t nbits) {
-  std::vector<int> result;
-  double freq_margin = 200;
-  for (size_t i=0; i<nbits; i++) {
-    dsp->forward_time(0.5 / baud_rate);
-    std::vector<double> f = dsp->bandPowerPerHz(
-        {{cent_freq-shift-freq_margin, cent_freq-shift+freq_margin},
-         {cent_freq+shift-freq_margin, cent_freq+shift+freq_margin}}
-    );
-    result.push_back(f[0] > f[1]);
-    dsp->forward_time(0.5 / baud_rate);
   }
   return result;
 }

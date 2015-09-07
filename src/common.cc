@@ -1,6 +1,5 @@
 #include "common.h"
-#include "dsp.h"
-#include "gui.h"
+#include <gtkmm.h>
 #include <thread>
 
 bool     Abort           = false;
@@ -16,8 +15,6 @@ Glib::RefPtr<Gdk::Pixbuf> pixbuf_disp;
 Glib::KeyFile config;
 
 std::vector<std::thread> threads(2);
-
-std::vector<std::vector<double> > DSPworker::window_ (16);
 
 std::string version_string() {
   return "0.7-dev";
