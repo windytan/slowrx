@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!-- Generated with glade 3.18.3 -->
 <interface>
-  <!-- interface-requires gtk+ 3.0 -->
+  <requires lib="gtk+" version="3.0"/>
   <object class="GtkAction" id="action1"/>
   <object class="GtkAdjustment" id="adjust_shift">
     <property name="lower">-700</property>
@@ -17,12 +18,12 @@
     </columns>
   </object>
   <object class="GtkWindow" id="window_main">
+    <property name="visible">True</property>
     <property name="can_focus">False</property>
     <property name="title" translatable="yes">slowrx</property>
     <property name="resizable">False</property>
     <property name="default_width">885</property>
     <property name="default_height">633</property>
-    <property name="visible">True</property>
     <signal name="delete-event" handler="delete_event" swapped="no"/>
     <child>
       <object class="GtkBox" id="MainBox">
@@ -66,8 +67,8 @@
                         <property name="can_focus">False</property>
                         <property name="use_underline">True</property>
                         <property name="use_stock">True</property>
-                        <accelerator key="q" signal="activate" modifiers="GDK_CONTROL_MASK"/>
                         <signal name="activate" handler="delete_event" swapped="no"/>
+                        <accelerator key="q" signal="activate" modifiers="GDK_CONTROL_MASK"/>
                       </object>
                     </child>
                   </object>
@@ -153,18 +154,27 @@
                                     <property name="can_focus">False</property>
                                     <property name="orientation">vertical</property>
                                     <child>
-                                      <object class="GtkEventBox" id="eventbox_img">
+                                      <object class="GtkAlignment" id="alignment15">
+                                        <property name="width_request">500</property>
+                                        <property name="height_request">400</property>
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
-                                        <property name="events">GDK_BUTTON_PRESS_MASK | GDK_STRUCTURE_MASK</property>
-                                        <property name="visible_window">False</property>
                                         <child>
-                                          <object class="GtkImage" id="image_rx">
-                                            <property name="width_request">500</property>
-                                            <property name="height_request">375</property>
+                                          <object class="GtkEventBox" id="eventbox_img">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
-                                            <property name="stock">gtk-missing-image</property>
+                                            <property name="events">GDK_BUTTON_PRESS_MASK | GDK_STRUCTURE_MASK</property>
+                                            <property name="visible_window">False</property>
+                                            <child>
+                                              <object class="GtkImage" id="image_rx">
+                                                <property name="width_request">500</property>
+                                                <property name="height_request">375</property>
+                                                <property name="visible">True</property>
+                                                <property name="can_focus">False</property>
+                                                <property name="valign">center</property>
+                                                <property name="stock">gtk-missing-image</property>
+                                              </object>
+                                            </child>
                                           </object>
                                         </child>
                                       </object>
@@ -181,127 +191,76 @@
                                         <property name="can_focus">False</property>
                                         <property name="homogeneous">True</property>
                                         <child>
-                                          <object class="GtkFrame" id="IDFrame">
+                                          <object class="GtkAlignment" id="alignment7">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
-                                            <property name="label_xalign">0</property>
-                                            <property name="shadow_type">in</property>
+                                            <property name="top_padding">10</property>
+                                            <property name="bottom_padding">10</property>
+                                            <property name="left_padding">10</property>
+                                            <property name="right_padding">10</property>
                                             <child>
-                                              <object class="GtkAlignment" id="alignment7">
+                                              <object class="GtkLabel" id="label_fskid">
+                                                <property name="width_request">80</property>
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
-                                                <property name="top_padding">10</property>
-                                                <property name="bottom_padding">10</property>
-                                                <property name="left_padding">10</property>
-                                                <property name="right_padding">10</property>
-                                                <child>
-                                                  <object class="GtkLabel" id="label_fskid">
-                                                    <property name="width_request">80</property>
-                                                    <property name="visible">True</property>
-                                                    <property name="can_focus">False</property>
-                                                    <property name="halign">start</property>
-                                                    <property name="width_chars">8</property>
-                                                    <attributes>
-                                                      <attribute name="font-desc" value="Monospace Bold 16"/>
-                                                    </attributes>
-                                                  </object>
-                                                </child>
-                                              </object>
-                                            </child>
-                                            <child type="label">
-                                              <object class="GtkLabel" id="label4">
-                                                <property name="visible">True</property>
-                                                <property name="can_focus">False</property>
-                                                <property name="label" translatable="yes">Callsign</property>
-                                                <property name="use_markup">True</property>
+                                                <property name="halign">start</property>
+                                                <property name="width_chars">8</property>
+                                                <attributes>
+                                                  <attribute name="font-desc" value="Monospace Bold 16"/>
+                                                </attributes>
                                               </object>
                                             </child>
                                           </object>
                                           <packing>
                                             <property name="expand">False</property>
                                             <property name="fill">True</property>
-                                            <property name="padding">7</property>
                                             <property name="position">0</property>
                                           </packing>
                                         </child>
                                         <child>
-                                          <object class="GtkFrame" id="UTCFrame">
+                                          <object class="GtkAlignment" id="alignment8">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
-                                            <property name="label_xalign">0</property>
-                                            <property name="shadow_type">in</property>
+                                            <property name="left_padding">12</property>
                                             <child>
-                                              <object class="GtkAlignment" id="alignment8">
+                                              <object class="GtkLabel" id="label_utc">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
-                                                <property name="left_padding">12</property>
-                                                <child>
-                                                  <object class="GtkLabel" id="label_utc">
-                                                    <property name="visible">True</property>
-                                                    <property name="can_focus">False</property>
-                                                    <property name="halign">start</property>
-                                                    <property name="label" translatable="yes"> </property>
-                                                    <property name="width_chars">5</property>
-                                                    <attributes>
-                                                      <attribute name="font-desc" value="Monospace 11"/>
-                                                    </attributes>
-                                                  </object>
-                                                </child>
-                                              </object>
-                                            </child>
-                                            <child type="label">
-                                              <object class="GtkLabel" id="label5">
-                                                <property name="visible">True</property>
-                                                <property name="can_focus">False</property>
-                                                <property name="label" translatable="yes">Received at</property>
-                                                <property name="use_markup">True</property>
+                                                <property name="halign">start</property>
+                                                <property name="label" translatable="yes"> </property>
+                                                <property name="width_chars">5</property>
+                                                <attributes>
+                                                  <attribute name="font-desc" value="Monospace 11"/>
+                                                </attributes>
                                               </object>
                                             </child>
                                           </object>
                                           <packing>
                                             <property name="expand">False</property>
                                             <property name="fill">True</property>
-                                            <property name="padding">7</property>
                                             <property name="position">1</property>
                                           </packing>
                                         </child>
                                         <child>
-                                          <object class="GtkFrame" id="LastModeFrame">
+                                          <object class="GtkAlignment" id="alignment11">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
-                                            <property name="label_xalign">0</property>
-                                            <property name="shadow_type">in</property>
+                                            <property name="left_padding">12</property>
                                             <child>
-                                              <object class="GtkAlignment" id="alignment11">
+                                              <object class="GtkLabel" id="label_lastmode">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
-                                                <property name="left_padding">12</property>
-                                                <child>
-                                                  <object class="GtkLabel" id="label_lastmode">
-                                                    <property name="visible">True</property>
-                                                    <property name="can_focus">False</property>
-                                                    <property name="halign">start</property>
-                                                    <property name="label" translatable="yes"> </property>
-                                                    <attributes>
-                                                      <attribute name="font-desc" value="Monospace 11"/>
-                                                    </attributes>
-                                                  </object>
-                                                </child>
-                                              </object>
-                                            </child>
-                                            <child type="label">
-                                              <object class="GtkLabel" id="label13">
-                                                <property name="visible">True</property>
-                                                <property name="can_focus">False</property>
-                                                <property name="label" translatable="yes">Mode</property>
-                                                <property name="use_markup">True</property>
+                                                <property name="halign">start</property>
+                                                <property name="label" translatable="yes"> </property>
+                                                <attributes>
+                                                  <attribute name="font-desc" value="Monospace 11"/>
+                                                </attributes>
                                               </object>
                                             </child>
                                           </object>
                                           <packing>
                                             <property name="expand">False</property>
                                             <property name="fill">True</property>
-                                            <property name="padding">7</property>
                                             <property name="position">2</property>
                                           </packing>
                                         </child>
@@ -328,7 +287,6 @@
                           <packing>
                             <property name="left_attach">1</property>
                             <property name="top_attach">1</property>
-                            <property name="width">1</property>
                             <property name="height">2</property>
                           </packing>
                         </child>
@@ -375,8 +333,6 @@
                                           <packing>
                                             <property name="left_attach">1</property>
                                             <property name="top_attach">0</property>
-                                            <property name="width">1</property>
-                                            <property name="height">1</property>
                                           </packing>
                                         </child>
                                         <child>
@@ -395,8 +351,6 @@
                                           <packing>
                                             <property name="left_attach">0</property>
                                             <property name="top_attach">1</property>
-                                            <property name="width">1</property>
-                                            <property name="height">1</property>
                                           </packing>
                                         </child>
                                         <child>
@@ -415,8 +369,6 @@
                                           <packing>
                                             <property name="left_attach">1</property>
                                             <property name="top_attach">1</property>
-                                            <property name="width">1</property>
-                                            <property name="height">1</property>
                                           </packing>
                                         </child>
                                         <child>
@@ -435,7 +387,6 @@
                                             <property name="left_attach">0</property>
                                             <property name="top_attach">4</property>
                                             <property name="width">2</property>
-                                            <property name="height">1</property>
                                           </packing>
                                         </child>
                                         <child>
@@ -454,8 +405,6 @@
                                           <packing>
                                             <property name="left_attach">0</property>
                                             <property name="top_attach">0</property>
-                                            <property name="width">1</property>
-                                            <property name="height">1</property>
                                           </packing>
                                         </child>
                                         <child>
@@ -469,7 +418,6 @@
                                             <property name="left_attach">0</property>
                                             <property name="top_attach">3</property>
                                             <property name="width">2</property>
-                                            <property name="height">1</property>
                                           </packing>
                                         </child>
                                         <child>
@@ -488,8 +436,6 @@
                                           <packing>
                                             <property name="left_attach">0</property>
                                             <property name="top_attach">2</property>
-                                            <property name="width">1</property>
-                                            <property name="height">1</property>
                                           </packing>
                                         </child>
                                         <child>
@@ -504,7 +450,6 @@
                                             <property name="left_attach">0</property>
                                             <property name="top_attach">6</property>
                                             <property name="width">2</property>
-                                            <property name="height">1</property>
                                           </packing>
                                         </child>
                                         <child>
@@ -518,7 +463,6 @@
                                             <property name="left_attach">0</property>
                                             <property name="top_attach">5</property>
                                             <property name="width">2</property>
-                                            <property name="height">1</property>
                                           </packing>
                                         </child>
                                         <child>
@@ -612,8 +556,6 @@
                                             <property name="tooltip_markup" translatable="yes">SSTV mode used when started manually</property>
                                             <property name="tooltip_text" translatable="yes">SSTV mode used when started manually</property>
                                             <property name="active">0</property>
-                                            <property name="entry_text_column">0</property>
-                                            <property name="id_column">1</property>
                                             <items>
                                               <item translatable="yes">Martin M1</item>
                                               <item translatable="yes">Martin M2</item>
@@ -674,7 +616,6 @@
                                                 <property name="tooltip_text" translatable="yes">Number of Hertz to shift the FM window when started manually</property>
                                                 <property name="has_frame">False</property>
                                                 <property name="invisible_char">•</property>
-                                                <property name="invisible_char_set">True</property>
                                                 <property name="adjustment">adjust_shift</property>
                                                 <property name="snap_to_ticks">True</property>
                                                 <property name="numeric">True</property>
@@ -757,8 +698,6 @@
                                           <packing>
                                             <property name="left_attach">0</property>
                                             <property name="top_attach">0</property>
-                                            <property name="width">1</property>
-                                            <property name="height">1</property>
                                           </packing>
                                         </child>
                                         <child>
@@ -770,8 +709,6 @@
                                           <packing>
                                             <property name="left_attach">0</property>
                                             <property name="top_attach">1</property>
-                                            <property name="width">1</property>
-                                            <property name="height">1</property>
                                           </packing>
                                         </child>
                                         <child>
@@ -785,8 +722,6 @@
                                           <packing>
                                             <property name="left_attach">1</property>
                                             <property name="top_attach">0</property>
-                                            <property name="width">1</property>
-                                            <property name="height">1</property>
                                           </packing>
                                         </child>
                                         <child>
@@ -800,8 +735,6 @@
                                           <packing>
                                             <property name="left_attach">1</property>
                                             <property name="top_attach">1</property>
-                                            <property name="width">1</property>
-                                            <property name="height">1</property>
                                           </packing>
                                         </child>
                                       </object>
@@ -827,7 +760,6 @@
                           <packing>
                             <property name="left_attach">0</property>
                             <property name="top_attach">1</property>
-                            <property name="width">1</property>
                             <property name="height">2</property>
                           </packing>
                         </child>
@@ -863,8 +795,6 @@
                                             <property name="tooltip_text" translatable="yes">Sound card device used to capture from radio</property>
                                             <property name="valign">start</property>
                                             <property name="active">0</property>
-                                            <property name="entry_text_column">0</property>
-                                            <property name="id_column">1</property>
                                             <signal name="changed" handler="AbortRx" swapped="no"/>
                                           </object>
                                           <packing>
@@ -932,7 +862,6 @@
                                             <property name="hexpand">True</property>
                                             <property name="editable">False</property>
                                             <property name="invisible_char">•</property>
-                                            <property name="invisible_char_set">True</property>
                                           </object>
                                           <packing>
                                             <property name="expand">False</property>
@@ -981,7 +910,6 @@
                             <property name="left_attach">0</property>
                             <property name="top_attach">0</property>
                             <property name="width">2</property>
-                            <property name="height">1</property>
                           </packing>
                         </child>
                       </object>
@@ -1033,6 +961,7 @@
                                   <object class="GtkIconView" id="SavedIconView">
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
+                                    <property name="margin">0</property>
                                     <property name="hscroll_policy">natural</property>
                                     <property name="vscroll_policy">natural</property>
                                     <property name="selection_mode">none</property>
