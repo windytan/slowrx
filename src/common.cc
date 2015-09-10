@@ -2,16 +2,6 @@
 #include <gtkmm.h>
 #include <thread>
 
-bool     Abort           = false;
-bool     Adaptive        = true;
-bool     ManualActivated = false;
-bool     ManualResync    = false;
-
-Glib::RefPtr<Gdk::Pixbuf> pixbuf_PWR;
-Glib::RefPtr<Gdk::Pixbuf> pixbuf_SNR;
-Glib::RefPtr<Gdk::Pixbuf> pixbuf_rx;
-Glib::RefPtr<Gdk::Pixbuf> pixbuf_disp;
-
 Glib::KeyFile config;
 
 std::vector<std::thread> threads(2);
@@ -26,18 +16,18 @@ guint8 clip (double a) {
   else if (a > 255) return 255;
   return  round(a);
 }
+
+// Clip to [0..1]
 double fclip (double a) {
   if      (a < 0.0) return 0.0;
   else if (a > 1.0) return 1.0;
   return  a;
 }
 
-// Convert degrees -> radians
 double deg2rad (double Deg) {
   return (Deg / 180) * M_PI;
 }
 
-// Convert radians -> degrees
 double rad2deg (double rad) {
   return (180 / M_PI) * rad;
 }
@@ -96,12 +86,12 @@ void evt_GetAdaptive() {
 
 // Manual Start clicked
 void evt_ManualStart() {
-  ManualActivated = true;
+  //ManualActivated = true;
 }
 
 // Abort clicked during rx
 void evt_AbortRx() {
-  Abort = true;
+  //Abort = true;
 }
 
 // Another device selected from list
@@ -144,7 +134,7 @@ void evt_changeDevices() {/*
 
 // Clear received picture & metadata
 void evt_clearPix() {
-  pixbuf_disp->fill(0);
+  //pixbuf_disp->fill(0);
   /*gui.image_rx->set(pixbuf_disp);
   gui.label_fskid->set_markup("");
   gui.label_utc->set_markup("");
@@ -199,4 +189,28 @@ void evt_clickimg(Gtk::Widget *widget, GdkEventButton* event, Gdk::WindowEdge ed
     secondpress=false;
     //gui.tog_setedge->set_active(false);
   }*/
+}
+
+ProgressBar::ProgressBar(double maxval, int width) :
+  maxval_(maxval), val_(0), width_(width) {
+  set(0);
+}
+
+void ProgressBar::set(double val) {
+  val_ = val;
+
+  fprintf(stderr,"  [");
+  double prog = val_ / maxval_;
+  size_t prog_points = round(prog * width_);
+  for (size_t i=0;i<prog_points;i++) {
+    fprintf(stderr,"=");
+  }
+  for (size_t i=prog_points;i<width_;i++) {
+    fprintf(stderr," ");
+  }
+  fprintf(stderr,"] %.1f %%\r",prog*100);
+}
+
+void ProgressBar::finish() {
+  fprintf(stderr, "\n");
 }
