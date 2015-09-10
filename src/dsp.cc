@@ -512,13 +512,15 @@ Wave upsample (const Wave& orig, size_t factor, int kern_type) {
     kern = kernel::Tent(factor*2 + 1);
   }
 
-  Wave padded(orig.size() * factor);
-  for (size_t i=0; i<orig.size(); i++) {
+  size_t orig_size = orig.size();
+
+  Wave padded(orig_size * factor);
+  for (size_t i=0; i<orig_size; i++) {
     padded[i * factor] = orig[i];
   }
   padded.insert(padded.begin(), factor-1, 0);
   padded.insert(padded.begin(), orig[0]);
-  padded.push_back(orig[orig.size()-1]);
+  padded.push_back(orig[orig_size-1]);
 
   Wave filtered = convolve(padded, kern);
 
