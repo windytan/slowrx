@@ -19,13 +19,10 @@ double   Picture::getSyncSignalAt  (size_t i) const { return sync_signal_[i]; }
 double   Picture::getVideoSignalAt (size_t i) const { return video_signal_[i]; }
 
 
-Glib::RefPtr<Gdk::Pixbuf> Picture::renderPixbuf(unsigned min_width) {
+Glib::RefPtr<Gdk::Pixbuf> Picture::renderPixbuf(unsigned min_width, int upsample_factor) {
 
-  int upsample_factor = 4;
   _ModeSpec m = ModeSpec[mode_];
 
-  std::vector<PixelSample> pixel_grid = pixelSamplingPoints(mode_);
-  
   std::vector<std::vector<std::vector<uint8_t>>> img(m.scan_pixels);
   for (size_t x=0; x < m.scan_pixels; x++) {
     img[x] = std::vector<std::vector<uint8_t>>(m.num_lines);
@@ -34,23 +31,22 @@ Glib::RefPtr<Gdk::Pixbuf> Picture::renderPixbuf(unsigned min_width) {
     }
   }
 
-  Wave* signal_up = upsample(video_signal_, upsample_factor, KERNEL_TENT);
+  Wave signal_up =
+    (upsample_factor > 1 ? upsample(video_signal_, upsample_factor, KERNEL_TENT) : video_signal_);
 
-  for (size_t pixel_idx = 0; pixel_idx < pixel_grid.size(); pixel_idx ++) {
-
-    PixelSample px = pixel_grid[pixel_idx];
+  for (PixelSample px : pixel_grid_) {
 
     double signal_t = (px.t/drift_ + starts_at_) / video_dt_ * upsample_factor;
     double val;
-    if (signal_t < 0 || signal_t >= signal_up->size()-1) {
+    if (signal_t < 0 || signal_t >= signal_up.size()-1) {
       val = 0;
     } else {
-      val = signal_up->at(signal_t);
+      val = signal_up[signal_t];
     }
-    
-    int x  = pixel_grid[pixel_idx].pt.x;
-    int y  = pixel_grid[pixel_idx].pt.y;
-    int ch = pixel_grid[pixel_idx].ch;
+
+    int x  = px.pt.x;
+    int y  = px.pt.y;
+    int ch = px.ch;
 
     img[x][y][ch] = clip(round(val*255));
   }
@@ -117,7 +113,7 @@ Glib::RefPtr<Gdk::Pixbuf> Picture::renderPixbuf(unsigned min_width) {
           break;
         }
         case COLOR_MONO: {
-          p[0] = p[1] = p[2] = img[x][y][0];
+          p[0] = p[1] = p[2] = clip((img[x][y][0] - 15.5) * 1.172); // mmsstv test images
           break;
         }
       }
@@ -125,18 +121,18 @@ Glib::RefPtr<Gdk::Pixbuf> Picture::renderPixbuf(unsigned min_width) {
     }
   }
 
-  double aspect_ratio = 4.0/3.0;
-  unsigned img_width = round((m.num_lines - m.header_lines) * aspect_ratio);
+  double rx_aspect     = 4.0/3.0;
+  //double pad_to_aspect = 5.0/4.0;
+
+  unsigned img_width = round((m.num_lines - m.header_lines) * rx_aspect);
   if (img_width < min_width)
     img_width = min_width;
-  unsigned img_height = round(1.0*img_width/aspect_ratio + m.header_lines);
+  unsigned img_height = round(1.0*img_width/rx_aspect + m.header_lines);
 
   Glib::RefPtr<Gdk::Pixbuf> pixbuf_scaled;
-  pixbuf_scaled = pixbuf_rx->scale_simple(img_width, img_height, Gdk::INTERP_BILINEAR);
+  pixbuf_scaled = pixbuf_rx->scale_simple(img_width, img_height, Gdk::INTERP_NEAREST);
 
-  delete signal_up;
-
-  //pixbuf_scaled->save("testi.png", "png");
+  pixbuf_rx->save("testi.png", "png");
 
   return pixbuf_scaled;
 }
@@ -164,7 +160,7 @@ void Picture::saveSync () {
     int y = i / line_width;
     int signal_idx = i * upsample_factor / drift_ + .5;
     if (y < numlines) {
-      uint8_t val = clip((big_sync->at(signal_idx))*127);
+      uint8_t val = clip((big_sync[signal_idx])*127);
       p = pixels + y * rowstride + x * 3;
       p[0] = p[1] = p[2] = val;
     }
@@ -179,7 +175,9 @@ void Picture::resync () {
 #ifdef NOSYNC
   drift_ = 1.0;
   starts_at_ = 0.0;
-#else
+  return;
+#endif
+
   _ModeSpec m = ModeSpec[mode_];
   int line_width = m.t_period / sync_dt_;
 
@@ -200,7 +198,7 @@ void Picture::resync () {
     for (size_t i=1; i<sync_signal_.size(); i++) {
       int x = i % line_width;
       size_t signal_idx = round(i * upsample_factor / d);
-      double delta = (signal_idx < sync_up->size() ? sync_up->at(signal_idx) - sync_up->at(signal_idx-1) : 0);
+      double delta = (signal_idx < sync_up.size() ? sync_up[signal_idx] - sync_up[signal_idx-1] : 0);
       if (delta >= 0.0)
         acc[x] += delta;
       if (acc[x] > acc[peak_x]) {
@@ -223,7 +221,7 @@ void Picture::resync () {
   for (size_t i=1;i<sync_signal_.size()-1; i++) {
     int x = i % line_width;
     size_t signal_idx = round(i * upsample_factor / drift);
-    acc[x] += (signal_idx < sync_up->size() ? sync_up->at(signal_idx) : 0);
+    acc[x] += (signal_idx < sync_up.size() ? sync_up[signal_idx] : 0);
   }
 
   int kernel_len = round(m.t_sync / m.t_period * line_width);
@@ -233,20 +231,98 @@ void Picture::resync () {
   size_t m_i = maxIndex(sc);
   double peak_align = m_i + gaussianPeak(sc[m_i-1], sc[m_i], sc[m_i+1]);
 
-  printf("peak_align = %f\n",peak_align);
+  //printf("align = %f\n",peak_align);
 
   double align_time = peak_align/line_width*m.t_period - m.t_sync*0.5;
   if (m.family == MODE_SCOTTIE)
     align_time -= m.t_sync + m.t_sep*2 + m.t_scan * 2;
 
-  fprintf(stderr,"drift = %.5f\n",drift);
-
-  delete sync_up;
+  //fprintf(stderr,"drift = %.5f\n",drift);
 
   drift_ = drift;
   starts_at_ = align_time;
 
-#endif
-
   //saveSync(pic);
 }
+
+// Time instants for all pixels
+std::vector<PixelSample> pixelSamplingPoints(SSTVMode mode) {
+  _ModeSpec m = ModeSpec[mode];
+  std::vector<PixelSample> pixel_grid;
+  for (size_t y=0; y<m.num_lines; y++) {
+    for (size_t x=0; x<m.scan_pixels; x++) {
+      for (size_t ch=0; ch < (m.color_enc == COLOR_MONO ? 1 : 3); ch++) {
+        PixelSample px;
+        px.pt = Point(x,y);
+        px.ch = ch;
+        bool exists = true;
+
+        if (m.family == MODE_MARTIN  || m.family == MODE_PASOKON ||
+            m.family == MODE_WRAASE2 || m.family == MODE_ROBOTBW ) {
+          px.t = y*(m.t_period) + m.t_sync + m.t_porch + ch*(m.t_scan + m.t_sep) +
+            (x+0.5)/m.scan_pixels * m.t_scan;
+        }
+
+        else if (m.family == MODE_SCOTTIE) {
+          px.t = y*(m.t_period) + (x+0.5)/m.scan_pixels * m.t_scan +
+            m.t_sync + (ch+1) * m.t_sep + ch*m.t_scan +
+            (ch == 2 ? m.t_sync : 0);
+        }
+
+        else if (m.family == MODE_PD) {
+          double line_video_start = (y/2)*(m.t_period) + m.t_sync + m.t_porch;
+          if (ch == 0) {
+            px.t = line_video_start + (y%2 == 1 ? 3*m.t_scan : 0) + 
+              (x+.5)/m.scan_pixels * m.t_scan;
+          } else if (ch == 1 && (y%2) == 0) {
+            px.t = line_video_start + m.t_scan + 
+              (x+.5)/m.scan_pixels * m.t_scan;
+          } else if (ch == 2 && (y%2) == 0) {
+            px.t = line_video_start + 2*m.t_scan + 
+              (x+.5)/m.scan_pixels * m.t_scan;
+          } else {
+            exists = false;
+          }
+        }
+
+        else if (mode == MODE_R72 || mode == MODE_R24) {
+          double line_video_start = y*(m.t_period) + m.t_sync + m.t_porch;
+          if (ch == 0) {
+            px.t = line_video_start + (x+.5) / m.scan_pixels * m.t_scan;
+          } else if (ch == 1) {
+            px.t = line_video_start + m.t_scan + m.t_sep +
+             (x+.5) / m.scan_pixels * m.t_scan / 2;
+          } else if (ch == 2) {
+            px.t = line_video_start + 1.5*m.t_scan + 2*m.t_sep +
+             (x+.5) / m.scan_pixels * m.t_scan / 2;
+          }
+        }
+
+        else if (mode == MODE_R36) {
+          double line_video_start = y*(m.t_period) + m.t_sync + m.t_porch;
+          if (ch == 0) {
+            px.t = line_video_start + (x+.5) / m.scan_pixels * m.t_scan;
+          } else if (ch == 1 && (y % 2) == 0) {
+            px.t = line_video_start + m.t_scan + m.t_sep +
+              (x+.5) / m.scan_pixels * m.t_scan / 2;
+          } else if (ch == 2 && (y % 2) == 0) {
+            px.t = (y+1)*(m.t_period) + m.t_sync + m.t_porch + m.t_scan + m.t_sep +
+              (x+.5) / m.scan_pixels * m.t_scan / 2;
+          } else {
+            exists = false;
+          }
+        }
+
+        if (exists)
+          pixel_grid.push_back(px);
+      }
+    }
+  }
+
+  std::sort(pixel_grid.begin(), pixel_grid.end(), [](PixelSample a, PixelSample b) {
+      return a.t < b.t;
+  });
+
+  return pixel_grid;
+}
+
