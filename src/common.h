@@ -50,6 +50,18 @@ typedef struct {
   double t;
 } PixelSample;
 
+class ProgressBar {
+  public:
+    ProgressBar(double maxval, int width=50);
+
+    void set(double val);
+    void finish();
+  private:
+    double maxval_;
+    double val_;
+    double width_;
+};
+
 std::vector<PixelSample> pixelSamplingPoints(SSTVMode mode);
 
 uint8_t  clip          (double a);
