@@ -17,13 +17,13 @@ class Picture {
     void pushToSyncSignal (double s);
     void pushToVideoSignal (double s);
 
-    SSTVMode getMode();
-    double getDrift ();
-    double getStartsAt ();
-    double getVideoDt ();
-    double getSyncDt ();
-    double getSyncSignalAt(size_t i);
-    double getVideoSignalAt(size_t i);
+    SSTVMode getMode() const;
+    double getDrift () const;
+    double getStartsAt () const;
+    double getVideoDt () const;
+    double getSyncDt () const;
+    double getSyncSignalAt(size_t i) const;
+    double getVideoSignalAt(size_t i) const;
 
     Glib::RefPtr<Gdk::Pixbuf> renderPixbuf(unsigned min_width=320);
     void resync();

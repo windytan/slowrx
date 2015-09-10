@@ -44,17 +44,17 @@ class DSP {
     void   forward_to_time (double);
     void   set_fshift (double);
 
-    void   windowedMoment (WindowType, fftw_complex *);
+    void   windowedMoment (WindowType, fftw_complex*);
     double peakFreq (double, double, WindowType);
-    int    freq2bin        (double, int);
-    std::vector<double> bandPowerPerHz (std::vector<std::vector<double> >, WindowType wintype=WINDOW_HANN2047);
+    int    freq2bin        (double, int) const;
+    std::vector<double> bandPowerPerHz (const std::vector<std::vector<double>>&, WindowType wintype=WINDOW_HANN2047);
     WindowType bestWindowFor (SSTVMode, double SNR=99);
     double videoSNR();
     double lum(SSTVMode, bool is_adaptive=false);
     
-    bool   is_open ();
-    double get_t ();
-    bool   isLive ();
+    bool   is_open   () const;
+    double get_t     () const;
+    bool   isLive    () const;
     double syncPower ();
 
     void setLatestPixbuf(Glib::RefPtr<Gdk::Pixbuf>);
@@ -109,12 +109,12 @@ class MyPortaudioClass{
   }
 };
 
-Wave convolve (Wave, Wave, bool wrap_around=false);
-Wave deriv (Wave);
-Wave peaks (Wave, size_t);
-Wave derivPeaks (Wave, size_t);
-Wave rms (Wave, int);
-Wave* upsample    (Wave orig, size_t factor, int kern_type);
+Wave convolve (const Wave&, const Wave&, bool wrap_around=false);
+Wave deriv (const Wave&);
+Wave peaks (const Wave&, size_t);
+Wave derivPeaks (const Wave&, size_t);
+Wave rms (const Wave&, int);
+Wave upsample    (const Wave& orig, size_t factor, int kern_type);
 double   gaussianPeak  (double y1, double y2, double y3);
 double   power         (fftw_complex coeff);
 double complexMag (fftw_complex coeff);

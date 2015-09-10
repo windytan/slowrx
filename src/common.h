@@ -75,7 +75,7 @@ void     readPcm       (int numsamples);
 void     saveCurrentPic();
 void     setVU         (double *Power, int FFTLen, int WinIdx, bool ShowWin);
 int      startGui      (int, char**);
-std::tuple<bool,double,double> findMelody (Wave, Melody, double, double, double);
+std::tuple<bool,double,double> findMelody (const Wave&, const Melody&, double, double, double);
 
 SSTVMode vis2mode (int);
 

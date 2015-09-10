@@ -10,13 +10,13 @@ void Picture::pushToVideoSignal(double s) {
   video_signal_.push_back(s);
 }
 
-SSTVMode Picture::getMode          ()         { return mode_; }
-double   Picture::getDrift         ()         { return drift_; }
-double   Picture::getStartsAt      ()         { return starts_at_; }
-double   Picture::getVideoDt       ()         { return video_dt_; }
-double   Picture::getSyncDt        ()         { return sync_dt_; }
-double   Picture::getSyncSignalAt  (size_t i) { return sync_signal_[i]; }
-double   Picture::getVideoSignalAt (size_t i) { return video_signal_[i]; }
+SSTVMode Picture::getMode          () const   { return mode_; }
+double   Picture::getDrift         () const   { return drift_; }
+double   Picture::getStartsAt      () const   { return starts_at_; }
+double   Picture::getVideoDt       () const   { return video_dt_; }
+double   Picture::getSyncDt        () const   { return sync_dt_; }
+double   Picture::getSyncSignalAt  (size_t i) const { return sync_signal_[i]; }
+double   Picture::getVideoSignalAt (size_t i) const { return video_signal_[i]; }
 
 
 Glib::RefPtr<Gdk::Pixbuf> Picture::renderPixbuf(unsigned min_width) {
@@ -59,8 +59,8 @@ Glib::RefPtr<Gdk::Pixbuf> Picture::renderPixbuf(unsigned min_width) {
   if (mode_ == MODE_R36 || m.family == MODE_PD) {
     for (size_t x=0; x < m.scan_pixels; x++) {
       Wave column_u, column_v;
-      Wave* column_u_filtered;
-      Wave* column_v_filtered;
+      Wave column_u_filtered;
+      Wave column_v_filtered;
       for (size_t y=0; y < m.num_lines; y+=2) {
         column_u.push_back(img[x][y][1]);
         column_v.push_back(img[x][y][2]);
@@ -68,8 +68,8 @@ Glib::RefPtr<Gdk::Pixbuf> Picture::renderPixbuf(unsigned min_width) {
       column_u_filtered = upsample(column_u, 2, KERNEL_TENT);
       column_v_filtered = upsample(column_v, 2, KERNEL_TENT);
       for (size_t y=0; y < m.num_lines; y++) {
-        img[x][y][1] = column_u_filtered->at(y+1);
-        img[x][y][2] = column_v_filtered->at(y+1);
+        img[x][y][1] = column_u_filtered[y+1];
+        img[x][y][2] = column_v_filtered[y+1];
       }
     }
   }
@@ -157,7 +157,7 @@ void Picture::saveSync () {
   pixels = pixbuf_rx->get_pixels();
   int rowstride = pixbuf_rx->get_rowstride();
 
-  Wave* big_sync = upsample(sync_signal_, 2, KERNEL_TENT);
+  Wave big_sync = upsample(sync_signal_, 2, KERNEL_TENT);
 
   for (size_t i=1; i<sync_signal_.size(); i++) {
     int x = i % line_width;
@@ -184,7 +184,7 @@ void Picture::resync () {
   int line_width = m.t_period / sync_dt_;
 
   size_t upsample_factor = 2;
-  Wave* sync_up = upsample(sync_signal_, upsample_factor, KERNEL_TENT);
+  Wave sync_up = upsample(Wave(sync_signal_), upsample_factor, KERNEL_TENT);
 
   /* slant */
   std::vector<double> histogram;

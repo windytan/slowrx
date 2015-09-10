@@ -127,19 +127,19 @@ void DSP::set_fshift (double fshift) {
   fshift_ = fshift;
 }
 
-int DSP::freq2bin (double freq, int fft_len) {
+int DSP::freq2bin (double freq, int fft_len) const {
   return (freq / samplerate_ * fft_len);
 }
 
-bool DSP::is_open () {
+bool DSP::is_open () const {
   return is_open_;
 }
 
-double DSP::get_t() {
+double DSP::get_t() const {
   return t_;
 }
 
-bool DSP::isLive() {
+bool DSP::isLive() const {
   return (stream_type_ == STREAM_TYPE_PA);
 }
 
@@ -283,7 +283,7 @@ double DSP::peakFreq (double minf, double maxf, WindowType wintype) {
 
 }
 
-Wave DSP::bandPowerPerHz(std::vector<std::vector<double> > bands, WindowType wintype) {
+Wave DSP::bandPowerPerHz(const std::vector<std::vector<double>>& bands, WindowType wintype) {
 
   unsigned fft_len = (window_[wintype].size() <= FFT_LEN_SMALL ? FFT_LEN_SMALL : FFT_LEN_BIG);
 
@@ -475,7 +475,7 @@ double complexMag (fftw_complex coeff) {
 }
 
 
-Wave convolve (Wave sig, Wave kernel, bool wrap_around) {
+Wave convolve (const Wave& sig, const Wave& kernel, bool wrap_around) {
 
   assert (kernel.size() % 2 == 1);
 
@@ -500,7 +500,7 @@ Wave convolve (Wave sig, Wave kernel, bool wrap_around) {
   return result;
 }
 
-Wave* upsample (Wave orig, size_t factor, int kern_type) {
+Wave upsample (const Wave& orig, size_t factor, int kern_type) {
 
   Wave kern;
   if (kern_type == KERNEL_LANCZOS2) {
@@ -519,22 +519,22 @@ Wave* upsample (Wave orig, size_t factor, int kern_type) {
   padded.insert(padded.begin(), orig[0]);
   padded.push_back(orig[orig.size()-1]);
 
-  Wave* filtered = new Wave(convolve(padded, kern));
+  Wave filtered = convolve(padded, kern);
 
-  filtered->erase(filtered->begin(), filtered->begin()+factor/2);
-  filtered->erase(filtered->end()-factor/2, filtered->end());
+  filtered.erase(filtered.begin(), filtered.begin()+factor/2);
+  filtered.erase(filtered.end()-factor/2, filtered.end());
 
   return filtered;
 }
 
-Wave deriv (Wave wave) {
+Wave deriv (const Wave& wave) {
   Wave result;
   for (size_t i=1; i<wave.size(); i++)
     result.push_back(wave[i] - wave[i-1]);
   return result;
 }
 
-std::vector<double> peaks (Wave wave, size_t n) {
+std::vector<double> peaks (const Wave& wave, size_t n) {
   std::vector<std::pair<double,double> > peaks;
   for (size_t i=0; i<wave.size(); i++) {
     double y1 = (i==0 ? wave[0] : wave[i-1]);
@@ -558,7 +558,7 @@ std::vector<double> peaks (Wave wave, size_t n) {
 }
 
 
-std::vector<double> derivPeaks (Wave wave, size_t n) {
+std::vector<double> derivPeaks (const Wave& wave, size_t n) {
   std::vector<double> result = peaks(deriv(wave), n);
   for (size_t i=0; i<result.size(); i++) {
     result[i] += .5;
@@ -575,7 +575,7 @@ std::vector<double> derivPeaks (Wave wave, size_t n) {
  *           (double)  at which frequency shift
  *           (double)  started how many seconds before the last sample
  */
-std::tuple<bool,double,double> findMelody (Wave wave, Melody melody, double dt, double min_shift, double max_shift) {
+std::tuple<bool,double,double> findMelody (const Wave& wave, const Melody& melody, double dt, double min_shift, double max_shift) {
   bool   was_found = true;
   int    start_at = 0;
   double avg_fdiff = 0;
