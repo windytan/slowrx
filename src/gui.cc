@@ -2,7 +2,16 @@
 #include "listener.h"
 #include "picture.h"
 
-SlowGUI::SlowGUI() : worker_thread_(nullptr), worker_(), dispatcher_() {
+Glib::RefPtr<Gdk::Pixbuf> empty_pixbuf(int px_width) {
+  int px_height = round(px_width / 1.25);
+  Glib::RefPtr<Gdk::Pixbuf> pixbuf =
+    Gdk::Pixbuf::create(Gdk::COLORSPACE_RGB, false, 8, px_width, px_height);
+  pixbuf->fill(0x000000ff);
+
+  return pixbuf;
+}
+
+SlowGUI::SlowGUI() : redraw_dispatcher_(), resync_dispatcher_(), worker_thread_(nullptr), worker_() {
   Glib::RefPtr<Gtk::Application> app =
     Gtk::Application::create("com.windytan.slowrx");
 
@@ -56,13 +65,10 @@ SlowGUI::SlowGUI() : worker_thread_(nullptr), worker_(), dispatcher_() {
 
   //savedstore = iconview.get_model();
 
-  pixbuf_rx   = Gdk::Pixbuf::create(Gdk::COLORSPACE_RGB, false, 8, 320, 256);
-  pixbuf_rx->fill(0x000000ff);
-  pixbuf_disp = pixbuf_rx->scale_simple(500, 400, Gdk::INTERP_BILINEAR);
-  image_rx->set(pixbuf_disp);
+  image_rx->set(empty_pixbuf(500));
 
-  pixbuf_PWR = Gdk::Pixbuf::create(Gdk::COLORSPACE_RGB, false, 8, 100, 30);
-  pixbuf_SNR = Gdk::Pixbuf::create(Gdk::COLORSPACE_RGB, false, 8, 100, 30);
+  //pixbuf_PWR = Gdk::Pixbuf::create(Gdk::COLORSPACE_RGB, false, 8, 100, 30);
+  //pixbuf_SNR = Gdk::Pixbuf::create(Gdk::COLORSPACE_RGB, false, 8, 100, 30);
 
   combo_mode->set_active(0);
 
@@ -77,7 +83,8 @@ SlowGUI::SlowGUI() : worker_thread_(nullptr), worker_(), dispatcher_() {
   
   window_main->show_all();
 
-  dispatcher_.connect(sigc::mem_fun(*this, &SlowGUI::onNotify));
+  redraw_dispatcher_.connect(sigc::mem_fun(*this, &SlowGUI::onRedrawNotify));
+  resync_dispatcher_.connect(sigc::mem_fun(*this, &SlowGUI::onResyncNotify));
 
   worker_thread_ = Glib::Threads::Thread::create(
       sigc::bind(sigc::mem_fun(worker_, &Listener::listen), this));
@@ -85,13 +92,10 @@ SlowGUI::SlowGUI() : worker_thread_(nullptr), worker_(), dispatcher_() {
   app->run(*window_main);
 }
 
-void SlowGUI::notify()
-{
-    dispatcher_.emit();
-}
 
 
 // Draw signal level meters according to given values
+#if 0
 void setVU (double *Power, int FFTLen, int WinIdx, bool ShowWin) {
   int          x,y, W=100, H=30;
   guchar       *pixelsPWR, *pixelsSNR, *pPWR, *pSNR;
@@ -158,12 +162,24 @@ void setVU (double *Power, int FFTLen, int WinIdx, bool ShowWin) {
   //gui.image_snr->set(pixbuf_SNR);
 
 }
+#endif
 
-void SlowGUI::onNotify() {
+void SlowGUI::redrawNotify() {
+  redraw_dispatcher_.emit();
+}
+void SlowGUI::onRedrawNotify() {
+  Picture* pic = worker_.getCurrentPic();
+  label_lastmode->set_text(ModeSpec[pic->getMode()].name);
+  image_rx->set(pic->renderPixbuf(500));
+
+}
+
+void SlowGUI::resyncNotify() {
+  resync_dispatcher_.emit();
+}
+void SlowGUI::onResyncNotify() {
   Picture* pic = worker_.getCurrentPic();
   pic->resync();
-  image_rx->set(pic->renderPixbuf(500));
-  //image_rx->set(worker_.getLatestPixbuf());
 }
 
 void evt_chooseDir() {

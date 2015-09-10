@@ -11,9 +11,10 @@ class SlowGUI {
 
     SlowGUI();
 
-    void ping();
-    void onNotify();
-    void notify();
+    void redrawNotify();
+    void onRedrawNotify();
+    void resyncNotify();
+    void onResyncNotify();
 
   private:
 
@@ -49,7 +50,8 @@ class SlowGUI {
     Gtk::Window *window_about;
     Gtk::Window *window_main;
 
-    Glib::Dispatcher dispatcher_;
+    Glib::Dispatcher redraw_dispatcher_;
+    Glib::Dispatcher resync_dispatcher_;
     Glib::Threads::Thread* worker_thread_;
     Listener worker_;
 };
