@@ -44,6 +44,7 @@ DSP::DSP() :
   fft_plan_small_ = fftw_plan_dft_1d(FFT_LEN_SMALL, fft_inbuf_, fft_outbuf_, FFTW_FORWARD, FFTW_ESTIMATE);
   fft_plan_big_   = fftw_plan_dft_1d(FFT_LEN_BIG, fft_inbuf_, fft_outbuf_, FFTW_FORWARD, FFTW_ESTIMATE);
 
+  cirbuf_ = new double[CIRBUF_LEN*2];
 }
 
 
@@ -64,7 +65,7 @@ void DSP::openAudioFile (std::string fname) {
       stream_type_ = STREAM_TYPE_FILE;
 
       num_chans_ = file_.channels();
-      read_buffer_ = new int16_t [READ_CHUNK_LEN * num_chans_];
+      read_buffer_ = new float [READ_CHUNK_LEN * num_chans_];
       is_open_ = true;
       readMore();
 
@@ -82,7 +83,7 @@ void DSP::openPortAudio () {
     PaStreamParameters inputParameters;
     inputParameters.device = Pa_GetDefaultInputDevice();
     inputParameters.channelCount = 1;
-    inputParameters.sampleFormat = paInt16;
+    inputParameters.sampleFormat = paFloat32;
     inputParameters.suggestedLatency = Pa_GetDeviceInfo( inputParameters.device )->defaultHighInputLatency ;
     inputParameters.hostApiSpecificStreamInfo = NULL;
 
@@ -109,7 +110,7 @@ void DSP::openPortAudio () {
 
       stream_type_ = STREAM_TYPE_PA;
       num_chans_ = 1;
-      read_buffer_ = new int16_t [READ_CHUNK_LEN * num_chans_]();
+      read_buffer_ = new float [READ_CHUNK_LEN * num_chans_]();
 
       if (err == paNoError) {
         is_open_ = true;

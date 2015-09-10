@@ -63,12 +63,12 @@ class DSP {
   private:
 
     //mutable Glib::Threads::Mutex Mutex;
-    int16_t cirbuf_[CIRBUF_LEN * 2];
-    int   cirbuf_head_;
-    int   cirbuf_tail_;
-    int   cirbuf_fill_count_;
-    bool  please_stop_;
-    short *read_buffer_;
+    double*   cirbuf_;
+    int       cirbuf_head_;
+    int       cirbuf_tail_;
+    int       cirbuf_fill_count_;
+    bool      please_stop_;
+    float*  read_buffer_;
     SndfileHandle file_;
     fftw_complex *fft_inbuf_;
     fftw_complex *fft_outbuf_;
