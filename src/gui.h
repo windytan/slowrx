@@ -65,16 +65,10 @@ extern Gtk::ListStore *savedstore;
 
 extern Glib::KeyFile config;
 
-void     evt_AbortRx       ();
-void     evt_changeDevices ();
 void     evt_chooseDir     ();
-void     evt_clearPix      ();
 void     evt_clickimg      (Gtk::Widget*, GdkEventButton*, Gdk::WindowEdge);
 void     evt_deletewindow  ();
-void     evt_GetAdaptive   ();
 void     evt_ManualStart   ();
 void     evt_show_about    ();
-
-
 
 #endif // GUI_H

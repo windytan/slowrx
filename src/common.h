@@ -66,15 +66,9 @@ std::vector<PixelSample> pixelSamplingPoints(SSTVMode mode);
 
 uint8_t  clip          (double a);
 double   fclip         (double a);
-void     createGUI     ();
 double   deg2rad       (double Deg);
 std::string   GetFSK        ();
-int      initPcmDevice (std::string);
-void     populateDeviceList ();
-void     readPcm       (int numsamples);
-void     saveCurrentPic();
 void     setVU         (double *Power, int FFTLen, int WinIdx, bool ShowWin);
-int      startGui      (int, char**);
 std::tuple<bool,double,double> findMelody (const Wave&, const Melody&, double, double, double);
 
 SSTVMode vis2mode (int);

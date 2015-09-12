@@ -381,37 +381,6 @@ double gaussianPeak (double y1, double y2, double y3) {
   return bestWindowFor(Mode, 20);
 }*/
 
-/*void populateDeviceList() {
-  int                  card;
-  char                *cardname;
-  int                  numcards, row;
-
-  gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(gui.combo_card), "default");
-
-  numcards = 0;
-  card     = -1;
-  row      = 0;
-  do {
-    //snd_card_next(&card);
-    if (card != -1) {
-      row++;
-      //snd_card_get_name(card,&cardname);
-      gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(gui.combo_card), cardname);
-      char *dev = g_key_file_get_string(config,"slowrx","device",NULL);
-      if (dev == NULL || strcmp(cardname, dev) == 0)
-        gtk_combo_box_set_active(GTK_COMBO_BOX(gui.combo_card), row);
-
-      numcards++;
-    }
-  } while (card != -1);
-
-  if (numcards == 0) {
-    perror("No sound devices found!\n");
-    exit(EXIT_FAILURE);
-  }
-  
-}*/
-
 namespace window {
   Wave Hann (size_t winlen) {
     Wave result(winlen);

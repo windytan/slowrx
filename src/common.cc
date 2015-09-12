@@ -4,7 +4,7 @@
 
 Glib::KeyFile config;
 
-std::vector<std::thread> threads(2);
+//std::vector<std::thread> threads(2);
 
 std::string version_string() {
   return "0.7-dev";
@@ -49,27 +49,6 @@ void ensure_dir_exists(std::string dir) {
   }
 }
 
-// Save current picture as PNG
-void saveCurrentPic() {
-  /*Glib::RefPtr<Gdk::Pixbuf> scaledpb;
-
-  std::stringstream ss;
-  std::string basename = config.get_std::string("slowrx","rxdir");
-
-  ss << basename << "/" << CurrentPic.timestr << "_" << ModeSpec[CurrentPic.Mode].ShortName;
-
-  std::string pngfilename = ss.str();
-  cout << "  Saving to " << pngfilename << "\n";
-
-  scaledpb = pixbuf_rx->scale_simple(ModeSpec[CurrentPic.Mode].ScanPixels,
-    ModeSpec[CurrentPic.Mode].NumLines * ModeSpec[CurrentPic.Mode].LineHeight, Gdk::INTERP_HYPER);
-
-  ensure_dir_exists(config.get_std::string("slowrx","rxdir"));
-  scaledpb->save(pngfilename, "png");
-  //g_object_unref(scaledpb);
-  //g_std::string_free(pngfilename, true);*/
-}
-
 
 /*** Gtk+ event handlers ***/
 
@@ -87,58 +66,6 @@ void evt_GetAdaptive() {
 // Manual Start clicked
 void evt_ManualStart() {
   //ManualActivated = true;
-}
-
-// Abort clicked during rx
-void evt_AbortRx() {
-  //Abort = true;
-}
-
-// Another device selected from list
-void evt_changeDevices() {/*
-
-  int status;
-
-  Abort = true;
-
-  static int init;
-  if (init)
-    threads[0].join;
-  init = 1;
-
-//  if (pcm.handle != NULL) snd_pcm_close(pcm.handle);
-
-  //status = initPcmDevice(gui.combo_card->get_active_text());
-
-
-  switch(status) {
-    case 0:
-      //gui.image_devstatus->set(Gtk::Stock::YES,Gtk::ICON_SIZE_SMALL_TOOLBAR);
-      //gui.image_devstatus->set_tooltip_text("Device successfully opened");
-      break;
-    case -1:
-      //gui.image_devstatus->set(Gtk::Stock::DIALOG_WARNING,Gtk::ICON_SIZE_SMALL_TOOLBAR);
-      //gui.image_devstatus->set_tooltip_text("Device was opened, but doesn't support 44100 Hz");
-      break;
-    case -2:
-      //gui.image_devstatus->set(Gtk::Stock::DIALOG_ERROR,Gtk::ICON_SIZE_SMALL_TOOLBAR);
-      //gui.image_devstatus->set_tooltip_text("Failed to open device");
-      break;
-  }
-
-  //config->set_string("slowrx","device",gui.combo_card->get_active_text());
-
-  //threads[0] =  thread(Listen);*/
-
-}
-
-// Clear received picture & metadata
-void evt_clearPix() {
-  //pixbuf_disp->fill(0);
-  /*gui.image_rx->set(pixbuf_disp);
-  gui.label_fskid->set_markup("");
-  gui.label_utc->set_markup("");
-  gui.label_lastmode->set_markup("");*/
 }
 
 // Manual slant adjust

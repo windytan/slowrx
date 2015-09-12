@@ -85,13 +85,14 @@ class DSP {
     double SNR_;
     Glib::RefPtr<Gdk::Pixbuf> latest_pixbuf_;
     WindowType sync_window_;
+    bool is_please_close_;
 
     mutable Glib::Threads::Mutex mutex_;
     
     std::vector<Wave> window_;
 };
 
-class MyPortaudioClass{
+/*class MyPortaudioClass{
 
   int myMemberCallback(const void *input, void *output,
       unsigned long frameCount,
@@ -107,7 +108,7 @@ class MyPortaudioClass{
       return ((MyPortaudioClass*)userData)
              ->myMemberCallback(input, output, frameCount, timeInfo, statusFlags);
   }
-};
+};*/
 
 Wave convolve (const Wave&, const Wave&, bool wrap_around=false);
 Wave deriv (const Wave&);
