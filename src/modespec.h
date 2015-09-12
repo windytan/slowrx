@@ -26,23 +26,35 @@ enum eVISParity {
   PARITY_EVEN=0, PARITY_ODD=1
 };
 
-typedef struct ModeSpec {
-  std::string      name;
-  std::string      short_name;
-  double     t_sync;
-  double     t_porch;
-  double     t_sep;
-  double     t_scan;
-  double     t_period;
-  unsigned   scan_pixels;
-  unsigned   num_lines;
-  unsigned   header_lines;
-  unsigned   vis;
-  eColorEnc  color_enc;
-  ModeFamily family;
-  eVISParity vis_parity;
-} _ModeSpec;
+struct ModeSpec {
+  std::string name;
+  unsigned    scan_pixels;
+  unsigned    num_lines;
+  unsigned    header_lines;
+  double      aspect_ratio;
+  double      t_sync;
+  double      t_porch;
+  double      t_sep;
+  double      t_scan;
+  double      t_period;
+  ModeFamily  family;
+  eColorEnc   color_enc;
+  eVISParity  vis_parity;
 
-extern _ModeSpec ModeSpec[];
+  ModeSpec() {};
+
+  ModeSpec(std::string name, uint16_t scan_pixels, uint16_t num_lines, uint16_t header_lines,
+      double aspect_ratio, double t_sync, double t_porch, double t_sep, double t_scan,
+      double t_period, ModeFamily family, eColorEnc color_enc, eVISParity vis_parity)
+    :
+    name(name), scan_pixels(scan_pixels), num_lines(num_lines), header_lines(header_lines),
+    aspect_ratio(aspect_ratio), t_sync(t_sync), t_porch(t_porch), t_sep(t_sep),
+    t_scan(t_scan), t_period(t_period), family(family), color_enc(color_enc),
+    vis_parity(vis_parity)
+  {};
+};
+
+ModeSpec getModeSpec(SSTVMode);
+SSTVMode vis2mode (uint16_t);
 
 #endif
