@@ -3,10 +3,11 @@
 #include "gui.h"
 
 DSP::DSP() :
-  cirbuf_head_(MOMENT_LEN/2), cirbuf_tail_(0), cirbuf_fill_count_(0),
-  is_open_(false), t_(0), fshift_(0), sync_window_(WINDOW_HANN511),
+  cirbuf_(CIRBUF_LEN*2), is_open_(false), t_(0), fshift_(0), sync_window_(WINDOW_HANN511),
   window_(16)
 {
+
+  cirbuf_.head = MOMENT_LEN/2;
 
   window_[WINDOW_HANN95]   = window::Hann(95);
   window_[WINDOW_HANN127]  = window::Hann(127);
@@ -44,7 +45,6 @@ DSP::DSP() :
   fft_plan_small_ = fftw_plan_dft_1d(FFT_LEN_SMALL, fft_inbuf_, fft_outbuf_, FFTW_FORWARD, FFTW_ESTIMATE);
   fft_plan_big_   = fftw_plan_dft_1d(FFT_LEN_BIG, fft_inbuf_, fft_outbuf_, FFTW_FORWARD, FFTW_ESTIMATE);
 
-  cirbuf_ = new double[CIRBUF_LEN*2];
 }
 
 
@@ -177,33 +177,33 @@ void DSP::readMore () {
     }
   }
 
-  size_t cirbuf_fits = std::min(CIRBUF_LEN - cirbuf_head_, (int)framesread);
+  size_t cirbuf_fits = std::min(CIRBUF_LEN - cirbuf_.head, framesread);
 
   for (size_t i=0; i<cirbuf_fits; i++)
-    cirbuf_[cirbuf_head_ + i] = read_buffer_[i];
+    cirbuf_.data[cirbuf_.head + i] = read_buffer_[i];
 
   // wrap around
   if (framesread > cirbuf_fits) {
     for (size_t i=0; i<(framesread - cirbuf_fits); i++)
-      cirbuf_[i] = read_buffer_[cirbuf_fits + i];
+      cirbuf_.data[i] = read_buffer_[cirbuf_fits + i];
   }
 
   // mirror
   for (size_t i=0; i<CIRBUF_LEN; i++)
-    cirbuf_[CIRBUF_LEN + i] = cirbuf_[i];
-  
-  cirbuf_head_ = (cirbuf_head_ + framesread) % CIRBUF_LEN;
-  cirbuf_fill_count_ += framesread;
-  cirbuf_fill_count_ = std::min(cirbuf_fill_count_, CIRBUF_LEN);
+    cirbuf_.data[CIRBUF_LEN + i] = cirbuf_.data[i];
+
+  cirbuf_.head = (cirbuf_.head + framesread) % CIRBUF_LEN;
+  cirbuf_.fill_count += framesread;
+  cirbuf_.fill_count = std::min(int(cirbuf_.fill_count), CIRBUF_LEN);
 
 }
 
 // move processing window
 double DSP::forward (unsigned nsamples) {
   for (unsigned i = 0; i < nsamples; i++) {
-    cirbuf_tail_ = (cirbuf_tail_ + 1) % CIRBUF_LEN;
-    cirbuf_fill_count_ -= 1;
-    if (cirbuf_fill_count_ < MOMENT_LEN) {
+    cirbuf_.tail = (cirbuf_.tail + 1) % CIRBUF_LEN;
+    cirbuf_.fill_count -= 1;
+    if (cirbuf_.fill_count < MOMENT_LEN) {
       readMore();
     }
   }
@@ -238,8 +238,8 @@ void DSP::windowedMoment (WindowType win_type, fftw_complex* buf) {
     if (win_i < window_[win_type].size()) {
       double a;
       //fftw_complex mixed;
-      a = cirbuf_[cirbuf_tail_ + i] * window_[win_type][win_i];
-      
+      a = cirbuf_.data[cirbuf_.tail + i] * window_[win_type][win_i];
+
       /*// mix to IF
       mixed[0] = a * cos(if_phi) - a * sin(if_phi);
       mixed[1] = a * cos(if_phi) + a * sin(if_phi);

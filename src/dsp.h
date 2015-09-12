@@ -14,7 +14,7 @@
 #define FFT_LEN_BIG    2048
 #define CIRBUF_LEN_FACTOR 8
 #define CIRBUF_LEN ((MOMENT_LEN+1)*CIRBUF_LEN_FACTOR)
-#define READ_CHUNK_LEN ((MOMENT_LEN+1)/2)
+#define READ_CHUNK_LEN (CIRBUF_LEN/4)
 
 #define FREQ_MIN    500.0
 #define FREQ_MAX   3300.0
@@ -57,16 +57,19 @@ class DSP {
     bool   isLive    () const;
     double syncPower ();
 
+    void pleaseClose();
+
     void setLatestPixbuf(Glib::RefPtr<Gdk::Pixbuf>);
     Glib::RefPtr<Gdk::Pixbuf> getLatestPixbuf();
 
   private:
 
     //mutable Glib::Threads::Mutex Mutex;
-    double*   cirbuf_;
-    int       cirbuf_head_;
-    int       cirbuf_tail_;
-    int       cirbuf_fill_count_;
+    CirBuffer cirbuf_;
+    //double*   cirbuf_;
+    //int       cirbuf_head_;
+    //int       cirbuf_tail_;
+    //int       cirbuf_fill_count_;
     bool      please_stop_;
     float*  read_buffer_;
     SndfileHandle file_;

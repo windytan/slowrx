@@ -22,6 +22,16 @@ struct Tone {
 using Wave = std::vector<double>;
 using Melody = std::vector<Tone>;
 
+struct CirBuffer {
+  Wave   data;
+  size_t head;
+  size_t tail;
+  size_t fill_count;
+
+  CirBuffer(size_t len) : data(len) {}
+  size_t size() { return data.size(); }
+};
+
 enum WindowType {
   WINDOW_CHEB47 = 0,
   WINDOW_HANN95,
