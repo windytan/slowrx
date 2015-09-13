@@ -24,11 +24,11 @@ using Melody = std::vector<Tone>;
 
 struct CirBuffer {
   Wave   data;
-  size_t head;
-  size_t tail;
-  size_t fill_count;
+  int head;
+  int tail;
+  int    fill_count;
 
-  CirBuffer(size_t len) : data(len) {}
+  CirBuffer(size_t len) : data(len), head(0), tail(0), fill_count(0) {}
   size_t size() { return data.size(); }
 };
 
@@ -81,11 +81,11 @@ std::string   GetFSK        ();
 void     setVU         (double *Power, int FFTLen, int WinIdx, bool ShowWin);
 std::tuple<bool,double,double> findMelody (const Wave&, const Melody&, double, double, double);
 
-SSTVMode vis2mode (int);
+extern bool g_is_pa_initialized;
 
 void runTest(const char*);
 
-size_t maxIndex (std::vector<double>);
+int maxIndex (std::vector<double>);
 
 uint8_t freq2lum(double);
 
