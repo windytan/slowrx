@@ -1,5 +1,5 @@
-#ifndef GUI_H
-#define GUI_H
+#ifndef GUI_H_
+#define GUI_H_
 
 #include <gtkmm.h>
 #include "common.h"
