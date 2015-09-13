@@ -166,7 +166,7 @@
                                 <property name="column_homogeneous">True</property>
                                 <child>
                                   <object class="GtkToggleButton" id="switch_rx">
-                                    <property name="label" translatable="yes">Rx</property>
+                                    <property name="label" translatable="yes">Start</property>
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
                                     <property name="receives_default">True</property>
@@ -253,6 +253,7 @@
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
                                 <property name="orientation">vertical</property>
+                                <property name="spacing">7</property>
                                 <child>
                                   <object class="GtkButton" id="button_abort">
                                     <property name="label" translatable="yes">Abort</property>
@@ -293,7 +294,7 @@
                                   <packing>
                                     <property name="expand">False</property>
                                     <property name="fill">True</property>
-                                    <property name="padding">10</property>
+                                    <property name="padding">4</property>
                                     <property name="position">2</property>
                                   </packing>
                                 </child>
@@ -378,7 +379,7 @@
                                   <packing>
                                     <property name="expand">False</property>
                                     <property name="fill">True</property>
-                                    <property name="padding">10</property>
+                                    <property name="padding">4</property>
                                     <property name="position">5</property>
                                   </packing>
                                 </child>
