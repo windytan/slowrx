@@ -1,7 +1,7 @@
 #include "common.h"
-#include "gui.h"
 #include "dsp.h"
 #include "picture.h"
+#include "gui.h"
 
 void Picture::pushToSyncSignal(double s) {
   sync_signal_.push_back(s);
@@ -17,11 +17,12 @@ double   Picture::getVideoDt       () const   { return video_dt_; }
 double   Picture::getSyncDt        () const   { return sync_dt_; }
 double   Picture::getSyncSignalAt  (size_t i) const { return sync_signal_[i]; }
 double   Picture::getVideoSignalAt (size_t i) const { return video_signal_[i]; }
+std::string Picture::getTimestamp() const { return std::string(timestamp_); }
 
 
 Glib::RefPtr<Gdk::Pixbuf> Picture::renderPixbuf(unsigned min_width, int upsample_factor) {
 
-  _ModeSpec m = ModeSpec[mode_];
+  ModeSpec m = getModeSpec(mode_);
 
   std::vector<std::vector<std::vector<uint8_t>>> img(m.scan_pixels);
   for (size_t x=0; x < m.scan_pixels; x++) {
@@ -130,16 +131,16 @@ Glib::RefPtr<Gdk::Pixbuf> Picture::renderPixbuf(unsigned min_width, int upsample
   unsigned img_height = round(1.0*img_width/rx_aspect + m.header_lines);
 
   Glib::RefPtr<Gdk::Pixbuf> pixbuf_scaled;
-  pixbuf_scaled = pixbuf_rx->scale_simple(img_width, img_height, Gdk::INTERP_NEAREST);
+  pixbuf_scaled = pixbuf_rx->scale_simple(img_width, img_height, Gdk::INTERP_HYPER);
 
-  pixbuf_rx->save("testi.png", "png");
+  //pixbuf_rx->save("testi.png", "png");
 
   return pixbuf_scaled;
 }
 
 
 void Picture::saveSync () {
-  _ModeSpec m = ModeSpec[mode_];
+  ModeSpec m = getModeSpec(mode_);
   int line_width = m.t_period / sync_dt_;
   int numlines = 240;
   int upsample_factor = 2;
@@ -178,7 +179,7 @@ void Picture::resync () {
   return;
 #endif
 
-  _ModeSpec m = ModeSpec[mode_];
+  ModeSpec m = getModeSpec(mode_);
   int line_width = m.t_period / sync_dt_;
 
   size_t upsample_factor = 2;
@@ -247,7 +248,7 @@ void Picture::resync () {
 
 // Time instants for all pixels
 std::vector<PixelSample> pixelSamplingPoints(SSTVMode mode) {
-  _ModeSpec m = ModeSpec[mode];
+  ModeSpec m = getModeSpec(mode);
   std::vector<PixelSample> pixel_grid;
   for (size_t y=0; y<m.num_lines; y++) {
     for (size_t x=0; x<m.scan_pixels; x++) {
@@ -272,13 +273,13 @@ std::vector<PixelSample> pixelSamplingPoints(SSTVMode mode) {
         else if (m.family == MODE_PD) {
           double line_video_start = (y/2)*(m.t_period) + m.t_sync + m.t_porch;
           if (ch == 0) {
-            px.t = line_video_start + (y%2 == 1 ? 3*m.t_scan : 0) + 
+            px.t = line_video_start + (y%2 == 1 ? 3*m.t_scan : 0) +
               (x+.5)/m.scan_pixels * m.t_scan;
           } else if (ch == 1 && (y%2) == 0) {
-            px.t = line_video_start + m.t_scan + 
+            px.t = line_video_start + m.t_scan +
               (x+.5)/m.scan_pixels * m.t_scan;
           } else if (ch == 2 && (y%2) == 0) {
-            px.t = line_video_start + 2*m.t_scan + 
+            px.t = line_video_start + 2*m.t_scan +
               (x+.5)/m.scan_pixels * m.t_scan;
           } else {
             exists = false;
@@ -326,3 +327,7 @@ std::vector<PixelSample> pixelSamplingPoints(SSTVMode mode) {
   return pixel_grid;
 }
 
+void Picture::save() {
+  std::string filename = std::string("slowrx_") + safe_timestamp_ + ".png";
+  std::cout << filename << "\n";
+}

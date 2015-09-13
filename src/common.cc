@@ -11,7 +11,7 @@ std::string version_string() {
 }
 
 // Clip to [0..255]
-guint8 clip (double a) {
+uint8_t clip (double a) {
   if      (a < 0)   return 0;
   else if (a > 255) return 255;
   return  round(a);
@@ -32,7 +32,7 @@ double rad2deg (double rad) {
   return (180 / M_PI) * rad;
 }
 
-size_t maxIndex (std::vector<double> v) {
+int maxIndex (std::vector<double> v) {
   const int n = sizeof(v) / sizeof(double);
   return distance(v.begin(), max_element(v.begin(), v.end()));
 }

@@ -11,49 +11,68 @@ class SlowGUI {
 
     SlowGUI();
 
+    void start();
+
+    void imageReset();
+
+    void abortedByUser();
+    void ackAbortedByUser();
+    void receiving();
+    void notReceiving();
+
+    bool isRxEnabled();
+    bool isDenoiseEnabled();
+    bool isSyncEnabled();
+    bool isAbortedByUser();
+
     void redrawNotify();
     void onRedrawNotify();
     void resyncNotify();
     void onResyncNotify();
 
+    void fetchAutoState();
+    void autoChanged(Gtk::StateFlags);
+
+    void inputDeviceChanged();
+    void audioFileSelected();
+
+    eStreamType getSelectedStreamType();
+    int getSelectedPaDevice();
+    std::string getSelectedAudioFileName();
+
   private:
 
-    Gtk::Button *button_abort;
-    Gtk::Button *button_browse;
-    Gtk::Button *button_clear;
-    Gtk::Button *button_start;
-    Gtk::ComboBoxText *combo_card;
-    Gtk::ComboBox *combo_mode;
-    Gtk::Entry *entry_picdir;
-    Gtk::EventBox *eventbox_img;
-    Gtk::Frame *frame_manual;
-    Gtk::Frame *frame_slant;
-    Gtk::Grid *grid_vu;
-    Gtk::IconView *iconview;
-    Gtk::Image *image_devstatus;
-    Gtk::Image *image_pwr;
-    Gtk::Image *image_rx;
-    Gtk::Image *image_snr;
-    Gtk::Label *label_fskid;
-    Gtk::Label *label_lastmode;
-    Gtk::Label *label_utc;
-    Gtk::MenuItem *menuitem_about;
-    Gtk::MenuItem *menuitem_quit;
-    Gtk::SpinButton *spin_shift;
-    Gtk::Widget *statusbar;
-    Gtk::ToggleButton *tog_adapt;
-    Gtk::ToggleButton *tog_fsk;
-    Gtk::ToggleButton *tog_rx;
-    Gtk::ToggleButton *tog_save;
-    Gtk::ToggleButton *tog_setedge;
-    Gtk::ToggleButton *tog_slant;
-    Gtk::Window *window_about;
-    Gtk::Window *window_main;
+    bool is_rx_enabled_;
+    bool is_sync_enabled_;
+    bool is_fskid_enabled_;
+    bool is_denoise_enabled_;
+    bool is_aborted_by_user_;
+
+    Glib::RefPtr<Gtk::Application> app_;
+
+    Gtk::Label  *label_lasttime_;
+    Gtk::Window *window_about_;
+    Gtk::Window *window_main_;
+    Gtk::Image  *image_rx_;
+    Gtk::ToggleButton *switch_rx_;
+    Gtk::ToggleButton *switch_sync_;
+    Gtk::ToggleButton *switch_denoise_;
+    Gtk::ToggleButton *switch_fskid_;
+    Gtk::Button *button_abort_;
+    Gtk::Button *button_clear_;
+    Gtk::Button *button_manualstart_;
+    Gtk::ComboBoxText *combo_manualmode_;
+    Gtk::ComboBoxText *combo_portaudio_;
+    Gtk::RadioButton *radio_input_portaudio_;
+    Gtk::RadioButton *radio_input_file_;
+    Gtk::RadioButton *radio_input_stdin_;
+    Gtk::FileChooserButton *button_audiofilechooser_;
+    Gtk::Frame *frame_input_;
 
     Glib::Dispatcher redraw_dispatcher_;
     Glib::Dispatcher resync_dispatcher_;
-    Glib::Threads::Thread* worker_thread_;
-    Listener worker_;
+    Glib::Threads::Thread* listener_worker_thread_;
+    Listener listener_worker_;
 };
 
 extern Glib::RefPtr<Gdk::Pixbuf> pixbuf_PWR;

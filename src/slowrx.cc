@@ -4,10 +4,10 @@
 #include "dsp.h"
 
 int main(int argc, char *argv[]) {
-
+/*
   std::string confpath(std::string(getenv("HOME")) + "/.config/slowrx/slowrx.ini");
   config.load_from_file(confpath);
-
+*/
   int opt_char;
   while ((opt_char = getopt (argc, argv, "t:f:")) != EOF)
     switch (opt_char) {
@@ -19,9 +19,10 @@ int main(int argc, char *argv[]) {
         break;
     }
 
-  //Glib::RefPtr<Gtk::Application> app = Gtk::Application::create(argc, argv, "com.windytan.slowrx");
+  listPortaudioDevices();
 
   SlowGUI gui;
+  gui.start();
 
   return 0;
 }

@@ -4,6 +4,8 @@
 #include "portaudio.h"
 #include <sndfile.hh>
 #include <gtkmm.h>
+#include <mutex>
+#include <thread>
 #include "fftw3.h"
 #include "common.h"
 
@@ -36,13 +38,15 @@ class DSP {
     DSP();
 
     void   openAudioFile (std::string);
-    void   openPortAudio ();
-    void   readMore ();
+    void   openPortAudio (int);
+    void   close ();
+    void   readBufferTransfer (unsigned long);
     double forward (unsigned);
     double forward ();
     double forward_time (double);
     void   forward_to_time (double);
     void   set_fshift (double);
+    void   readMoreFromFile();
 
     void   windowedMoment (WindowType, fftw_complex*);
     double peakFreq (double, double, WindowType);
@@ -51,7 +55,7 @@ class DSP {
     WindowType bestWindowFor (SSTVMode, double SNR=99);
     double videoSNR();
     double lum(SSTVMode, bool is_adaptive=false);
-    
+
     bool   is_open   () const;
     double get_t     () const;
     bool   isLive    () const;
@@ -62,14 +66,24 @@ class DSP {
     void setLatestPixbuf(Glib::RefPtr<Gdk::Pixbuf>);
     Glib::RefPtr<Gdk::Pixbuf> getLatestPixbuf();
 
+    int PaCallback(const void *input, void *output,
+      unsigned long frameCount,
+      const PaStreamCallbackTimeInfo* timeInfo,
+      PaStreamCallbackFlags statusFlags);
+    static int PaStaticCallback(
+      const void *input, void *output,
+      unsigned long frameCount,
+      const PaStreamCallbackTimeInfo* timeInfo,
+      PaStreamCallbackFlags statusFlags,
+      void *userData ) {
+      return ((DSP*)userData)
+             ->PaCallback(input, output, frameCount, timeInfo, statusFlags);
+  }
+
+
   private:
 
-    //mutable Glib::Threads::Mutex Mutex;
     CirBuffer cirbuf_;
-    //double*   cirbuf_;
-    //int       cirbuf_head_;
-    //int       cirbuf_tail_;
-    //int       cirbuf_fill_count_;
     bool      please_stop_;
     float*  read_buffer_;
     SndfileHandle file_;
@@ -78,11 +92,12 @@ class DSP {
     fftw_plan     fft_plan_small_;
     fftw_plan     fft_plan_big_;
     double  samplerate_;
-    size_t num_chans_;
+    int num_chans_;
     PaStream *pa_stream_;
     eStreamType stream_type_;
     bool is_open_;
     double t_;
+    double mag_[FFT_LEN_BIG/2+1];
     double fshift_;
     double next_snr_time_;
     double SNR_;
@@ -91,27 +106,10 @@ class DSP {
     bool is_please_close_;
 
     mutable Glib::Threads::Mutex mutex_;
-    
+    std::mutex buffer_mutex_;
+
     std::vector<Wave> window_;
 };
-
-/*class MyPortaudioClass{
-
-  int myMemberCallback(const void *input, void *output,
-      unsigned long frameCount,
-      const PaStreamCallbackTimeInfo* timeInfo,
-      PaStreamCallbackFlags statusFlags);
-
-  static int myPaCallback(
-      const void *input, void *output,
-      unsigned long frameCount,
-      const PaStreamCallbackTimeInfo* timeInfo,
-      PaStreamCallbackFlags statusFlags,
-      void *userData ) {
-      return ((MyPortaudioClass*)userData)
-             ->myMemberCallback(input, output, frameCount, timeInfo, statusFlags);
-  }
-};*/
 
 Wave convolve (const Wave&, const Wave&, bool wrap_around=false);
 Wave deriv (const Wave&);
@@ -122,4 +120,7 @@ Wave upsample    (const Wave& orig, size_t factor, int kern_type);
 double   gaussianPeak  (double y1, double y2, double y3);
 double   power         (fftw_complex coeff);
 double complexMag (fftw_complex coeff);
+
+std::vector<std::pair<int,std::string>> listPortaudioDevices();
+int getDefaultPaDevice();
 #endif

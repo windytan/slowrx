@@ -11,87 +11,119 @@ Glib::RefPtr<Gdk::Pixbuf> empty_pixbuf(int px_width) {
   return pixbuf;
 }
 
-SlowGUI::SlowGUI() : redraw_dispatcher_(), resync_dispatcher_(), worker_thread_(nullptr), worker_() {
-  Glib::RefPtr<Gtk::Application> app =
-    Gtk::Application::create("com.windytan.slowrx");
+SlowGUI::SlowGUI() : redraw_dispatcher_(), resync_dispatcher_(), listener_worker_thread_(nullptr), listener_worker_(),
+  is_aborted_by_user_(false) {
+  app_ = Gtk::Application::create("com.windytan.slowrx");
 
   Glib::RefPtr<Gtk::Builder> builder = Gtk::Builder::create();
   builder->add_from_file("ui/slowrx.ui");
   builder->add_from_file("ui/aboutdialog.ui");
 
-  builder->get_widget("button_abort",    button_abort);
-  builder->get_widget("button_browse",   button_browse);
-  builder->get_widget("button_clear",    button_clear);
-  builder->get_widget("button_start",    button_start);
-  builder->get_widget("combo_card",      combo_card);
-  builder->get_widget("combo_mode",      combo_mode);
-  builder->get_widget("entry_picdir",    entry_picdir);
-  builder->get_widget("eventbox_img",    eventbox_img);
-  builder->get_widget("frame_manual",    frame_manual);
-  builder->get_widget("frame_slant",     frame_slant);
-  builder->get_widget("grid_vu",         grid_vu);
-  builder->get_widget("SavedIconView",   iconview);
-  builder->get_widget("image_devstatus", image_devstatus);
-  builder->get_widget("image_pwr",       image_pwr);
-  builder->get_widget("image_rx",        image_rx);
-  builder->get_widget("image_snr",       image_snr);
-  builder->get_widget("label_fskid",     label_fskid);
-  builder->get_widget("label_lastmode",  label_lastmode);
-  builder->get_widget("label_utc",       label_utc);
-  builder->get_widget("menuitem_quit",   menuitem_quit);
-  builder->get_widget("menuitem_about",  menuitem_about);
-  builder->get_widget("spin_shift",      spin_shift);
-  builder->get_widget("statusbar",       statusbar);
-  builder->get_widget("tog_adapt",       tog_adapt);
-  builder->get_widget("tog_fsk",         tog_fsk);
-  builder->get_widget("tog_rx",          tog_rx);
-  builder->get_widget("tog_save",        tog_save);
-  builder->get_widget("tog_setedge",     tog_setedge);
-  builder->get_widget("tog_slant",       tog_slant);
-  builder->get_widget("window_about",    window_about);
-  builder->get_widget("window_main",     window_main);
-
-  button_abort->signal_clicked().connect(sigc::ptr_fun(&evt_AbortRx));
-  button_abort->signal_clicked().connect(sigc::ptr_fun(&evt_AbortRx));
-  button_browse->signal_clicked().connect(sigc::ptr_fun(&evt_chooseDir));
-  button_clear->signal_clicked().connect(sigc::ptr_fun(&evt_clearPix));
-  button_start->signal_clicked().connect(sigc::ptr_fun(&evt_ManualStart));
-  combo_card->signal_changed().connect(sigc::ptr_fun(&evt_changeDevices));
-  //eventbox_img->signal_button_press_event().connect(sigc::ptr_fun(&evt_clickimg));
-  menuitem_quit->signal_activate().connect(sigc::ptr_fun(&evt_deletewindow));
-  menuitem_about->signal_activate().connect(sigc::ptr_fun(&evt_show_about));
-  tog_adapt->signal_activate().connect(sigc::ptr_fun(&evt_GetAdaptive));
-  //window_main->signal_delete_event().connect(sigc::ptr_fun(&evt_deletewindow));
-
   //savedstore = iconview.get_model();
 
-  image_rx->set(empty_pixbuf(500));
+  builder->get_widget("label_lasttime",  label_lasttime_);
+  builder->get_widget("window_about",    window_about_);
+  builder->get_widget("window_main",     window_main_);
+  builder->get_widget("image_rx",        image_rx_);
+  builder->get_widget("button_abort",    button_abort_);
+  builder->get_widget("button_clear",    button_clear_);
+  builder->get_widget("button_manualstart",    button_manualstart_);
+  builder->get_widget("combo_manualmode",    combo_manualmode_);
+  builder->get_widget("combo_portaudio",    combo_portaudio_);
+
+  builder->get_widget("switch_rx",        switch_rx_);
+  builder->get_widget("switch_sync",        switch_sync_);
+  builder->get_widget("switch_denoise",        switch_denoise_);
+  builder->get_widget("switch_fskid",        switch_fskid_);
+
+  builder->get_widget("radio_input_portaudio",        radio_input_portaudio_);
+  builder->get_widget("radio_input_file",        radio_input_file_);
+  builder->get_widget("radio_input_stdin",       radio_input_stdin_);
+
+  builder->get_widget("button_audiofilechooser",       button_audiofilechooser_);
+
+  builder->get_widget("frame_input",       frame_input_);
+
+  imageReset();
 
   //pixbuf_PWR = Gdk::Pixbuf::create(Gdk::COLORSPACE_RGB, false, 8, 100, 30);
   //pixbuf_SNR = Gdk::Pixbuf::create(Gdk::COLORSPACE_RGB, false, 8, 100, 30);
 
-  combo_mode->set_active(0);
-
-  if (config.get_string("slowrx","rxdir") != NULL) {
+  /*if (config.get_string("slowrx","rxdir") != NULL) {
     entry_picdir->set_text(config.get_string("slowrx","rxdir"));
   } else {
     config.set_string("slowrx","rxdir",g_get_home_dir());
     entry_picdir->set_text(config.get_string("slowrx","rxdir"));
-  }
+  }*/
 
   //setVU(0, 6);
-  
-  window_main->show_all();
+
+  window_main_->show_all();
+
+}
+
+void SlowGUI::start() {
+
+  switch_denoise_->signal_state_flags_changed().connect(
+      sigc::mem_fun(this, &SlowGUI::autoChanged)
+  );
+  switch_rx_->signal_state_flags_changed().connect(
+      sigc::mem_fun(this, &SlowGUI::autoChanged)
+  );
+  switch_rx_->signal_state_flags_changed().connect(
+      sigc::mem_fun(this, &SlowGUI::autoChanged)
+  );
+  button_abort_->signal_clicked().connect(
+      sigc::mem_fun(this, &SlowGUI::abortedByUser)
+  );
+  button_clear_->signal_clicked().connect(
+      sigc::mem_fun(this, &SlowGUI::imageReset)
+  );
 
   redraw_dispatcher_.connect(sigc::mem_fun(*this, &SlowGUI::onRedrawNotify));
   resync_dispatcher_.connect(sigc::mem_fun(*this, &SlowGUI::onResyncNotify));
 
-  worker_thread_ = Glib::Threads::Thread::create(
-      sigc::bind(sigc::mem_fun(worker_, &Listener::listen), this));
+  std::vector<std::pair<int,std::string>> pa_devs = listPortaudioDevices();
 
-  app->run(*window_main);
+  for (std::pair<int,std::string> dev : pa_devs) {
+    combo_portaudio_->append(dev.second);
+    if (dev.first == getDefaultPaDevice()) {
+      combo_portaudio_->set_active(combo_portaudio_->get_children().size()-1);
+    }
+  }
+
+  radio_input_portaudio_->signal_clicked().connect(
+      sigc::mem_fun(this, &SlowGUI::inputDeviceChanged)
+  );
+  radio_input_file_->signal_clicked().connect(
+      sigc::mem_fun(this, &SlowGUI::inputDeviceChanged)
+  );
+  radio_input_stdin_->signal_clicked().connect(
+      sigc::mem_fun(this, &SlowGUI::inputDeviceChanged)
+  );
+  combo_portaudio_->signal_changed().connect(
+      sigc::mem_fun(this, &SlowGUI::inputDeviceChanged)
+  );
+  button_audiofilechooser_->signal_file_set().connect(
+      sigc::mem_fun(this, &SlowGUI::audioFileSelected)
+  );
+
+
+  listener_worker_thread_ = Glib::Threads::Thread::create(
+      sigc::bind(sigc::mem_fun(listener_worker_, &Listener::listen), this));
+
+  notReceiving();
+  fetchAutoState();
+  inputDeviceChanged();
+
+  app_->run(*window_main_);
+
 }
 
+void SlowGUI::imageReset() {
+  image_rx_->set(empty_pixbuf(500));
+  label_lasttime_->set_text("");
+}
 
 
 // Draw signal level meters according to given values
@@ -104,7 +136,7 @@ void setVU (double *Power, int FFTLen, int WinIdx, bool ShowWin) {
 
   rowstridePWR = pixbuf_PWR->get_rowstride();
   pixelsPWR    = pixbuf_PWR->get_pixels();
-  
+
   rowstrideSNR = pixbuf_SNR->get_rowstride();
   pixelsSNR    = pixbuf_SNR->get_pixels();
 
@@ -164,13 +196,97 @@ void setVU (double *Power, int FFTLen, int WinIdx, bool ShowWin) {
 }
 #endif
 
+bool SlowGUI::isRxEnabled() {
+  return is_rx_enabled_;
+}
+bool SlowGUI::isDenoiseEnabled() {
+  return is_denoise_enabled_;
+}
+bool SlowGUI::isSyncEnabled() {
+  return is_sync_enabled_;
+}
+bool SlowGUI::isAbortedByUser() {
+  return is_aborted_by_user_;
+}
+
+void SlowGUI::receiving() {
+  button_abort_->set_sensitive(true);
+  button_clear_->set_sensitive(false);
+  button_manualstart_->set_sensitive(false);
+  combo_manualmode_->set_sensitive(false);
+  frame_input_->set_sensitive(false);
+}
+void SlowGUI::notReceiving() {
+  button_abort_->set_sensitive(false);
+  button_clear_->set_sensitive(true);
+  button_manualstart_->set_sensitive(true);
+  combo_manualmode_->set_sensitive(true);
+  frame_input_->set_sensitive(true);
+}
+
+void SlowGUI::fetchAutoState() {
+  is_denoise_enabled_ = switch_denoise_->get_active();
+  is_rx_enabled_      = switch_rx_->get_active();
+  is_sync_enabled_    = switch_sync_->get_active();
+  is_fskid_enabled_   = switch_sync_->get_active();
+}
+
+void SlowGUI::abortedByUser() {
+  is_aborted_by_user_ = true;
+}
+void SlowGUI::ackAbortedByUser() {
+  is_aborted_by_user_ = false;
+}
+
+void SlowGUI::autoChanged(Gtk::StateFlags flags) {
+  fetchAutoState();
+}
+
+void SlowGUI::inputDeviceChanged() {
+  printf("inputDeviceChanged\n");
+  listener_worker_.close();
+  if (radio_input_portaudio_->get_active()) {
+    button_audiofilechooser_->set_sensitive(false);
+    combo_portaudio_->set_sensitive(true);
+    if (combo_portaudio_->get_active_row_number() >= 0) {
+      listener_worker_.openPortAudioDev(combo_portaudio_->get_active_row_number());
+    }
+  } else if (radio_input_file_->get_active()) {
+    button_audiofilechooser_->set_sensitive(true);
+    combo_portaudio_->set_sensitive(false);
+  } else if (radio_input_stdin_->get_active()) {
+    button_audiofilechooser_->set_sensitive(false);
+    combo_portaudio_->set_sensitive(false);
+  }
+}
+
+int SlowGUI::getSelectedPaDevice() {
+  return combo_portaudio_->get_active_row_number();
+}
+
+eStreamType SlowGUI::getSelectedStreamType() {
+  eStreamType result;
+  if (radio_input_portaudio_->get_active()) {
+    result = STREAM_TYPE_PA;
+  } else if (radio_input_file_->get_active()) {
+    result = STREAM_TYPE_FILE;
+  } else {
+    result = STREAM_TYPE_STDIN;
+  }
+  return result;
+}
+
+void SlowGUI::audioFileSelected() {
+  listener_worker_.openFileStream(button_audiofilechooser_->get_filename());
+}
+
 void SlowGUI::redrawNotify() {
   redraw_dispatcher_.emit();
 }
 void SlowGUI::onRedrawNotify() {
-  Picture* pic = worker_.getCurrentPic();
-  label_lastmode->set_text(ModeSpec[pic->getMode()].name);
-  image_rx->set(pic->renderPixbuf(500));
+  Picture* pic = listener_worker_.getCurrentPic();
+  label_lasttime_->set_text(pic->getTimestamp() + " / " + getModeSpec(pic->getMode()).name + " ");
+  image_rx_->set(pic->renderPixbuf(500));
 
 }
 
@@ -178,14 +294,16 @@ void SlowGUI::resyncNotify() {
   resync_dispatcher_.emit();
 }
 void SlowGUI::onResyncNotify() {
-  Picture* pic = worker_.getCurrentPic();
-  pic->resync();
+  if (switch_sync_->get_active()) {
+    Picture* pic = listener_worker_.getCurrentPic();
+    pic->resync();
+  }
 }
 
 void evt_chooseDir() {
   /*Gtk::FileChooserDialog dialog (*gui.window_main, "Select folder",
                                       Gtk::FILE_CHOOSER_ACTION_SELECT_FOLDER);
-  
+
   if (dialog.run() == Gtk::RESPONSE_ACCEPT) {
     config->set_string("slowrx","rxdir",dialog.get_filename());
     //gui.entry_picdir->set_text(dialog.get_filename());
