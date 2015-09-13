@@ -257,6 +257,7 @@ void SlowGUI::inputDeviceChanged() {
   } else if (radio_input_stdin_->get_active()) {
     button_audiofilechooser_->set_sensitive(false);
     combo_portaudio_->set_sensitive(false);
+    listener_worker_.openStdin();
   }
 }
 

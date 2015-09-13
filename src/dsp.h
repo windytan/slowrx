@@ -39,6 +39,7 @@ class DSP {
 
     void   openAudioFile (std::string);
     void   openPortAudio (int);
+    void   openStdin();
     void   close ();
     void   readBufferTransfer (unsigned long);
     double forward (unsigned);
@@ -47,6 +48,7 @@ class DSP {
     void   forward_to_time (double);
     void   set_fshift (double);
     void   readMoreFromFile();
+    void   readMoreFromStdin();
 
     void   windowedMoment (WindowType, fftw_complex*);
     double peakFreq (double, double, WindowType);
@@ -86,6 +88,7 @@ class DSP {
     CirBuffer cirbuf_;
     bool      please_stop_;
     float*  read_buffer_;
+    int16_t*  read_buffer_s16_;
     SndfileHandle file_;
     fftw_complex *fft_inbuf_;
     fftw_complex *fft_outbuf_;

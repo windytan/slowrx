@@ -5,7 +5,7 @@
 bool g_is_pa_initialized = false;
 
 DSP::DSP() :
-  cirbuf_(CIRBUF_LEN*2), is_open_(false), t_(0), fshift_(0), sync_window_(WINDOW_HANN511), read_buffer_(nullptr),
+  cirbuf_(CIRBUF_LEN*2), is_open_(false), t_(0), fshift_(0), sync_window_(WINDOW_HANN511), read_buffer_(nullptr), read_buffer_s16_(nullptr),
   window_(16)
 {
 
@@ -68,6 +68,7 @@ void DSP::openAudioFile (std::string fname) {
     stream_type_ = STREAM_TYPE_FILE;
 
     num_chans_ = file_.channels();
+    delete read_buffer_;
     read_buffer_ = new float [READ_CHUNK_LEN * num_chans_];
     is_open_ = true;
   }
@@ -130,6 +131,28 @@ void DSP::openPortAudio (int n) {
       fprintf(stderr,"  error\n");
     }
   }
+}
+
+void DSP::openStdin() {
+
+  if (is_open_)
+    close();
+
+  printf("openStdin\n");
+
+#ifdef WINDOWS
+  int result = _setmode( _fileno( stdin ), _O_BINARY );
+  if( result == -1 )
+    perror( "Cannot set mode" );
+  else
+    printf( "'stdin' successfully changed to binary mode\n" );
+#endif
+
+  delete read_buffer_s16_;
+  read_buffer_s16_ = new int16_t [READ_CHUNK_LEN]();
+  
+  stream_type_ = STREAM_TYPE_STDIN;
+  is_open_ = true;
 }
 
 void DSP::close () {
@@ -204,6 +227,21 @@ void DSP::readMoreFromFile() {
   readBufferTransfer(framesread);
 }
 
+void DSP::readMoreFromStdin() {
+  unsigned long framesread = 0;
+  ssize_t fr = fread(read_buffer_s16_, sizeof(uint16_t), READ_CHUNK_LEN, stdin);
+  if (fr < READ_CHUNK_LEN) {
+    is_open_ = false;
+  }
+  framesread = fr;
+
+  for (size_t i=0; i<READ_CHUNK_LEN; i++) {
+    read_buffer_[i] = read_buffer_s16_[i] / 32768.0;
+  }
+
+  readBufferTransfer(framesread);
+}
+
 
 void DSP::readBufferTransfer (unsigned long framesread) {
 
@@ -247,6 +285,8 @@ double DSP::forward (unsigned nsamples) {
           std::this_thread::sleep_for(std::chrono::milliseconds(100));
         } else if (stream_type_ == STREAM_TYPE_FILE) {
           readMoreFromFile();
+        } else if (stream_type_ == STREAM_TYPE_STDIN) {
+          readMoreFromStdin();
         }
       }
     }
