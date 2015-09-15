@@ -327,7 +327,9 @@ std::vector<PixelSample> pixelSamplingPoints(SSTVMode mode) {
   return pixel_grid;
 }
 
-void Picture::save() {
-  std::string filename = std::string("slowrx_") + safe_timestamp_ + ".png";
-  std::cout << filename << "\n";
+void Picture::save(std::string dir) {
+  std::string filename = dir + "/" + std::string("slowrx_") + safe_timestamp_ + ".png";
+  Glib::RefPtr<Gdk::Pixbuf> pb = renderPixbuf(500);
+  std::cout << "saving " << filename << "\n";
+  pb->save(filename, "png");
 }

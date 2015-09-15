@@ -1,15 +1,9 @@
-#include <cmath>
 #include "dsp.h"
-#include "gui.h"
-
-bool g_is_pa_initialized = false;
+#include <cmath>
 
 DSP::DSP() :
-  cirbuf_(CIRBUF_LEN*2), is_open_(false), t_(0), fshift_(0), sync_window_(WINDOW_HANN511), read_buffer_(nullptr), read_buffer_s16_(nullptr),
-  window_(16)
+  fshift_(0), sync_window_(WINDOW_HANN511), window_(16)
 {
-
-  cirbuf_.head = MOMENT_LEN/2;
 
   window_[WINDOW_HANN95]   = window::Hann(95);
   window_[WINDOW_HANN127]  = window::Hann(127);
@@ -40,279 +34,28 @@ DSP::DSP() :
     exit(EXIT_FAILURE);
   }
   for (size_t i=0; i<FFT_LEN_BIG; i++) {
-    fft_inbuf_[i][0] = fft_inbuf_[i][1] = 0;
+    fft_inbuf_[i][0]  = fft_inbuf_[i][1]  = 0;
     fft_outbuf_[i][0] = fft_outbuf_[i][1] = 0;
   }
 
   fft_plan_small_ = fftw_plan_dft_1d(FFT_LEN_SMALL, fft_inbuf_, fft_outbuf_, FFTW_FORWARD, FFTW_ESTIMATE);
   fft_plan_big_   = fftw_plan_dft_1d(FFT_LEN_BIG, fft_inbuf_, fft_outbuf_, FFTW_FORWARD, FFTW_ESTIMATE);
 
+  input_ = new Input();
+
 }
 
-
-void DSP::openAudioFile (std::string fname) {
-
-  if (is_open_)
-    close();
-
-  fprintf (stderr,"open '%s'\n", fname.c_str()) ;
-  file_ = SndfileHandle(fname.c_str()) ;
-
-  if (file_.error()) {
-    fprintf(stderr,"sndfile: %s\n", file_.strError());
-  } else {
-    fprintf (stderr,"  opened @ %d Hz, %d ch\n", file_.samplerate(), file_.channels()) ;
-
-    samplerate_ = file_.samplerate();
-
-    stream_type_ = STREAM_TYPE_FILE;
-
-    num_chans_ = file_.channels();
-    delete read_buffer_;
-    read_buffer_ = new float [READ_CHUNK_LEN * num_chans_];
-    is_open_ = true;
-  }
+Input* DSP::getInput() {
+  return input_;
 }
-
-void DSP::openPortAudio (int n) {
-
-  if (!is_open_) {
-
-    if (!g_is_pa_initialized) {
-      printf("Pa_Initialize\n");
-      PaError err = Pa_Initialize();
-      if (err == paNoError)
-        g_is_pa_initialized = true;
-    }
-
-    PaStreamParameters inputParameters;
-    inputParameters.device = (n < 0 ? Pa_GetDefaultInputDevice() : n);
-    inputParameters.channelCount = 1;
-    inputParameters.sampleFormat = paFloat32;
-    inputParameters.suggestedLatency = Pa_GetDeviceInfo( inputParameters.device )->defaultHighInputLatency ;
-    inputParameters.hostApiSpecificStreamInfo = NULL;
-
-    const PaDeviceInfo *devinfo;
-    devinfo = Pa_GetDeviceInfo(inputParameters.device);
-
-    printf("Pa_OpenStream\n");
-    int err = Pa_OpenStream(
-              &pa_stream_,
-              &inputParameters,
-              NULL,
-              44100,
-              READ_CHUNK_LEN,
-              paClipOff,
-              &DSP::PaStaticCallback,
-              this );
-
-    if (!err) {
-      num_chans_ = 1;
-      printf("make readbuffer: %d floats\n",READ_CHUNK_LEN * num_chans_);
-      delete read_buffer_;
-      read_buffer_ = new float [READ_CHUNK_LEN * num_chans_]();
-
-      err = Pa_StartStream( pa_stream_ );
-
-      const PaStreamInfo *streaminfo;
-      streaminfo = Pa_GetStreamInfo(pa_stream_);
-      samplerate_ = streaminfo->sampleRate;
-      fprintf(stderr,"  opened '%s' @ %.1f\n",devinfo->name,samplerate_);
-
-      stream_type_ = STREAM_TYPE_PA;
-
-      if (err == paNoError) {
-        is_open_ = true;
-        //readMore();
-      } else {
-        fprintf(stderr,"  error at Pa_StartStream\n");
-      }
-    } else {
-      fprintf(stderr,"  error\n");
-    }
-  }
-}
-
-void DSP::openStdin() {
-
-  if (is_open_)
-    close();
-
-  printf("openStdin\n");
-
-#ifdef WINDOWS
-  int result = _setmode( _fileno( stdin ), _O_BINARY );
-  if( result == -1 )
-    perror( "Cannot set mode" );
-  else
-    printf( "'stdin' successfully changed to binary mode\n" );
-#endif
-
-  delete read_buffer_s16_;
-  read_buffer_s16_ = new int16_t [READ_CHUNK_LEN]();
-  
-  stream_type_ = STREAM_TYPE_STDIN;
-  is_open_ = true;
-}
-
-void DSP::close () {
-  if (is_open_) {
-    if (stream_type_ == STREAM_TYPE_PA) {
-      printf("Pa_CloseStream\n");
-      Pa_CloseStream(pa_stream_);
-    }
-    is_open_ = false;
-  }
-}
-
-void DSP::set_fshift (double fshift) {
-  fshift_ = fshift;
-}
-
-int DSP::freq2bin (double freq, int fft_len) const {
-  return (freq / samplerate_ * fft_len);
-}
-
-bool DSP::is_open () const {
-  return is_open_;
-}
-
-double DSP::get_t() const {
-  return t_;
-}
-
-bool DSP::isLive() const {
-  return (stream_type_ == STREAM_TYPE_PA);
-}
-
-int DSP::PaCallback(const void *input, void *output,
-    unsigned long framesread,
-    const PaStreamCallbackTimeInfo* timeInfo,
-    PaStreamCallbackFlags statusFlags) {
-
-  //printf("PaCallback\n");
-  float* in = (float*)input;
-
-  {
-    std::lock_guard<std::mutex> guard(buffer_mutex_);
-    for (unsigned i = 0; i<READ_CHUNK_LEN; i++)
-      read_buffer_[i] = in[i * num_chans_];
-  }
-
-  readBufferTransfer(framesread);
-
-  return 0;
-}
-
-void DSP::readMoreFromFile() {
-  unsigned long framesread = 0;
-  sf_count_t fr = file_.readf(read_buffer_, READ_CHUNK_LEN);
-  if (fr < READ_CHUNK_LEN) {
-    is_open_ = false;
-    if (fr < 0) {
-      framesread = 0;
-    } else {
-      framesread = fr;
-    }
-  } else {
-    framesread = fr;
-  }
-
-  if (num_chans_ > 1) {
-    for (size_t i=0; i<READ_CHUNK_LEN; i++) {
-      read_buffer_[i] = read_buffer_[i*num_chans_];
-    }
-  }
-
-  readBufferTransfer(framesread);
-}
-
-void DSP::readMoreFromStdin() {
-  unsigned long framesread = 0;
-  ssize_t fr = fread(read_buffer_s16_, sizeof(uint16_t), READ_CHUNK_LEN, stdin);
-  if (fr < READ_CHUNK_LEN) {
-    is_open_ = false;
-  }
-  framesread = fr;
-
-  for (size_t i=0; i<READ_CHUNK_LEN; i++) {
-    read_buffer_[i] = read_buffer_s16_[i] / 32768.0;
-  }
-
-  readBufferTransfer(framesread);
-}
-
-
-void DSP::readBufferTransfer (unsigned long framesread) {
-
-  {
-    std::lock_guard<std::mutex> guard(buffer_mutex_);
-
-    int cirbuf_fits = std::min(CIRBUF_LEN - cirbuf_.head, int(framesread));
-
-    for (size_t i=0; i<cirbuf_fits; i++)
-      cirbuf_.data[cirbuf_.head + i] = read_buffer_[i];
-
-    // wrap around
-    if (framesread > cirbuf_fits) {
-      for (size_t i=0; i<(framesread - cirbuf_fits); i++)
-        cirbuf_.data[i] = read_buffer_[cirbuf_fits + i];
-    }
-
-    // mirror
-    for (size_t i=0; i<CIRBUF_LEN; i++)
-      cirbuf_.data[CIRBUF_LEN + i] = cirbuf_.data[i];
-
-    cirbuf_.head = (cirbuf_.head + framesread) % CIRBUF_LEN;
-    cirbuf_.fill_count += framesread;
-    cirbuf_.fill_count = std::min(int(cirbuf_.fill_count), CIRBUF_LEN);
-  }
-}
-
-// move processing window
-double DSP::forward (unsigned nsamples) {
-  for (unsigned i = 0; i < nsamples; i++) {
-
-    {
-      std::lock_guard<std::mutex> guard(buffer_mutex_);
-      cirbuf_.tail = (cirbuf_.tail + 1) % CIRBUF_LEN;
-      cirbuf_.fill_count -= 1;
-    }
-
-    if (cirbuf_.fill_count < MOMENT_LEN) {
-      while (cirbuf_.fill_count < MOMENT_LEN) {
-        if (stream_type_ == STREAM_TYPE_PA) {
-          std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        } else if (stream_type_ == STREAM_TYPE_FILE) {
-          readMoreFromFile();
-        } else if (stream_type_ == STREAM_TYPE_STDIN) {
-          readMoreFromStdin();
-        }
-      }
-    }
-  }
-  double dt = 1.0 * nsamples / samplerate_;
-  t_ += dt;
-  return dt;
-}
-double DSP::forward () {
-  return forward(1);
-}
-double DSP::forward_time(double sec) {
-  double start_t = t_;
-  while (t_ < start_t + sec)
-    forward();
-  return t_ - start_t;
-}
-
 
 // the current moment, windowed
 // will be written over buf
 // which MUST fit FFT_LEN_BIG * fftw_complex
-void DSP::windowedMoment (WindowType win_type, fftw_complex* buf) {
+void DSP::calcWindowedFFT (WindowType win_type, unsigned fft_len) {
 
-  for (size_t i=0; i<FFT_LEN_BIG; i++)
-    buf[i][0] = buf[i][1] = 0;
+  for (size_t i=0; i<fft_len; i++)
+    fft_inbuf_[i][0] = fft_inbuf_[i][1] = 0;
 
   //double if_phi = 0;
   for (int i = 0; i < MOMENT_LEN; i++) {
@@ -322,25 +65,26 @@ void DSP::windowedMoment (WindowType win_type, fftw_complex* buf) {
     if (win_i < window_[win_type].size()) {
       double a;
       //fftw_complex mixed;
-      a = cirbuf_.data[cirbuf_.tail + i] * window_[win_type][win_i];
+      a = input_->cirbuf_.data[input_->cirbuf_.tail + i] * window_[win_type][win_i];
 
       /*// mix to IF
       mixed[0] = a * cos(if_phi) - a * sin(if_phi);
       mixed[1] = a * cos(if_phi) + a * sin(if_phi);
       if_phi += 2 * M_PI * 10000 / samplerate_;*/
 
-      buf[win_i][0] = buf[win_i][1] = a;
+      fft_inbuf_[win_i][0] = fft_inbuf_[win_i][1] = a;
     }
   }
 
+  fftw_execute(fft_len == FFT_LEN_BIG ? fft_plan_big_ : fft_plan_small_);
+
 }
 
-double DSP::peakFreq (double minf, double maxf, WindowType wintype) {
+double DSP::calcPeakFreq (double minf, double maxf, WindowType wintype) {
 
   unsigned fft_len = (window_[wintype].size() <= FFT_LEN_SMALL ? FFT_LEN_SMALL : FFT_LEN_BIG);
 
-  windowedMoment(wintype, fft_inbuf_);
-  fftw_execute(fft_len == FFT_LEN_BIG ? fft_plan_big_ : fft_plan_small_);
+  calcWindowedFFT(wintype, fft_len);
 
   size_t peakBin = 0;
   unsigned lobin = freq2bin(minf, fft_len);
@@ -355,27 +99,26 @@ double DSP::peakFreq (double minf, double maxf, WindowType wintype) {
   double result = peakBin + gaussianPeak(mag_[peakBin-1], mag_[peakBin], mag_[peakBin+1]);
 
   // In Hertz
-  result = result / fft_len * samplerate_ + fshift_;
+  result = result / fft_len * input_->getSamplerate() + fshift_;
 
   // cheb47 @ 44100 can't resolve <1700 Hz
   if (result < 1700 && wintype == WINDOW_CHEB47)
-    result = peakFreq (minf, maxf, WINDOW_HANN95);
+    result = calcPeakFreq (minf, maxf, WINDOW_HANN95);
 
   return result;
 
 }
 
-Wave DSP::bandPowerPerHz(const std::vector<std::vector<double>>& bands, WindowType wintype) {
+Wave DSP::calcBandPowerPerHz(const std::vector<std::vector<double>>& bands, WindowType wintype) {
 
   unsigned fft_len = (window_[wintype].size() <= FFT_LEN_SMALL ? FFT_LEN_SMALL : FFT_LEN_BIG);
 
-  windowedMoment(wintype, fft_inbuf_);
-  fftw_execute(fft_len == FFT_LEN_BIG ? fft_plan_big_ : fft_plan_small_);
+  calcWindowedFFT(wintype, fft_len);
 
   Wave result;
   for (Wave band : bands) {
     double P = 0;
-    double binwidth = 1.0 * samplerate_ / fft_len;
+    double binwidth = 1.0 * input_->getSamplerate() / fft_len;
     int nbins = 0;
     for (int i = freq2bin(band[0]+fshift_, fft_len); i <= freq2bin(band[1]+fshift_, fft_len); i++) {
       P += pow(complexMag(fft_outbuf_[i]), 2);
@@ -403,9 +146,11 @@ WindowType DSP::bestWindowFor(SSTVMode Mode, double SNR) {
   return WinType;
 }
 
-double DSP::videoSNR () {
-  if (t_ >= next_snr_time_) {
-    std::vector<double> bands = bandPowerPerHz(
+double DSP::calcVideoSNR () {
+  double t = input_->get_t();
+
+  if (t >= next_snr_time_) {
+    std::vector<double> bands = calcBandPowerPerHz(
         {{FREQ_SYNC-1000,FREQ_SYNC-200},
         {FREQ_BLACK,FREQ_WHITE},
         {FREQ_WHITE+400, FREQ_WHITE+700}}
@@ -417,14 +162,14 @@ double DSP::videoSNR () {
     SNR_ = ((Pnoise_only == 0 || Psignal / Pnoise_only < .01) ?
         -20 : 10 * log10(Psignal / Pnoise_only));
 
-    next_snr_time_ = t_ + 50e-3;
+    next_snr_time_ = t + 50e-3;
   }
 
   return SNR_;
 }
 
-double DSP::syncPower () {
-  std::vector<double> bands = bandPowerPerHz(
+double DSP::calcSyncPower () {
+  std::vector<double> bands = calcBandPowerPerHz(
       {{FREQ_SYNC-50,FREQ_SYNC+50},
       {FREQ_BLACK,FREQ_WHITE}},
       sync_window_
@@ -438,23 +183,14 @@ double DSP::syncPower () {
   return sync;
 }
 
-double DSP::lum (SSTVMode mode, bool is_adaptive) {
+double DSP::calcVideoLevel (SSTVMode mode, bool is_adaptive) {
   WindowType win_type;
 
-  if (is_adaptive) win_type = bestWindowFor(mode, videoSNR());
+  if (is_adaptive) win_type = bestWindowFor(mode, calcVideoSNR());
   else             win_type = bestWindowFor(mode);
 
-  double freq = peakFreq(FREQ_BLACK, FREQ_WHITE, win_type);
+  double freq = calcPeakFreq(FREQ_BLACK, FREQ_WHITE, win_type);
   return fclip((freq - FREQ_BLACK) / (FREQ_WHITE - FREQ_BLACK));
-}
-
-void DSP::setLatestPixbuf(Glib::RefPtr<Gdk::Pixbuf> pb) {
-  Glib::Threads::Mutex::Lock lock (mutex_);
-  latest_pixbuf_ = pb;
-}
-Glib::RefPtr<Gdk::Pixbuf> DSP::getLatestPixbuf() {
-  Glib::Threads::Mutex::Lock lock (mutex_);
-  return latest_pixbuf_;
 }
 
 // param:  y values around peak
@@ -703,25 +439,11 @@ std::tuple<bool,double,double> findMelody (const Wave& wave, const Melody& melod
   return { was_found, avg_fdiff, tshift };
 }
 
-std::vector<std::pair<int,std::string>> listPortaudioDevices() {
-  std::vector<std::pair<int,std::string>> result;
-  if (!g_is_pa_initialized) {
-    printf("Pa_Initialize\n");
-    PaError err = Pa_Initialize();
-    if (err == paNoError)
-      g_is_pa_initialized = true;
-  }
-  int numDevices = Pa_GetDeviceCount();
-  const   PaDeviceInfo *device_info;
-  for(int i=0; i<numDevices; i++) {
-    device_info = Pa_GetDeviceInfo(i);
-    if (device_info->maxInputChannels > 0) {
-      result.push_back({i, device_info->name});
-    }
-  }
-  return result;
+void DSP::set_fshift (double fshift) {
+  fshift_ = fshift;
 }
 
-int getDefaultPaDevice() {
-  return Pa_GetDefaultInputDevice();
+int DSP::freq2bin (double freq, int fft_len) const {
+  return (freq / input_->getSamplerate() * fft_len);
 }
+

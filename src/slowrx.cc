@@ -8,7 +8,7 @@ int main(int argc, char *argv[]) {
   std::string confpath(std::string(getenv("HOME")) + "/.config/slowrx/slowrx.ini");
   config.load_from_file(confpath);
 */
-  int opt_char;
+  /*int opt_char;
   while ((opt_char = getopt (argc, argv, "t:f:")) != EOF)
     switch (opt_char) {
       case 't':
@@ -17,11 +17,9 @@ int main(int argc, char *argv[]) {
       case 'f':
         //dsp.openAudioFile(optarg);
         break;
-    }
+    }*/
 
-  listPortaudioDevices();
-
-  SlowGUI gui;
+  GUI gui;
   gui.start();
 
   return 0;

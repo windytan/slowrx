@@ -1,6 +1,7 @@
 #include "gui.h"
 #include "listener.h"
 #include "picture.h"
+#include "input.h"
 
 Glib::RefPtr<Gdk::Pixbuf> empty_pixbuf(int px_width) {
   int px_height = round(px_width / 1.25);
@@ -11,8 +12,8 @@ Glib::RefPtr<Gdk::Pixbuf> empty_pixbuf(int px_width) {
   return pixbuf;
 }
 
-SlowGUI::SlowGUI() : redraw_dispatcher_(), resync_dispatcher_(), listener_worker_thread_(nullptr), listener_worker_(),
-  is_aborted_by_user_(false) {
+GUI::GUI() : is_aborted_by_user_(false), redraw_dispatcher_(), resync_dispatcher_(), listener_worker_thread_(nullptr),
+             listener_worker_() {
   app_ = Gtk::Application::create("com.windytan.slowrx");
 
   Glib::RefPtr<Gtk::Builder> builder = Gtk::Builder::create();
@@ -35,19 +36,20 @@ SlowGUI::SlowGUI() : redraw_dispatcher_(), resync_dispatcher_(), listener_worker
   builder->get_widget("switch_sync",        switch_sync_);
   builder->get_widget("switch_denoise",        switch_denoise_);
   builder->get_widget("switch_fskid",        switch_fskid_);
+  
+  builder->get_widget("check_save",        check_save_);
 
   builder->get_widget("radio_input_portaudio",        radio_input_portaudio_);
   builder->get_widget("radio_input_file",        radio_input_file_);
   builder->get_widget("radio_input_stdin",       radio_input_stdin_);
 
   builder->get_widget("button_audiofilechooser",       button_audiofilechooser_);
+  
+  builder->get_widget("save_dir_chooser",       button_savedirchooser_);
 
   builder->get_widget("frame_input",       frame_input_);
 
   imageReset();
-
-  //pixbuf_PWR = Gdk::Pixbuf::create(Gdk::COLORSPACE_RGB, false, 8, 100, 30);
-  //pixbuf_SNR = Gdk::Pixbuf::create(Gdk::COLORSPACE_RGB, false, 8, 100, 30);
 
   /*if (config.get_string("slowrx","rxdir") != NULL) {
     entry_picdir->set_text(config.get_string("slowrx","rxdir"));
@@ -56,32 +58,30 @@ SlowGUI::SlowGUI() : redraw_dispatcher_(), resync_dispatcher_(), listener_worker
     entry_picdir->set_text(config.get_string("slowrx","rxdir"));
   }*/
 
-  //setVU(0, 6);
-
   window_main_->show_all();
 
 }
 
-void SlowGUI::start() {
+void GUI::start() {
 
   switch_denoise_->signal_state_flags_changed().connect(
-      sigc::mem_fun(this, &SlowGUI::autoChanged)
+      sigc::mem_fun(this, &GUI::autoSettingsChanged)
   );
   switch_rx_->signal_state_flags_changed().connect(
-      sigc::mem_fun(this, &SlowGUI::autoChanged)
+      sigc::mem_fun(this, &GUI::autoSettingsChanged)
   );
   switch_rx_->signal_state_flags_changed().connect(
-      sigc::mem_fun(this, &SlowGUI::autoChanged)
+      sigc::mem_fun(this, &GUI::autoSettingsChanged)
   );
   button_abort_->signal_clicked().connect(
-      sigc::mem_fun(this, &SlowGUI::abortedByUser)
+      sigc::mem_fun(this, &GUI::abortedByUser)
   );
   button_clear_->signal_clicked().connect(
-      sigc::mem_fun(this, &SlowGUI::imageReset)
+      sigc::mem_fun(this, &GUI::imageReset)
   );
 
-  redraw_dispatcher_.connect(sigc::mem_fun(*this, &SlowGUI::onRedrawNotify));
-  resync_dispatcher_.connect(sigc::mem_fun(*this, &SlowGUI::onResyncNotify));
+  redraw_dispatcher_.connect(sigc::mem_fun(*this, &GUI::onRedrawNotify));
+  resync_dispatcher_.connect(sigc::mem_fun(*this, &GUI::onResyncNotify));
 
   std::vector<std::pair<int,std::string>> pa_devs = listPortaudioDevices();
 
@@ -93,19 +93,19 @@ void SlowGUI::start() {
   }
 
   radio_input_portaudio_->signal_clicked().connect(
-      sigc::mem_fun(this, &SlowGUI::inputDeviceChanged)
+      sigc::mem_fun(this, &GUI::inputDeviceChanged)
   );
   radio_input_file_->signal_clicked().connect(
-      sigc::mem_fun(this, &SlowGUI::inputDeviceChanged)
+      sigc::mem_fun(this, &GUI::inputDeviceChanged)
   );
   radio_input_stdin_->signal_clicked().connect(
-      sigc::mem_fun(this, &SlowGUI::inputDeviceChanged)
+      sigc::mem_fun(this, &GUI::inputDeviceChanged)
   );
   combo_portaudio_->signal_changed().connect(
-      sigc::mem_fun(this, &SlowGUI::inputDeviceChanged)
+      sigc::mem_fun(this, &GUI::inputDeviceChanged)
   );
   button_audiofilechooser_->signal_file_set().connect(
-      sigc::mem_fun(this, &SlowGUI::audioFileSelected)
+      sigc::mem_fun(this, &GUI::audioFileSelected)
   );
 
 
@@ -120,7 +120,7 @@ void SlowGUI::start() {
 
 }
 
-void SlowGUI::imageReset() {
+void GUI::imageReset() {
   image_rx_->set(empty_pixbuf(500));
   label_lasttime_->set_text("");
 }
@@ -196,27 +196,30 @@ void setVU (double *Power, int FFTLen, int WinIdx, bool ShowWin) {
 }
 #endif
 
-bool SlowGUI::isRxEnabled() {
+bool GUI::isRxEnabled() {
   return is_rx_enabled_;
 }
-bool SlowGUI::isDenoiseEnabled() {
+bool GUI::isDenoiseEnabled() {
   return is_denoise_enabled_;
 }
-bool SlowGUI::isSyncEnabled() {
+bool GUI::isSyncEnabled() {
   return is_sync_enabled_;
 }
-bool SlowGUI::isAbortedByUser() {
+bool GUI::isAbortedByUser() {
   return is_aborted_by_user_;
 }
+bool GUI::isSaveEnabled() {
+  return check_save_->get_active();
+}
 
-void SlowGUI::receiving() {
+void GUI::receiving() {
   button_abort_->set_sensitive(true);
   button_clear_->set_sensitive(false);
   button_manualstart_->set_sensitive(false);
   combo_manualmode_->set_sensitive(false);
   frame_input_->set_sensitive(false);
 }
-void SlowGUI::notReceiving() {
+void GUI::notReceiving() {
   button_abort_->set_sensitive(false);
   button_clear_->set_sensitive(true);
   button_manualstart_->set_sensitive(true);
@@ -224,25 +227,26 @@ void SlowGUI::notReceiving() {
   frame_input_->set_sensitive(true);
 }
 
-void SlowGUI::fetchAutoState() {
+void GUI::fetchAutoState() {
   is_denoise_enabled_ = switch_denoise_->get_active();
   is_rx_enabled_      = switch_rx_->get_active();
   is_sync_enabled_    = switch_sync_->get_active();
   is_fskid_enabled_   = switch_sync_->get_active();
 }
 
-void SlowGUI::abortedByUser() {
+void GUI::abortedByUser() {
   is_aborted_by_user_ = true;
 }
-void SlowGUI::ackAbortedByUser() {
+void GUI::ackAbortedByUser() {
   is_aborted_by_user_ = false;
 }
 
-void SlowGUI::autoChanged(Gtk::StateFlags flags) {
+void GUI::autoSettingsChanged(Gtk::StateFlags flags) {
+  (void)flags;
   fetchAutoState();
 }
 
-void SlowGUI::inputDeviceChanged() {
+void GUI::inputDeviceChanged() {
   printf("inputDeviceChanged\n");
   listener_worker_.close();
   if (radio_input_portaudio_->get_active()) {
@@ -261,11 +265,11 @@ void SlowGUI::inputDeviceChanged() {
   }
 }
 
-int SlowGUI::getSelectedPaDevice() {
+int GUI::getSelectedPaDevice() {
   return combo_portaudio_->get_active_row_number();
 }
 
-eStreamType SlowGUI::getSelectedStreamType() {
+eStreamType GUI::getSelectedStreamType() {
   eStreamType result;
   if (radio_input_portaudio_->get_active()) {
     result = STREAM_TYPE_PA;
@@ -277,43 +281,31 @@ eStreamType SlowGUI::getSelectedStreamType() {
   return result;
 }
 
-void SlowGUI::audioFileSelected() {
+std::string GUI::getSavedPictureLocation() {
+  return button_savedirchooser_->get_filename();
+}
+
+void GUI::audioFileSelected() {
   listener_worker_.openFileStream(button_audiofilechooser_->get_filename());
 }
 
-void SlowGUI::redrawNotify() {
+void GUI::redrawNotify() {
   redraw_dispatcher_.emit();
 }
-void SlowGUI::onRedrawNotify() {
+void GUI::onRedrawNotify() {
   Picture* pic = listener_worker_.getCurrentPic();
   label_lasttime_->set_text(pic->getTimestamp() + " / " + getModeSpec(pic->getMode()).name + " ");
   image_rx_->set(pic->renderPixbuf(500));
 
 }
 
-void SlowGUI::resyncNotify() {
+void GUI::resyncNotify() {
   resync_dispatcher_.emit();
 }
-void SlowGUI::onResyncNotify() {
+void GUI::onResyncNotify() {
   if (switch_sync_->get_active()) {
     Picture* pic = listener_worker_.getCurrentPic();
     pic->resync();
   }
 }
 
-void evt_chooseDir() {
-  /*Gtk::FileChooserDialog dialog (*gui.window_main, "Select folder",
-                                      Gtk::FILE_CHOOSER_ACTION_SELECT_FOLDER);
-
-  if (dialog.run() == Gtk::RESPONSE_ACCEPT) {
-    config->set_string("slowrx","rxdir",dialog.get_filename());
-    //gui.entry_picdir->set_text(dialog.get_filename());
-  }
-
-  //dialog.destroy_widget();*/
-}
-
-void evt_show_about() {
-  //gui.window_about->show();
-  //gui.window_about->hide();
-}

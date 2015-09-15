@@ -34,7 +34,7 @@ class Picture {
     Glib::RefPtr<Gdk::Pixbuf> renderPixbuf(unsigned min_width=320, int upsample_factor=4);
     void resync();
     void saveSync();
-    void save();
+    void save(std::string);
 
   private:
     SSTVMode mode_;

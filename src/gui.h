@@ -5,11 +5,11 @@
 #include "common.h"
 #include "listener.h"
 
-class SlowGUI {
+class GUI {
 
   public:
 
-    SlowGUI();
+    GUI();
 
     void start();
 
@@ -24,6 +24,7 @@ class SlowGUI {
     bool isDenoiseEnabled();
     bool isSyncEnabled();
     bool isAbortedByUser();
+    bool isSaveEnabled();
 
     void redrawNotify();
     void onRedrawNotify();
@@ -31,7 +32,7 @@ class SlowGUI {
     void onResyncNotify();
 
     void fetchAutoState();
-    void autoChanged(Gtk::StateFlags);
+    void autoSettingsChanged(Gtk::StateFlags);
 
     void inputDeviceChanged();
     void audioFileSelected();
@@ -39,6 +40,7 @@ class SlowGUI {
     eStreamType getSelectedStreamType();
     int getSelectedPaDevice();
     std::string getSelectedAudioFileName();
+    std::string getSavedPictureLocation();
 
   private:
 
@@ -58,6 +60,7 @@ class SlowGUI {
     Gtk::ToggleButton *switch_sync_;
     Gtk::ToggleButton *switch_denoise_;
     Gtk::ToggleButton *switch_fskid_;
+    Gtk::CheckButton *check_save_;
     Gtk::Button *button_abort_;
     Gtk::Button *button_clear_;
     Gtk::Button *button_manualstart_;
@@ -67,6 +70,7 @@ class SlowGUI {
     Gtk::RadioButton *radio_input_file_;
     Gtk::RadioButton *radio_input_stdin_;
     Gtk::FileChooserButton *button_audiofilechooser_;
+    Gtk::FileChooserButton *button_savedirchooser_;
     Gtk::Frame *frame_input_;
 
     Glib::Dispatcher redraw_dispatcher_;
@@ -75,19 +79,8 @@ class SlowGUI {
     Listener listener_worker_;
 };
 
-extern Glib::RefPtr<Gdk::Pixbuf> pixbuf_PWR;
-extern Glib::RefPtr<Gdk::Pixbuf> pixbuf_SNR;
-extern Glib::RefPtr<Gdk::Pixbuf> pixbuf_rx;
-extern Glib::RefPtr<Gdk::Pixbuf> pixbuf_disp;
-
 extern Gtk::ListStore *savedstore;
 
 extern Glib::KeyFile config;
-
-void     evt_chooseDir     ();
-void     evt_clickimg      (Gtk::Widget*, GdkEventButton*, Gdk::WindowEdge);
-void     evt_deletewindow  ();
-void     evt_ManualStart   ();
-void     evt_show_about    ();
 
 #endif // GUI_H
