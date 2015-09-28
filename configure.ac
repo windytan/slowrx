@@ -8,6 +8,7 @@ AC_CONFIG_FILES([
  src/Makefile
 ])
 PKG_CHECK_MODULES([GTKMM], [gtkmm-3.0 >= 3.8.0])
+PKG_CHECK_MODULES([GLIB], [glib-2.0])
 PKG_CHECK_MODULES([FFTW], [fftw3 >= 3.0])
 PKG_CHECK_MODULES(SNDFILE, sndfile >= 1.0.2, ac_cv_sndfile=1, ac_cv_sndfile=0)
 PKG_CHECK_MODULES([PORTAUDIO], [portaudio-2.0])
