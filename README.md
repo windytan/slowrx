@@ -15,6 +15,7 @@ Features
 * Automatic slant correction, also manual adjustments are simple
 * Adaptive noise reduction
 * Decode MMSSTV-compatible FSKID
+* Decode from audio device, file, or stdin
 * Save received pictures as PNG
 * Written in C++/C
 
