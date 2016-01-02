@@ -75,8 +75,8 @@ Glib::RefPtr<Gdk::Pixbuf> Picture::renderPixbuf(unsigned min_width, int upsample
   pixbuf_rx = Gdk::Pixbuf::create(Gdk::COLORSPACE_RGB, false, 8, m.scan_pixels, m.num_lines);
   pixbuf_rx->fill(0x000000ff);
 
-  guint8 *p;
-  guint8 *pixels;
+  uint8_t *p;
+  uint8_t *pixels;
   pixels = pixbuf_rx->get_pixels();
   int rowstride = pixbuf_rx->get_rowstride();
 
@@ -149,8 +149,8 @@ void Picture::saveSync () {
   pixbuf_rx = Gdk::Pixbuf::create(Gdk::COLORSPACE_RGB, false, 8, line_width, numlines);
   pixbuf_rx->fill(0x000000ff);
 
-  guint8 *p;
-  guint8 *pixels;
+  uint8_t *p;
+  uint8_t *pixels;
   pixels = pixbuf_rx->get_pixels();
   int rowstride = pixbuf_rx->get_rowstride();
 

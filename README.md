@@ -14,7 +14,7 @@ Features
 * Detect frequency-shifted signals – no need to fine-tune the radio
 * Automatic slant correction, also manual adjustments are simple
 * Adaptive noise reduction
-* Decode digital FSK ID
+* Decode MMSSTV-compatible FSKID
 * Save received pictures as PNG
 * Written in C++/C
 
