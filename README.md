@@ -10,14 +10,13 @@ http://windytan.github.io/slowrx/
 Features
 --------
 
-* Support for a multitude of modes (see `src/modespec.cc` for a list)
-* Detect frequency-shifted signals – no need to fine-tune the radio
+* Decode from audio device, file, or stdin
+* Detect frequency-shifted signals
 * Automatic slant correction, also manual adjustments are simple
 * Adaptive noise reduction
+* Support for a large number of SSTV modes
 * Decode MMSSTV-compatible FSKID
-* Decode from audio device, file, or stdin
 * Save received pictures as PNG
-* Written in C++/C
 
 Requirements
 ------------
