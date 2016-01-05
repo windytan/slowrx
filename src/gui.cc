@@ -47,7 +47,7 @@ GUI::GUI() : m_is_aborted_by_user(false), redraw_dispatcher_(), resync_dispatche
 
   builder->get_widget("save_dir_chooser",       button_savedirchooser_);
 
-  builder->get_widget("frame_input",       frame_input_);
+  builder->get_widget("box_input",       box_input_);
 
   imageReset();
 
@@ -217,14 +217,14 @@ void GUI::receiving() {
   button_clear_->set_sensitive(false);
   button_manualstart_->set_sensitive(false);
   combo_manualmode_->set_sensitive(false);
-  frame_input_->set_sensitive(false);
+  box_input_->set_sensitive(false);
 }
 void GUI::notReceiving() {
   button_abort_->set_sensitive(false);
   button_clear_->set_sensitive(true);
   button_manualstart_->set_sensitive(true);
   combo_manualmode_->set_sensitive(true);
-  frame_input_->set_sensitive(true);
+  box_input_->set_sensitive(true);
 }
 
 void GUI::fetchAutoState() {

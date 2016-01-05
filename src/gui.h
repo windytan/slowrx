@@ -71,7 +71,7 @@ class GUI {
     Gtk::RadioButton *radio_input_stdin_;
     Gtk::FileChooserButton *button_audiofilechooser_;
     Gtk::FileChooserButton *button_savedirchooser_;
-    Gtk::Frame *frame_input_;
+    Gtk::Box *box_input_;
 
     Glib::Dispatcher redraw_dispatcher_;
     Glib::Dispatcher resync_dispatcher_;
