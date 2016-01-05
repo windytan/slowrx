@@ -41,24 +41,24 @@ class DSP {
     WindowType          bestWindowFor   (SSTVMode, double SNR=99);
     void                set_fshift      (double);
 
-    Input*              getInput        ();
+    std::shared_ptr<Input> getInput        ();
 
   private:
 
 
-    fftw_complex* fft_inbuf_;
-    fftw_complex* fft_outbuf_;
-    fftw_plan     fft_plan_small_;
-    fftw_plan     fft_plan_big_;
-    double        mag_[FFT_LEN_BIG/2+1];
-    double        fshift_;
-    double        next_snr_time_;
-    double        SNR_;
-    WindowType    sync_window_;
+    fftw_complex* m_fft_inbuf;
+    fftw_complex* m_fft_outbuf;
+    fftw_plan     m_fft_plan_small;
+    fftw_plan     m_fft_plan_big;
+    double        m_mag[FFT_LEN_BIG/2+1];
+    double        m_fshift;
+    double        m_next_snr_time;
+    double        m_SNR;
+    WindowType    m_sync_window;
 
-    std::vector<Wave> window_;
+    std::vector<Wave> m_window;
 
-    Input*              input_;
+    std::shared_ptr<Input> m_input;
 };
 
 Wave   convolve     (const Wave&, const Wave&, bool wrap_around=false);

@@ -44,13 +44,13 @@ class GUI {
 
   private:
 
-    bool is_rx_enabled_;
-    bool is_sync_enabled_;
-    bool is_fskid_enabled_;
-    bool is_denoise_enabled_;
-    bool is_aborted_by_user_;
+    bool m_is_rx_enabled;
+    bool m_is_sync_enabled;
+    bool m_is_fskid_enabled;
+    bool m_is_denoise_enabled;
+    bool m_is_aborted_by_user;
 
-    Glib::RefPtr<Gtk::Application> app_;
+    Glib::RefPtr<Gtk::Application> m_app;
 
     Gtk::Label  *label_lasttime_;
     Gtk::Window *window_about_;

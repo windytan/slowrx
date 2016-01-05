@@ -47,20 +47,20 @@ class Input {
           ->PaCallback(input, output, frameCount, timeInfo, statusFlags);
       }
 
-    CirBuffer     cirbuf_;
+    CirBuffer     m_cirbuf;
 
   private:
 
-    float*        read_buffer_;
-    int16_t*      read_buffer_s16_;
-    SndfileHandle file_;
-    PaStream*     pa_stream_;
-    eStreamType   stream_type_;
-    bool          is_open_;
-    int           num_chans_;
-    double        samplerate_;
-    double        t_;
-    std::mutex    buffer_mutex_;
+    float*   m_read_buffer;
+    int16_t* m_read_buffer_s16;
+    SndfileHandle m_file;
+    PaStream*     m_pa_stream;
+    eStreamType   m_stream_type;
+    bool          m_is_open;
+    int           m_num_chans;
+    double        m_samplerate;
+    double        m_t;
+    std::mutex    m_buffer_mutex;
 
 };
 

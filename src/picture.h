@@ -9,14 +9,14 @@ class Picture {
 
   public:
 
-    Picture(SSTVMode _mode)
-      : mode_(_mode), pixel_grid_(pixelSamplingPoints(_mode)), video_signal_(),
-        video_dt_(getModeSpec(_mode).t_scan/getModeSpec(_mode).scan_pixels/2), sync_signal_(),
-        sync_dt_(getModeSpec(_mode).t_period / getModeSpec(_mode).scan_pixels/3), drift_(1.0),
-        starts_at_(0.0) {
+    Picture(SSTVMode mode)
+      : m_mode(mode), m_pixel_grid(pixelSamplingPoints(mode)), m_video_signal(),
+        m_video_dt(getModeSpec(mode).t_scan/getModeSpec(mode).scan_pixels/2), m_sync_signal(),
+        m_sync_dt(getModeSpec(mode).t_period / getModeSpec(mode).scan_pixels/3), m_drift(1.0),
+        m_starts_at(0.0) {
           std::time_t t = std::time(NULL);
-          std::strftime(timestamp_, sizeof(timestamp_),"%F %Rz", std::gmtime(&t));
-          std::strftime(safe_timestamp_, sizeof(timestamp_),"%Y%m%d_%H%M%SZ", std::gmtime(&t));
+          std::strftime(m_timestamp, sizeof(m_timestamp),"%F %Rz", std::gmtime(&t));
+          std::strftime(m_safe_timestamp, sizeof(m_timestamp),"%Y%m%d_%H%M%SZ", std::gmtime(&t));
         }
 
     void pushToSyncSignal (double s);
@@ -37,16 +37,16 @@ class Picture {
     void save(std::string);
 
   private:
-    SSTVMode mode_;
-    std::vector<PixelSample> pixel_grid_;
-    Wave video_signal_;
-    double video_dt_;
-    Wave sync_signal_;
-    double sync_dt_;
-    double drift_;
-    double starts_at_;
-    char safe_timestamp_[100];
-    char timestamp_[100];
+    SSTVMode m_mode;
+    std::vector<PixelSample> m_pixel_grid;
+    Wave m_video_signal;
+    double m_video_dt;
+    Wave m_sync_signal;
+    double m_sync_dt;
+    double m_drift;
+    double m_starts_at;
+    char m_safe_timestamp[100];
+    char m_timestamp[100];
 };
 
 #endif

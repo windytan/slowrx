@@ -12,9 +12,9 @@ Glib::RefPtr<Gdk::Pixbuf> empty_pixbuf(int px_width) {
   return pixbuf;
 }
 
-GUI::GUI() : is_aborted_by_user_(false), redraw_dispatcher_(), resync_dispatcher_(), listener_worker_thread_(nullptr),
-             listener_worker_() {
-  app_ = Gtk::Application::create("com.windytan.slowrx");
+GUI::GUI() : m_is_aborted_by_user(false), redraw_dispatcher_(), resync_dispatcher_(),
+  listener_worker_thread_(nullptr), listener_worker_() {
+  m_app = Gtk::Application::create("com.windytan.slowrx");
 
   Glib::RefPtr<Gtk::Builder> builder = Gtk::Builder::create();
   builder->add_from_file("ui/slowrx.ui");
@@ -36,7 +36,7 @@ GUI::GUI() : is_aborted_by_user_(false), redraw_dispatcher_(), resync_dispatcher
   builder->get_widget("switch_sync",        switch_sync_);
   builder->get_widget("switch_denoise",        switch_denoise_);
   builder->get_widget("switch_fskid",        switch_fskid_);
-  
+
   builder->get_widget("check_save",        check_save_);
 
   builder->get_widget("radio_input_portaudio",        radio_input_portaudio_);
@@ -44,7 +44,7 @@ GUI::GUI() : is_aborted_by_user_(false), redraw_dispatcher_(), resync_dispatcher
   builder->get_widget("radio_input_stdin",       radio_input_stdin_);
 
   builder->get_widget("button_audiofilechooser",       button_audiofilechooser_);
-  
+
   builder->get_widget("save_dir_chooser",       button_savedirchooser_);
 
   builder->get_widget("frame_input",       frame_input_);
@@ -116,7 +116,7 @@ void GUI::start() {
   fetchAutoState();
   inputDeviceChanged();
 
-  app_->run(*window_main_);
+  m_app->run(*window_main_);
 
 }
 
@@ -197,16 +197,16 @@ void setVU (double *Power, int FFTLen, int WinIdx, bool ShowWin) {
 #endif
 
 bool GUI::isRxEnabled() {
-  return is_rx_enabled_;
+  return m_is_rx_enabled;
 }
 bool GUI::isDenoiseEnabled() {
-  return is_denoise_enabled_;
+  return m_is_denoise_enabled;
 }
 bool GUI::isSyncEnabled() {
-  return is_sync_enabled_;
+  return m_is_sync_enabled;
 }
 bool GUI::isAbortedByUser() {
-  return is_aborted_by_user_;
+  return m_is_aborted_by_user;
 }
 bool GUI::isSaveEnabled() {
   return check_save_->get_active();
@@ -228,17 +228,17 @@ void GUI::notReceiving() {
 }
 
 void GUI::fetchAutoState() {
-  is_denoise_enabled_ = switch_denoise_->get_active();
-  is_rx_enabled_      = switch_rx_->get_active();
-  is_sync_enabled_    = switch_sync_->get_active();
-  is_fskid_enabled_   = switch_sync_->get_active();
+  m_is_denoise_enabled = switch_denoise_->get_active();
+  m_is_rx_enabled      = switch_rx_->get_active();
+  m_is_sync_enabled    = switch_sync_->get_active();
+  m_is_fskid_enabled   = switch_sync_->get_active();
 }
 
 void GUI::abortedByUser() {
-  is_aborted_by_user_ = true;
+  m_is_aborted_by_user = true;
 }
 void GUI::ackAbortedByUser() {
-  is_aborted_by_user_ = false;
+  m_is_aborted_by_user = false;
 }
 
 void GUI::autoSettingsChanged(Gtk::StateFlags flags) {
@@ -293,7 +293,7 @@ void GUI::redrawNotify() {
   redraw_dispatcher_.emit();
 }
 void GUI::onRedrawNotify() {
-  Picture* pic = listener_worker_.getCurrentPic();
+  std::shared_ptr<Picture> pic = listener_worker_.getCurrentPic();
   label_lasttime_->set_text(pic->getTimestamp() + " / " + getModeSpec(pic->getMode()).name + " ");
   image_rx_->set(pic->renderPixbuf(500));
 
@@ -304,7 +304,7 @@ void GUI::resyncNotify() {
 }
 void GUI::onResyncNotify() {
   if (switch_sync_->get_active()) {
-    Picture* pic = listener_worker_.getCurrentPic();
+    std::shared_ptr<Picture> pic = listener_worker_.getCurrentPic();
     pic->resync();
   }
 }

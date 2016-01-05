@@ -4,25 +4,25 @@
 #include "gui.h"
 
 void Picture::pushToSyncSignal(double s) {
-  sync_signal_.push_back(s);
+  m_sync_signal.push_back(s);
 }
 void Picture::pushToVideoSignal(double s) {
-  video_signal_.push_back(s);
+  m_video_signal.push_back(s);
 }
 
-SSTVMode Picture::getMode          () const   { return mode_; }
-double   Picture::getDrift         () const   { return drift_; }
-double   Picture::getStartsAt      () const   { return starts_at_; }
-double   Picture::getVideoDt       () const   { return video_dt_; }
-double   Picture::getSyncDt        () const   { return sync_dt_; }
-double   Picture::getSyncSignalAt  (size_t i) const { return sync_signal_[i]; }
-double   Picture::getVideoSignalAt (size_t i) const { return video_signal_[i]; }
-std::string Picture::getTimestamp() const { return std::string(timestamp_); }
+SSTVMode Picture::getMode          () const   { return m_mode; }
+double   Picture::getDrift         () const   { return m_drift; }
+double   Picture::getStartsAt      () const   { return m_starts_at; }
+double   Picture::getVideoDt       () const   { return m_video_dt; }
+double   Picture::getSyncDt        () const   { return m_sync_dt; }
+double   Picture::getSyncSignalAt  (size_t i) const { return m_sync_signal[i]; }
+double   Picture::getVideoSignalAt (size_t i) const { return m_video_signal[i]; }
+std::string Picture::getTimestamp() const { return std::string(m_timestamp); }
 
 
 Glib::RefPtr<Gdk::Pixbuf> Picture::renderPixbuf(unsigned min_width, int upsample_factor) {
 
-  ModeSpec m = getModeSpec(mode_);
+  ModeSpec m = getModeSpec(m_mode);
 
   std::vector<std::vector<std::vector<uint8_t>>> img(m.scan_pixels);
   for (size_t x=0; x < m.scan_pixels; x++) {
@@ -33,11 +33,11 @@ Glib::RefPtr<Gdk::Pixbuf> Picture::renderPixbuf(unsigned min_width, int upsample
   }
 
   Wave signal_up =
-    (upsample_factor > 1 ? upsample(video_signal_, upsample_factor, KERNEL_TENT) : video_signal_);
+    (upsample_factor > 1 ? upsample(m_video_signal, upsample_factor, KERNEL_TENT) : m_video_signal);
 
-  for (PixelSample px : pixel_grid_) {
+  for (PixelSample px : m_pixel_grid) {
 
-    double signal_t = (px.t/drift_ + starts_at_) / video_dt_ * upsample_factor;
+    double signal_t = (px.t/m_drift + m_starts_at) / m_video_dt * upsample_factor;
     double val;
     if (signal_t < 0 || signal_t >= signal_up.size()-1) {
       val = 0;
@@ -53,7 +53,7 @@ Glib::RefPtr<Gdk::Pixbuf> Picture::renderPixbuf(unsigned min_width, int upsample
   }
 
   /* chroma reconstruction from 4:2:0 */
-  if (mode_ == MODE_R36 || m.family == MODE_PD) {
+  if (m_mode == MODE_R36 || m.family == MODE_PD) {
     for (size_t x=0; x < m.scan_pixels; x++) {
       Wave column_u, column_v;
       Wave column_u_filtered;
@@ -140,8 +140,8 @@ Glib::RefPtr<Gdk::Pixbuf> Picture::renderPixbuf(unsigned min_width, int upsample
 
 
 void Picture::saveSync () {
-  ModeSpec m = getModeSpec(mode_);
-  int line_width = m.t_period / sync_dt_;
+  ModeSpec m = getModeSpec(m_mode);
+  int line_width = m.t_period / m_sync_dt;
   int numlines = 240;
   int upsample_factor = 2;
 
@@ -154,12 +154,12 @@ void Picture::saveSync () {
   pixels = pixbuf_rx->get_pixels();
   int rowstride = pixbuf_rx->get_rowstride();
 
-  Wave big_sync = upsample(sync_signal_, 2, KERNEL_TENT);
+  Wave big_sync = upsample(m_sync_signal, 2, KERNEL_TENT);
 
-  for (size_t i=1; i<sync_signal_.size(); i++) {
+  for (size_t i=1; i<m_sync_signal.size(); i++) {
     int x = i % line_width;
     int y = i / line_width;
-    int signal_idx = i * upsample_factor / drift_ + .5;
+    int signal_idx = i * upsample_factor / m_drift + .5;
     if (y < numlines) {
       uint8_t val = clip((big_sync[signal_idx])*127);
       p = pixels + y * rowstride + x * 3;
@@ -179,11 +179,11 @@ void Picture::resync () {
   return;
 #endif
 
-  ModeSpec m = getModeSpec(mode_);
-  int line_width = m.t_period / sync_dt_;
+  ModeSpec m = getModeSpec(m_mode);
+  int line_width = m.t_period / m_sync_dt;
 
   size_t upsample_factor = 2;
-  Wave sync_up = upsample(Wave(sync_signal_), upsample_factor, KERNEL_TENT);
+  Wave sync_up = upsample(Wave(m_sync_signal), upsample_factor, KERNEL_TENT);
 
   /* slant */
   std::vector<double> histogram;
@@ -196,7 +196,7 @@ void Picture::resync () {
   for (double d = min_drift; d <= max_drift; d += drift_step) {
     std::vector<double> acc(line_width);
     int peak_x = 0;
-    for (size_t i=1; i<sync_signal_.size(); i++) {
+    for (size_t i=1; i<m_sync_signal.size(); i++) {
       int x = i % line_width;
       size_t signal_idx = round(i * upsample_factor / d);
       double delta = (signal_idx < sync_up.size() ? sync_up[signal_idx] - sync_up[signal_idx-1] : 0);
@@ -219,7 +219,7 @@ void Picture::resync () {
 
   /* align */
   std::vector<double> acc(line_width);
-  for (size_t i=1;i<sync_signal_.size()-1; i++) {
+  for (size_t i=1;i<m_sync_signal.size()-1; i++) {
     int x = i % line_width;
     size_t signal_idx = round(i * upsample_factor / drift);
     acc[x] += (signal_idx < sync_up.size() ? sync_up[signal_idx] : 0);
@@ -240,8 +240,8 @@ void Picture::resync () {
 
   //fprintf(stderr,"drift = %.5f\n",drift);
 
-  drift_ = drift;
-  starts_at_ = align_time;
+  m_drift = drift;
+  m_starts_at = align_time;
 
   //saveSync(pic);
 }
@@ -328,7 +328,7 @@ std::vector<PixelSample> pixelSamplingPoints(SSTVMode mode) {
 }
 
 void Picture::save(std::string dir) {
-  std::string filename = dir + "/" + std::string("slowrx_") + safe_timestamp_ + ".png";
+  std::string filename = dir + "/" + std::string("slowrx_") + m_safe_timestamp + ".png";
   Glib::RefPtr<Gdk::Pixbuf> pb = renderPixbuf(500);
   std::cout << "saving " << filename << "\n";
   pb->save(filename, "png");
