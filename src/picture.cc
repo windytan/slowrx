@@ -19,17 +19,55 @@ double   Picture::getSyncSignalAt  (size_t i) const { return m_sync_signal[i]; }
 double   Picture::getVideoSignalAt (size_t i) const { return m_video_signal[i]; }
 std::string Picture::getTimestamp() const { return std::string(m_timestamp); }
 
+void setChannel (uint32_t& px, uint8_t ch, uint8_t val) {
+  assert (ch <= 3);
+  px &= ~(0xff << (8*ch));
+  px |= val << (8*ch);
+}
+
+uint8_t getChannel (const uint32_t& px, uint8_t ch) {
+  assert (ch <= 3);
+  return (px >> (8*ch)) & 0xff;
+}
+
+void decodeRGB (uint32_t src, uint8_t *dst) {
+  dst[0] = getChannel(src, 0);
+  dst[1] = getChannel(src, 1);
+  dst[2] = getChannel(src, 2);
+}
+
+void decodeGBR (uint32_t src, uint8_t *dst) {
+  dst[0] = getChannel(src, 2);
+  dst[1] = getChannel(src, 0);
+  dst[2] = getChannel(src, 1);
+}
+
+void decodeYCbCr (uint32_t src, uint8_t *dst) {
+  uint8_t Y  = getChannel(src, 0);
+  uint8_t Cr = getChannel(src, 1);
+  uint8_t Cb = getChannel(src, 2);
+
+  double r = (298.082*Y/256)                    + (408.583*Cr/256) - 222.921;
+  double g = (298.082*Y/256) - (100.291*Cb/256) - (208.120*Cr/256) + 135.576;
+  double b = (298.082*Y/256) + (516.412*Cb/256)                    - 276.836;
+
+  dst[0] = clip(r);
+  dst[1] = clip(g);
+  dst[2] = clip(b);
+}
+
+void decodeMono (uint32_t src, uint8_t *dst) {
+  dst[0] = dst[1] = dst[2] = clip((getChannel(src,0) - 15.5) * 1.172); // mmsstv test images
+}
+
 
 Glib::RefPtr<Gdk::Pixbuf> Picture::renderPixbuf(unsigned min_width, int upsample_factor) {
 
   ModeSpec m = getModeSpec(m_mode);
 
-  std::vector<std::vector<std::vector<uint8_t>>> img(m.scan_pixels);
+  std::vector<std::vector<uint32_t>> img(m.scan_pixels);
   for (size_t x=0; x < m.scan_pixels; x++) {
-    img[x] = std::vector<std::vector<uint8_t>>(m.num_lines);
-    for (size_t y=0; y < m.num_lines; y++) {
-      img[x][y] = std::vector<uint8_t>(m.color_enc == COLOR_MONO ? 1 : 3);
-    }
+    img[x] = std::vector<uint32_t>(m.num_lines);
   }
 
   Wave signal_up =
@@ -49,7 +87,7 @@ Glib::RefPtr<Gdk::Pixbuf> Picture::renderPixbuf(unsigned min_width, int upsample
     int y  = px.pt.y;
     int ch = px.ch;
 
-    img[x][y][ch] = clip(round(val*255));
+    setChannel(img[x][y], ch, clip(round(val*255)));
   }
 
   /* chroma reconstruction from 4:2:0 */
@@ -59,14 +97,14 @@ Glib::RefPtr<Gdk::Pixbuf> Picture::renderPixbuf(unsigned min_width, int upsample
       Wave column_u_filtered;
       Wave column_v_filtered;
       for (size_t y=0; y < m.num_lines; y+=2) {
-        column_u.push_back(img[x][y][1]);
-        column_v.push_back(img[x][y][2]);
+        column_u.push_back(getChannel(img[x][y], 1));
+        column_v.push_back(getChannel(img[x][y], 2));
       }
       column_u_filtered = upsample(column_u, 2, KERNEL_TENT);
       column_v_filtered = upsample(column_v, 2, KERNEL_TENT);
       for (size_t y=0; y < m.num_lines; y++) {
-        img[x][y][1] = column_u_filtered[y+1];
-        img[x][y][2] = column_v_filtered[y+1];
+        setChannel(img[x][y], 1, clip(column_u_filtered[y+1]));
+        setChannel(img[x][y], 2, clip(column_v_filtered[y+1]));
       }
     }
   }
@@ -86,37 +124,16 @@ Glib::RefPtr<Gdk::Pixbuf> Picture::renderPixbuf(unsigned min_width, int upsample
       p = pixels + y * rowstride + x * 3;
 
 #ifdef RGBONLY
-      p[0] = lum[x][y][0];
-      p[1] = lum[x][y][1];
-      p[2] = lum[x][y][2];
+      decodeRGB(img[x][y], p);
 #else
-      switch(m.color_enc) {
-
-        case COLOR_RGB: {
-          p[0] = img[x][y][0];
-          p[1] = img[x][y][1];
-          p[2] = img[x][y][2];
-          break;
-        }
-        case COLOR_GBR: {
-          p[0] = img[x][y][2];
-          p[1] = img[x][y][0];
-          p[2] = img[x][y][1];
-          break;
-        }
-        case COLOR_YUV: {
-          double r = (298.082/256)*img[x][y][0] + (408.583/256) * img[x][y][1] - 222.921;
-          double g = (298.082/256)*img[x][y][0] - (100.291/256) * img[x][y][2] - (208.120/256) * img[x][y][1] + 135.576;
-          double b = (298.082/256)*img[x][y][0] + (516.412/256) * img[x][y][2] - 276.836;
-          p[0] = clip(r);
-          p[1] = clip(g);
-          p[2] = clip(b);
-          break;
-        }
-        case COLOR_MONO: {
-          p[0] = p[1] = p[2] = clip((img[x][y][0] - 15.5) * 1.172); // mmsstv test images
-          break;
-        }
+      if (m.color_enc == COLOR_RGB) {
+        decodeRGB(img[x][y], p);
+      } else if (m.color_enc == COLOR_GBR) {
+        decodeGBR(img[x][y], p);
+      } else if (m.color_enc == COLOR_YUV) {
+        decodeYCbCr(img[x][y], p);
+      } else {
+        decodeMono(img[x][y], p);
       }
 #endif
     }
