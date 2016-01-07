@@ -52,31 +52,31 @@ class GUI {
 
     Glib::RefPtr<Gtk::Application> m_app;
 
-    Gtk::Label  *label_lasttime_;
-    Gtk::Window *window_about_;
-    Gtk::Window *window_main_;
-    Gtk::Image  *image_rx_;
-    Gtk::ToggleButton *switch_rx_;
-    Gtk::ToggleButton *switch_sync_;
-    Gtk::ToggleButton *switch_denoise_;
-    Gtk::ToggleButton *switch_fskid_;
-    Gtk::CheckButton *check_save_;
-    Gtk::Button *button_abort_;
-    Gtk::Button *button_clear_;
-    Gtk::Button *button_manualstart_;
-    Gtk::ComboBoxText *combo_manualmode_;
-    Gtk::ComboBoxText *combo_portaudio_;
-    Gtk::RadioButton *radio_input_portaudio_;
-    Gtk::RadioButton *radio_input_file_;
-    Gtk::RadioButton *radio_input_stdin_;
-    Gtk::FileChooserButton *button_audiofilechooser_;
-    Gtk::FileChooserButton *button_savedirchooser_;
-    Gtk::Box *box_input_;
+    Gtk::Label  *m_label_lasttime;
+    Gtk::Window *m_window_about;
+    Gtk::Window *m_window_main;
+    Gtk::Image  *m_image_rx;
+    Gtk::ToggleButton *m_switch_rx;
+    Gtk::ToggleButton *m_switch_sync;
+    Gtk::ToggleButton *m_switch_denoise;
+    Gtk::ToggleButton *m_switch_fskid;
+    Gtk::CheckButton *m_check_save;
+    Gtk::Button *m_button_abort;
+    Gtk::Button *m_button_clear;
+    Gtk::Button *m_button_manualstart;
+    Gtk::ComboBoxText *m_combo_manualmode;
+    Gtk::ComboBoxText *m_combo_portaudio;
+    Gtk::RadioButton *m_radio_input_portaudio;
+    Gtk::RadioButton *m_radio_input_file;
+    Gtk::RadioButton *m_radio_input_stdin;
+    Gtk::FileChooserButton *m_button_audiofilechooser;
+    Gtk::FileChooserButton *m_button_savedirchooser;
+    Gtk::Box *m_box_input;
 
-    Glib::Dispatcher redraw_dispatcher_;
-    Glib::Dispatcher resync_dispatcher_;
-    Glib::Threads::Thread* listener_worker_thread_;
-    Listener listener_worker_;
+    Glib::Dispatcher m_dispatcher_redraw;
+    Glib::Dispatcher m_dispatcher_resync;
+    Glib::Threads::Thread* m_thr_listener_worker;
+    Listener m_listener;
 };
 
 extern Gtk::ListStore *savedstore;

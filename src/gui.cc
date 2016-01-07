@@ -12,8 +12,8 @@ Glib::RefPtr<Gdk::Pixbuf> empty_pixbuf(int px_width) {
   return pixbuf;
 }
 
-GUI::GUI() : m_is_aborted_by_user(false), redraw_dispatcher_(), resync_dispatcher_(),
-  listener_worker_thread_(nullptr), listener_worker_() {
+GUI::GUI() : m_is_aborted_by_user(false), m_dispatcher_redraw(), m_dispatcher_resync(),
+  m_thr_listener_worker(nullptr), m_listener() {
   m_app = Gtk::Application::create("com.windytan.slowrx");
 
   Glib::RefPtr<Gtk::Builder> builder = Gtk::Builder::create();
@@ -22,32 +22,32 @@ GUI::GUI() : m_is_aborted_by_user(false), redraw_dispatcher_(), resync_dispatche
 
   //savedstore = iconview.get_model();
 
-  builder->get_widget("label_lasttime",  label_lasttime_);
-  builder->get_widget("window_about",    window_about_);
-  builder->get_widget("window_main",     window_main_);
-  builder->get_widget("image_rx",        image_rx_);
-  builder->get_widget("button_abort",    button_abort_);
-  builder->get_widget("button_clear",    button_clear_);
-  builder->get_widget("button_manualstart",    button_manualstart_);
-  builder->get_widget("combo_manualmode",    combo_manualmode_);
-  builder->get_widget("combo_portaudio",    combo_portaudio_);
+  builder->get_widget("label_lasttime",  m_label_lasttime);
+  builder->get_widget("window_about",    m_window_about);
+  builder->get_widget("window_main",     m_window_main);
+  builder->get_widget("image_rx",        m_image_rx);
+  builder->get_widget("button_abort",    m_button_abort);
+  builder->get_widget("button_clear",    m_button_clear);
+  builder->get_widget("button_manualstart",    m_button_manualstart);
+  builder->get_widget("combo_manualmode",    m_combo_manualmode);
+  builder->get_widget("combo_portaudio",    m_combo_portaudio);
 
-  builder->get_widget("switch_rx",        switch_rx_);
-  builder->get_widget("switch_sync",        switch_sync_);
-  builder->get_widget("switch_denoise",        switch_denoise_);
-  builder->get_widget("switch_fskid",        switch_fskid_);
+  builder->get_widget("switch_rx",        m_switch_rx);
+  builder->get_widget("switch_sync",        m_switch_sync);
+  builder->get_widget("switch_denoise",        m_switch_denoise);
+  builder->get_widget("switch_fskid",        m_switch_fskid);
 
-  builder->get_widget("check_save",        check_save_);
+  builder->get_widget("check_save",        m_check_save);
 
-  builder->get_widget("radio_input_portaudio",        radio_input_portaudio_);
-  builder->get_widget("radio_input_file",        radio_input_file_);
-  builder->get_widget("radio_input_stdin",       radio_input_stdin_);
+  builder->get_widget("radio_input_portaudio",        m_radio_input_portaudio);
+  builder->get_widget("radio_input_file",        m_radio_input_file);
+  builder->get_widget("radio_input_stdin",       m_radio_input_stdin);
 
-  builder->get_widget("button_audiofilechooser",       button_audiofilechooser_);
+  builder->get_widget("button_audiofilechooser",       m_button_audiofilechooser);
 
-  builder->get_widget("save_dir_chooser",       button_savedirchooser_);
+  builder->get_widget("save_dir_chooser",       m_button_savedirchooser);
 
-  builder->get_widget("box_input",       box_input_);
+  builder->get_widget("box_input",       m_box_input);
 
   imageReset();
 
@@ -58,71 +58,71 @@ GUI::GUI() : m_is_aborted_by_user(false), redraw_dispatcher_(), resync_dispatche
     entry_picdir->set_text(config.get_string("slowrx","rxdir"));
   }*/
 
-  window_main_->show_all();
+  m_window_main->show_all();
 
 }
 
 void GUI::start() {
 
-  switch_denoise_->signal_state_flags_changed().connect(
+  m_switch_denoise->signal_state_flags_changed().connect(
       sigc::mem_fun(this, &GUI::autoSettingsChanged)
   );
-  switch_rx_->signal_state_flags_changed().connect(
+  m_switch_rx->signal_state_flags_changed().connect(
       sigc::mem_fun(this, &GUI::autoSettingsChanged)
   );
-  switch_rx_->signal_state_flags_changed().connect(
+  m_switch_rx->signal_state_flags_changed().connect(
       sigc::mem_fun(this, &GUI::autoSettingsChanged)
   );
-  button_abort_->signal_clicked().connect(
+  m_button_abort->signal_clicked().connect(
       sigc::mem_fun(this, &GUI::abortedByUser)
   );
-  button_clear_->signal_clicked().connect(
+  m_button_clear->signal_clicked().connect(
       sigc::mem_fun(this, &GUI::imageReset)
   );
 
-  redraw_dispatcher_.connect(sigc::mem_fun(*this, &GUI::onRedrawNotify));
-  resync_dispatcher_.connect(sigc::mem_fun(*this, &GUI::onResyncNotify));
+  m_dispatcher_redraw.connect(sigc::mem_fun(*this, &GUI::onRedrawNotify));
+  m_dispatcher_resync.connect(sigc::mem_fun(*this, &GUI::onResyncNotify));
 
   std::vector<std::pair<int,std::string>> pa_devs = listPortaudioDevices();
 
   for (std::pair<int,std::string> dev : pa_devs) {
-    combo_portaudio_->append(dev.second);
+    m_combo_portaudio->append(dev.second);
     if (dev.first == getDefaultPaDevice()) {
-      combo_portaudio_->set_active(combo_portaudio_->get_children().size()-1);
+      m_combo_portaudio->set_active(m_combo_portaudio->get_children().size()-1);
     }
   }
 
-  radio_input_portaudio_->signal_clicked().connect(
+  m_radio_input_portaudio->signal_clicked().connect(
       sigc::mem_fun(this, &GUI::inputDeviceChanged)
   );
-  radio_input_file_->signal_clicked().connect(
+  m_radio_input_file->signal_clicked().connect(
       sigc::mem_fun(this, &GUI::inputDeviceChanged)
   );
-  radio_input_stdin_->signal_clicked().connect(
+  m_radio_input_stdin->signal_clicked().connect(
       sigc::mem_fun(this, &GUI::inputDeviceChanged)
   );
-  combo_portaudio_->signal_changed().connect(
+  m_combo_portaudio->signal_changed().connect(
       sigc::mem_fun(this, &GUI::inputDeviceChanged)
   );
-  button_audiofilechooser_->signal_file_set().connect(
+  m_button_audiofilechooser->signal_file_set().connect(
       sigc::mem_fun(this, &GUI::audioFileSelected)
   );
 
 
-  listener_worker_thread_ = Glib::Threads::Thread::create(
-      sigc::bind(sigc::mem_fun(listener_worker_, &Listener::listen), this));
+  m_thr_listener_worker = Glib::Threads::Thread::create(
+      sigc::bind(sigc::mem_fun(m_listener, &Listener::listen), this));
 
   notReceiving();
   fetchAutoState();
   inputDeviceChanged();
 
-  m_app->run(*window_main_);
+  m_app->run(*m_window_main);
 
 }
 
 void GUI::imageReset() {
-  image_rx_->set(empty_pixbuf(500));
-  label_lasttime_->set_text("");
+  m_image_rx->set(empty_pixbuf(500));
+  m_label_lasttime->set_text("");
 }
 
 
@@ -209,29 +209,29 @@ bool GUI::isAbortedByUser() {
   return m_is_aborted_by_user;
 }
 bool GUI::isSaveEnabled() {
-  return check_save_->get_active();
+  return m_check_save->get_active();
 }
 
 void GUI::receiving() {
-  button_abort_->set_sensitive(true);
-  button_clear_->set_sensitive(false);
-  button_manualstart_->set_sensitive(false);
-  combo_manualmode_->set_sensitive(false);
-  box_input_->set_sensitive(false);
+  m_button_abort->set_sensitive(true);
+  m_button_clear->set_sensitive(false);
+  m_button_manualstart->set_sensitive(false);
+  m_combo_manualmode->set_sensitive(false);
+  m_box_input->set_sensitive(false);
 }
 void GUI::notReceiving() {
-  button_abort_->set_sensitive(false);
-  button_clear_->set_sensitive(true);
-  button_manualstart_->set_sensitive(true);
-  combo_manualmode_->set_sensitive(true);
-  box_input_->set_sensitive(true);
+  m_button_abort->set_sensitive(false);
+  m_button_clear->set_sensitive(true);
+  m_button_manualstart->set_sensitive(true);
+  m_combo_manualmode->set_sensitive(true);
+  m_box_input->set_sensitive(true);
 }
 
 void GUI::fetchAutoState() {
-  m_is_denoise_enabled = switch_denoise_->get_active();
-  m_is_rx_enabled      = switch_rx_->get_active();
-  m_is_sync_enabled    = switch_sync_->get_active();
-  m_is_fskid_enabled   = switch_sync_->get_active();
+  m_is_denoise_enabled = m_switch_denoise->get_active();
+  m_is_rx_enabled      = m_switch_rx->get_active();
+  m_is_sync_enabled    = m_switch_sync->get_active();
+  m_is_fskid_enabled   = m_switch_sync->get_active();
 }
 
 void GUI::abortedByUser() {
@@ -248,32 +248,32 @@ void GUI::autoSettingsChanged(Gtk::StateFlags flags) {
 
 void GUI::inputDeviceChanged() {
   printf("inputDeviceChanged\n");
-  listener_worker_.close();
-  if (radio_input_portaudio_->get_active()) {
-    button_audiofilechooser_->set_sensitive(false);
-    combo_portaudio_->set_sensitive(true);
-    if (combo_portaudio_->get_active_row_number() >= 0) {
-      listener_worker_.openPortAudioDev(combo_portaudio_->get_active_row_number());
+  m_listener.close();
+  if (m_radio_input_portaudio->get_active()) {
+    m_button_audiofilechooser->set_sensitive(false);
+    m_combo_portaudio->set_sensitive(true);
+    if (m_combo_portaudio->get_active_row_number() >= 0) {
+      m_listener.openPortAudioDev(m_combo_portaudio->get_active_row_number());
     }
-  } else if (radio_input_file_->get_active()) {
-    button_audiofilechooser_->set_sensitive(true);
-    combo_portaudio_->set_sensitive(false);
-  } else if (radio_input_stdin_->get_active()) {
-    button_audiofilechooser_->set_sensitive(false);
-    combo_portaudio_->set_sensitive(false);
-    listener_worker_.openStdin();
+  } else if (m_radio_input_file->get_active()) {
+    m_button_audiofilechooser->set_sensitive(true);
+    m_combo_portaudio->set_sensitive(false);
+  } else if (m_radio_input_stdin->get_active()) {
+    m_button_audiofilechooser->set_sensitive(false);
+    m_combo_portaudio->set_sensitive(false);
+    m_listener.openStdin();
   }
 }
 
 int GUI::getSelectedPaDevice() {
-  return combo_portaudio_->get_active_row_number();
+  return m_combo_portaudio->get_active_row_number();
 }
 
 eStreamType GUI::getSelectedStreamType() {
   eStreamType result;
-  if (radio_input_portaudio_->get_active()) {
+  if (m_radio_input_portaudio->get_active()) {
     result = STREAM_TYPE_PA;
-  } else if (radio_input_file_->get_active()) {
+  } else if (m_radio_input_file->get_active()) {
     result = STREAM_TYPE_FILE;
   } else {
     result = STREAM_TYPE_STDIN;
@@ -282,29 +282,29 @@ eStreamType GUI::getSelectedStreamType() {
 }
 
 std::string GUI::getSavedPictureLocation() {
-  return button_savedirchooser_->get_filename();
+  return m_button_savedirchooser->get_filename();
 }
 
 void GUI::audioFileSelected() {
-  listener_worker_.openFileStream(button_audiofilechooser_->get_filename());
+  m_listener.openFileStream(m_button_audiofilechooser->get_filename());
 }
 
 void GUI::redrawNotify() {
-  redraw_dispatcher_.emit();
+  m_dispatcher_redraw.emit();
 }
 void GUI::onRedrawNotify() {
-  std::shared_ptr<Picture> pic = listener_worker_.getCurrentPic();
-  label_lasttime_->set_text(pic->getTimestamp() + " / " + getModeSpec(pic->getMode()).name + " ");
-  image_rx_->set(pic->renderPixbuf(500));
+  std::shared_ptr<Picture> pic = m_listener.getCurrentPic();
+  m_label_lasttime->set_text(pic->getTimestamp() + " / " + getModeSpec(pic->getMode()).name + " ");
+  m_image_rx->set(pic->renderPixbuf(500));
 
 }
 
 void GUI::resyncNotify() {
-  resync_dispatcher_.emit();
+  m_dispatcher_resync.emit();
 }
 void GUI::onResyncNotify() {
-  if (switch_sync_->get_active()) {
-    std::shared_ptr<Picture> pic = listener_worker_.getCurrentPic();
+  if (m_switch_sync->get_active()) {
+    std::shared_ptr<Picture> pic = m_listener.getCurrentPic();
     pic->resync();
   }
 }
