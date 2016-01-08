@@ -12,9 +12,9 @@ std::string version_string() {
 
 // Clip to [0..255]
 uint8_t clip (double a) {
-  if      (a < 0)   return 0;
-  else if (a > 255) return 255;
-  return  round(a);
+  if      (a < 0.0)   return 0;
+  else if (a > 255.0) return 255;
+  return  std::round(a);
 }
 
 // Clip to [0..1]
@@ -25,11 +25,11 @@ double fclip (double a) {
 }
 
 double deg2rad (double Deg) {
-  return (Deg / 180) * M_PI;
+  return (Deg / 180.0) * M_PI;
 }
 
 double rad2deg (double rad) {
-  return (180 / M_PI) * rad;
+  return (180.0 / M_PI) * rad;
 }
 
 int maxIndex (std::vector<double> v) {

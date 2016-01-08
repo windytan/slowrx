@@ -34,8 +34,8 @@ DSP::DSP() :
     exit(EXIT_FAILURE);
   }
   for (size_t i=0; i<FFT_LEN_BIG; i++) {
-    m_fft_inbuf[i][0]  = m_fft_inbuf[i][1]  = 0;
-    m_fft_outbuf[i][0] = m_fft_outbuf[i][1] = 0;
+    m_fft_inbuf[i][0]  = m_fft_inbuf[i][1]  = 0.0;
+    m_fft_outbuf[i][0] = m_fft_outbuf[i][1] = 0.0;
   }
 
   m_fft_plan_small = fftw_plan_dft_1d(FFT_LEN_SMALL, m_fft_inbuf, m_fft_outbuf, FFTW_FORWARD, FFTW_ESTIMATE);
@@ -117,14 +117,14 @@ Wave DSP::calcBandPowerPerHz(const std::vector<std::vector<double>>& bands, Wind
 
   Wave result;
   for (Wave band : bands) {
-    double P = 0;
+    double P = 0.0;
     double binwidth = 1.0 * m_input->getSamplerate() / fft_len;
-    int nbins = 0;
+    int nbins = 0.0;
     for (int i = freq2bin(band[0]+m_fshift, fft_len); i <= freq2bin(band[1]+m_fshift, fft_len); i++) {
       P += pow(complexMag(m_fft_outbuf[i]), 2);
       nbins++;
     }
-    P = (binwidth*nbins == 0 ? 0 : P/(binwidth*nbins));
+    P = (binwidth*nbins == 0 ? 0.0 : P/(binwidth*nbins));
     result.push_back(P);
   }
   return result;
@@ -135,12 +135,12 @@ WindowType DSP::bestWindowFor(SSTVMode Mode, double SNR) {
 
   //double samplesInPixel = 1.0 * samplerate_ * ModeSpec[Mode].tScan / ModeSpec[Mode].ScanPixels;
 
-  if      (SNR >=  23 && Mode != MODE_PD180 && Mode != MODE_SDX)  WinType = WINDOW_CHEB47;
-  else if (SNR >=  12)  WinType = WINDOW_HANN95;
-  else if (SNR >=   8)  WinType = WINDOW_HANN127;
-  else if (SNR >=   5)  WinType = WINDOW_HANN255;
-  else if (SNR >=   4)  WinType = WINDOW_HANN511;
-  else if (SNR >=  -7)  WinType = WINDOW_HANN1023;
+  if      (SNR >=  23.0 && Mode != MODE_PD180 && Mode != MODE_SDX)  WinType = WINDOW_CHEB47;
+  else if (SNR >=  12.0)  WinType = WINDOW_HANN95;
+  else if (SNR >=   8.0)  WinType = WINDOW_HANN127;
+  else if (SNR >=   5.0)  WinType = WINDOW_HANN255;
+  else if (SNR >=   4.0)  WinType = WINDOW_HANN511;
+  else if (SNR >=  -7.0)  WinType = WINDOW_HANN1023;
   else                  WinType = WINDOW_HANN2047;
 
   return WinType;
@@ -160,7 +160,7 @@ double DSP::calcVideoSNR () {
     double Psignal = Pvideo_plus_noise - Pnoise_only;
 
     m_SNR = ((Pnoise_only == 0 || Psignal / Pnoise_only < .01) ?
-        -20 : 10 * log10(Psignal / Pnoise_only));
+        -20.0 : 10 * log10(Psignal / Pnoise_only));
 
     m_next_snr_time = t + 50e-3;
   }
@@ -375,9 +375,9 @@ std::vector<double> derivPeaks (const Wave& wave, size_t n) {
 std::tuple<bool,double,double> findMelody (const Wave& wave, const Melody& melody, double dt, double min_shift, double max_shift) {
   bool   was_found = true;
   int    start_at = 0;
-  double avg_fdiff = 0;
-  double freq_margin = 25;
-  double tshift = 0;
+  double avg_fdiff = 0.0;
+  double freq_margin = 25.0;
+  double tshift = 0.0;
   double t = melody[melody.size()-1].dur;
   std::vector<double> fdiffs;
 
@@ -413,13 +413,13 @@ std::tuple<bool,double,double> findMelody (const Wave& wave, const Melody& melod
     Wave subwave(wave.begin()+start_at, wave.end());
     Wave edges_rx = derivPeaks(subwave, melody.size()-1);
     Wave edges_ref;
-    double t = 0;
+    double t = 0.0;
     for (size_t i=0; i<melody.size()-1; i++) {
       t += melody[i].dur;
       edges_ref.push_back(t);
     }
 
-    tshift = 0;
+    tshift = 0.0;
     if (edges_rx.size() == edges_ref.size()) {
       for (size_t i=0; i<edges_rx.size(); i++) {
         tshift += (edges_rx[i]*dt - edges_ref[i]);
