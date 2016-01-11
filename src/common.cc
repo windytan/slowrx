@@ -33,7 +33,7 @@ double rad2deg (double rad) {
 }
 
 int maxIndex (std::vector<double> v) {
-  const int n = sizeof(v) / sizeof(double);
+  //const int n = sizeof(v) / sizeof(double);
   return distance(v.begin(), max_element(v.begin(), v.end()));
 }
 
