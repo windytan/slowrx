@@ -116,12 +116,14 @@ void GUI::start() {
   fetchAutoState();
   inputDeviceChanged();
 
+  m_radio_input_stdin->set_sensitive(false);
+
   m_app->run(*m_window_main);
 
 }
 
 void GUI::imageReset() {
-  m_image_rx->set(empty_pixbuf(500));
+  m_image_rx->set(empty_pixbuf(640));
   m_label_lasttime->set_text("");
 }
 
