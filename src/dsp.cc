@@ -1,9 +1,8 @@
 #include "dsp.h"
 #include <cmath>
 
-DSP::DSP() :
-  m_fshift(0), m_sync_window(WINDOW_HANN511), m_window(16)
-{
+DSP::DSP() : m_fshift(0), m_sync_window(WINDOW_HANN511), m_decim_ratio(4),
+  m_freq_if(1900), m_window(16) {
 
   m_window[WINDOW_HANN95]   = window::Hann(95);
   m_window[WINDOW_HANN127]  = window::Hann(127);
@@ -22,27 +21,34 @@ DSP::DSP() :
     0.0127521667,0.0067664313,0.0032312239,0.0013212953,0.0004272315
   };
 
-  m_fft_inbuf = new fftw_complex[FFT_LEN_BIG];//fftw_alloc_complex(FFT_LEN_BIG);
+  m_fft_inbuf = fftw_alloc_complex(FFT_LEN);
   if (m_fft_inbuf == NULL) {
     perror("unable to allocate memory for FFT");
     exit(EXIT_FAILURE);
   }
-  m_fft_outbuf = new fftw_complex[FFT_LEN_BIG];//fftw_alloc_complex(FFT_LEN_BIG);
+  m_fft_outbuf = fftw_alloc_complex(FFT_LEN);
   if (m_fft_outbuf == NULL) {
     perror("unable to allocate memory for FFT");
     fftw_free(m_fft_inbuf);
     exit(EXIT_FAILURE);
   }
-  for (size_t i=0; i<FFT_LEN_BIG; i++) {
+  for (int i=0; i<FFT_LEN; i++) {
     m_fft_inbuf[i][0]  = m_fft_inbuf[i][1]  = 0.0;
     m_fft_outbuf[i][0] = m_fft_outbuf[i][1] = 0.0;
   }
 
-  m_fft_plan_small = fftw_plan_dft_1d(FFT_LEN_SMALL, m_fft_inbuf, m_fft_outbuf, FFTW_FORWARD, FFTW_ESTIMATE);
-  m_fft_plan_big   = fftw_plan_dft_1d(FFT_LEN_BIG, m_fft_inbuf, m_fft_outbuf, FFTW_FORWARD, FFTW_ESTIMATE);
+  m_mag = std::vector<double>(FFT_LEN);
+
+  //m_fft_plan_small = fftw_plan_dft_1d(FFT_LEN_SMALL, m_fft_inbuf, m_fft_outbuf, FFTW_FORWARD, FFTW_ESTIMATE);
+  m_fft_plan = fftw_plan_dft_1d(FFT_LEN, m_fft_inbuf, m_fft_outbuf, FFTW_FORWARD, FFTW_ESTIMATE);
 
   m_input = std::make_shared<Input>();
 
+}
+
+DSP::~DSP() {
+  fftw_free(m_fft_inbuf);
+  fftw_free(m_fft_outbuf);
 }
 
 std::shared_ptr<Input> DSP::getInput() {
@@ -52,66 +58,88 @@ std::shared_ptr<Input> DSP::getInput() {
 // the current moment, windowed
 // will be written over buf
 // which MUST fit FFT_LEN_BIG * fftw_complex
-void DSP::calcWindowedFFT (WindowType win_type, unsigned fft_len) {
+void DSP::calcWindowedFFT (WindowType win_type, int fft_len) {
 
-  for (size_t i=0; i<fft_len; i++)
+  assert(fft_len >= m_window[win_type].size() / m_decim_ratio);
+
+  for (int i=0; i<fft_len; i++)
     m_fft_inbuf[i][0] = m_fft_inbuf[i][1] = 0;
 
-  //double if_phi = 0;
+  double if_phi = 0;
   for (int i = 0; i < MOMENT_LEN; i++) {
 
-    size_t win_i = i - MOMENT_LEN/2 + m_window[win_type].size()/2 ;
+    int win_i = i - MOMENT_LEN/2 + m_window[win_type].size()/2 ;
 
-    if (win_i < m_window[win_type].size()) {
+    if (win_i >= 0 && win_i < (int)m_window[win_type].size()) {
       double a;
-      //fftw_complex mixed;
-      a = m_input->m_cirbuf.data[m_input->m_cirbuf.tail + i] * m_window[win_type][win_i];
+      fftw_complex mixed;
+      a = m_input->m_cirbuf.at(i);
 
-      /*// mix to IF
+      // mix to IF
       mixed[0] = a * cos(if_phi) - a * sin(if_phi);
       mixed[1] = a * cos(if_phi) + a * sin(if_phi);
-      if_phi += 2 * M_PI * 10000 / samplerate_;*/
+      if_phi += 2 * M_PI * (-m_freq_if) / m_input->getSamplerate();
 
-      m_fft_inbuf[win_i][0] = m_fft_inbuf[win_i][1] = a;
+      // LPF
+      // TODO
+
+      // decimate
+      if (win_i % m_decim_ratio == 0) {
+        m_fft_inbuf[win_i / m_decim_ratio][0] = mixed[0] * m_window[win_type][win_i];
+        m_fft_inbuf[win_i / m_decim_ratio][1] = mixed[1] * m_window[win_type][win_i];
+      }
     }
   }
 
-  fftw_execute(fft_len == FFT_LEN_BIG ? m_fft_plan_big : m_fft_plan_small);
+  fftw_execute(m_fft_plan);
 
 }
 
 double DSP::calcPeakFreq (double minf, double maxf, WindowType wintype) {
 
-  unsigned fft_len = (m_window[wintype].size() <= FFT_LEN_SMALL ? FFT_LEN_SMALL : FFT_LEN_BIG);
+  //printf("   calcpeakfreq\n");
+  int fft_len = FFT_LEN;
 
   calcWindowedFFT(wintype, fft_len);
 
-  size_t peakBin = 0;
-  unsigned lobin = freq2bin(minf, fft_len);
-  unsigned hibin = freq2bin(maxf, fft_len);
-  for (size_t i = lobin-1; i <= hibin+1; i++) {
-    m_mag[i] = complexMag(m_fft_outbuf[i]);
-    if ( (i >= lobin && i <= hibin && i<(fft_len/2+1) ) &&
-         (peakBin == 0 || m_mag[i] > m_mag[peakBin]))
-      peakBin = i;
-  }
+  int peak_i = -1,peak_bin=0;
+  int lobin = freq2bin(minf, fft_len);
+  int hibin = freq2bin(maxf, fft_len);
 
-  double result = peakBin + gaussianPeak(m_mag[peakBin-1], m_mag[peakBin], m_mag[peakBin+1]);
+  for (int bin = lobin-1; bin <= hibin+1; bin++) {
+    int i = (bin >= 0 ? bin : fft_len + bin);
+
+    m_mag.at(i) = complexMag(m_fft_outbuf[i]);
+    if ( (bin >= lobin && bin <= hibin) &&
+         (peak_i == -1 || m_mag.at(i) > m_mag.at(peak_i)) ) {
+      peak_i = i;
+      peak_bin = bin;
+    }
+    //printf("%6.2f ",m_mag.at(i));
+  }
+  //printf ("%d(%d) ",peak_i,peak_bin);
+
+  double result = gaussianPeak(m_mag, peak_bin, true);
+
+  //printf(" %.3f ",result);
 
   // In Hertz
-  result = result / fft_len * m_input->getSamplerate() + m_fshift;
+  result = result / (fft_len*m_decim_ratio) * m_input->getSamplerate() + m_freq_if + m_fshift;
+
 
   // cheb47 @ 44100 can't resolve <1700 Hz
-  if (result < 1700 && wintype == WINDOW_CHEB47)
-    result = calcPeakFreq (minf, maxf, WINDOW_HANN95);
+  //if (result < 1700 && wintype == WINDOW_CHEB47)
+  //  result = calcPeakFreq (minf, maxf, WINDOW_HANN95);
 
+  //printf("   ret\n");
+  //printf("%.1f Hz\n",result);
   return result;
 
 }
 
 Wave DSP::calcBandPowerPerHz(const std::vector<std::vector<double>>& bands, WindowType wintype) {
 
-  unsigned fft_len = (m_window[wintype].size() <= FFT_LEN_SMALL ? FFT_LEN_SMALL : FFT_LEN_BIG);
+  int fft_len = FFT_LEN;
 
   calcWindowedFFT(wintype, fft_len);
 
@@ -119,8 +147,11 @@ Wave DSP::calcBandPowerPerHz(const std::vector<std::vector<double>>& bands, Wind
   for (Wave band : bands) {
     double P = 0.0;
     double binwidth = 1.0 * m_input->getSamplerate() / fft_len;
-    int nbins = 0.0;
-    for (int i = freq2bin(band[0]+m_fshift, fft_len); i <= freq2bin(band[1]+m_fshift, fft_len); i++) {
+    int nbins = 0;
+    int lobin = freq2bin(band[0]+m_fshift, fft_len);
+    int hibin = freq2bin(band[1]+m_fshift, fft_len);
+    for (int bin = lobin; bin<=hibin; bin++) {
+      int i = (bin >= 0 ? bin : fft_len + bin);
       P += pow(complexMag(m_fft_outbuf[i]), 2);
       nbins++;
     }
@@ -140,8 +171,7 @@ WindowType DSP::bestWindowFor(SSTVMode Mode, double SNR) {
   else if (SNR >=   8.0)  WinType = WINDOW_HANN127;
   else if (SNR >=   5.0)  WinType = WINDOW_HANN255;
   else if (SNR >=   4.0)  WinType = WINDOW_HANN511;
-  else if (SNR >=  -7.0)  WinType = WINDOW_HANN1023;
-  else                  WinType = WINDOW_HANN2047;
+  else                    WinType = WINDOW_HANN1023;
 
   return WinType;
 }
@@ -444,6 +474,6 @@ void DSP::set_fshift (double fshift) {
 }
 
 int DSP::freq2bin (double freq, int fft_len) const {
-  return (freq / m_input->getSamplerate() * fft_len);
+  return ((freq-m_freq_if) / m_input->getSamplerate() * fft_len * m_decim_ratio);
 }
 

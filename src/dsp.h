@@ -9,8 +9,7 @@
 
 // moment length only affects length of global delay, I/O interval,
 // and maximum window size.
-#define FFT_LEN_SMALL  1024
-#define FFT_LEN_BIG    2048
+#define FFT_LEN     512
 
 #define FREQ_MIN    500.0
 #define FREQ_MAX   3300.0
@@ -29,6 +28,7 @@ class DSP {
   public:
 
     DSP ();
+    ~DSP();
 
     double              calcPeakFreq    (double minf, double maxf, WindowType win_type);
     std::vector<double> calcBandPowerPerHz (const std::vector<std::vector<double>>&, WindowType wintype=WINDOW_HANN2047);
@@ -45,16 +45,16 @@ class DSP {
 
   private:
 
-
     fftw_complex* m_fft_inbuf;
     fftw_complex* m_fft_outbuf;
-    fftw_plan     m_fft_plan_small;
-    fftw_plan     m_fft_plan_big;
-    double        m_mag[FFT_LEN_BIG/2+1];
+    fftw_plan     m_fft_plan;
+    std::vector<double> m_mag;
     double        m_fshift;
     double        m_next_snr_time;
     double        m_SNR;
     WindowType    m_sync_window;
+    int           m_decim_ratio;
+    double        m_freq_if;
 
     std::vector<Wave> m_window;
 
