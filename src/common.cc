@@ -120,7 +120,7 @@ template class CirBuffer<float>;
 
 // Quit
 void evt_deletewindow() {
-  gtk_main_quit ();
+  //gtk_main_quit ();
 }
 
 // Transform the NoiseAdapt toggle state into a variable
@@ -134,7 +134,7 @@ void evt_ManualStart() {
 }
 
 // Manual slant adjust
-void evt_clickimg(Gtk::Widget *widget, GdkEventButton* event, Gdk::WindowEdge edge) {
+//void evt_clickimg(Gtk::Widget *widget, GdkEventButton* event, Gdk::WindowEdge edge) {
   /*static double prevx=0,prevy=0,newrate;
   static bool   secondpress=false;
   double        x,y,dx,dy,xic;
