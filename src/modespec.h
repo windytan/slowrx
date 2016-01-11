@@ -39,18 +39,20 @@ struct ModeSpec {
   double      t_period;
   ModeFamily  family;
   eColorEnc   color_enc;
+  uint16_t    vis;
   eVISParity  vis_parity;
 
   ModeSpec() {};
 
-  ModeSpec(std::string name, uint16_t scan_pixels, uint16_t num_lines, uint16_t header_lines,
-      double aspect_ratio, double t_sync, double t_porch, double t_sep, double t_scan,
-      double t_period, ModeFamily family, eColorEnc color_enc, eVISParity vis_parity)
-    :
-    name(name), scan_pixels(scan_pixels), num_lines(num_lines), header_lines(header_lines),
-    aspect_ratio(aspect_ratio), t_sync(t_sync), t_porch(t_porch), t_sep(t_sep),
-    t_scan(t_scan), t_period(t_period), family(family), color_enc(color_enc),
-    vis_parity(vis_parity)
+  ModeSpec(
+      std::string nm, uint16_t sp, uint16_t nl, uint16_t hl,
+      double ar, double t_sy, double t_po, double t_se, double t_sc,
+      double t_pe, ModeFamily fa, eColorEnc ce, uint16_t vi,  eVISParity vp
+    ) :
+    name(nm), scan_pixels(sp), num_lines(nl), header_lines(hl),
+    aspect_ratio(ar), t_sync(t_sy), t_porch(t_po), t_sep(t_se),
+    t_scan(t_sc), t_period(t_pe), family(fa), color_enc(ce), vis(vi),
+    vis_parity(vp)
   {};
 };
 
