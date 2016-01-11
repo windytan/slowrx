@@ -11,14 +11,14 @@ std::string version_string() {
 }
 
 // Clip to [0..255]
-uint8_t clip (double a) {
+uint8_t clipToByte (double a) {
   if      (a < 0.0)   return 0;
   else if (a > 255.0) return 255;
   return  std::round(a);
 }
 
 // Clip to [0..1]
-double fclip (double a) {
+double fclipToByte (double a) {
   if      (a < 0.0) return 0.0;
   else if (a > 1.0) return 1.0;
   return  a;
