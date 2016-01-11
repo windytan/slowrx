@@ -9,15 +9,7 @@ class Picture {
 
   public:
 
-    Picture(SSTVMode mode)
-      : m_mode(mode), m_pixel_grid(pixelSamplingPoints(mode)), m_video_signal(),
-        m_video_dt(getModeSpec(mode).t_scan/getModeSpec(mode).scan_pixels/2), m_sync_signal(),
-        m_sync_dt(getModeSpec(mode).t_period / getModeSpec(mode).scan_pixels/3), m_drift(1.0),
-        m_starts_at(0.0) {
-          std::time_t t = std::time(NULL);
-          std::strftime(m_timestamp, sizeof(m_timestamp),"%F %Rz", std::gmtime(&t));
-          std::strftime(m_safe_timestamp, sizeof(m_timestamp),"%Y%m%d_%H%M%SZ", std::gmtime(&t));
-        }
+    Picture(SSTVMode mode);
 
     void pushToSyncSignal (double s);
     void pushToVideoSignal (double s);
