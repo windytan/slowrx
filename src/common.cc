@@ -116,23 +116,24 @@ void evt_clickimg(Gtk::Widget *widget, GdkEventButton* event, Gdk::WindowEdge ed
     secondpress=false;
     //gui.tog_setedge->set_active(false);
   }*/
-}
+//}
 
-ProgressBar::ProgressBar(double maxval, int width) :
-  maxval_(maxval), val_(0), width_(width) {
+ProgressBar::ProgressBar(double maxval, int width) : m_maxval(maxval), m_val(0), m_width(width) {
+  assert(m_maxval > 0);
+  assert(m_width > 0);
   set(0);
 }
 
 void ProgressBar::set(double val) {
-  val_ = val;
+  m_val = val;
 
   fprintf(stderr,"  [");
-  double prog = val_ / maxval_;
-  size_t prog_points = round(prog * width_);
-  for (size_t i=0;i<prog_points;i++) {
+  double prog = m_val / m_maxval;
+  int prog_points = round(prog * m_width);
+  for (int i=0;i<prog_points;i++) {
     fprintf(stderr,"=");
   }
-  for (size_t i=prog_points;i<width_;i++) {
+  for (int i=prog_points;i<m_width;i++) {
     fprintf(stderr," ");
   }
   fprintf(stderr,"] %.1f %%\r",prog*100);

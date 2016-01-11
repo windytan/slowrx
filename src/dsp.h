@@ -18,10 +18,10 @@
 #define FREQ_SYNC  1200.0
 
 namespace window {
-  Wave Hann (size_t);
-  Wave Blackmann (size_t);
-  Wave Rect (size_t);
-  Wave Gauss (size_t);
+  Wave Hann (int);
+  Wave Blackmann (int);
+  Wave Rect (int);
+  Wave Gauss (int);
 }
 
 class DSP {
@@ -35,7 +35,7 @@ class DSP {
     double              calcVideoSNR    ();
     double              calcVideoLevel  (SSTVMode, bool is_adaptive=false);
     double              calcSyncPower   ();
-    void                calcWindowedFFT (WindowType win_type, unsigned fft_len);
+    void                calcWindowedFFT (WindowType win_type, int fft_len);
 
     int                 freq2bin        (double freq, int fft_len) const;
     WindowType          bestWindowFor   (SSTVMode, double SNR=99);
@@ -63,8 +63,8 @@ class DSP {
 
 Wave   convolve     (const Wave&, const Wave&, bool wrap_around=false);
 Wave   deriv        (const Wave&);
-Wave   peaks        (const Wave&, size_t);
-Wave   derivPeaks   (const Wave&, size_t);
+Wave   peaks        (const Wave&, int);
+Wave   derivPeaks   (const Wave&, int);
 Wave   rms          (const Wave&, int);
 Wave   upsample     (const Wave& orig, size_t factor, int kern_type);
 double gaussianPeak (double y1, double y2, double y3);

@@ -27,8 +27,8 @@ class Picture {
     double getStartsAt () const;
     double getVideoDt () const;
     double getSyncDt () const;
-    double getSyncSignalAt(size_t i) const;
-    double getVideoSignalAt(size_t i) const;
+    double getSyncSignalAt(int i) const;
+    double getVideoSignalAt(int i) const;
     std::string getTimestamp() const;
 
     Glib::RefPtr<Gdk::Pixbuf> renderPixbuf(unsigned min_width=320, int upsample_factor=4);

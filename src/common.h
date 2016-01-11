@@ -68,15 +68,15 @@ class ProgressBar {
     void set(double val);
     void finish();
   private:
-    double maxval_;
-    double val_;
-    double width_;
+    double m_maxval;
+    double m_val;
+    int    m_width;
 };
 
 std::vector<PixelSample> pixelSamplingPoints(SSTVMode mode);
 
-uint8_t  clip          (double a);
-double   fclip         (double a);
+uint8_t  clipToByte          (double a);
+double   fclipToByte         (double a);
 double   deg2rad       (double Deg);
 std::string   GetFSK        ();
 void     setVU         (double *Power, int FFTLen, int WinIdx, bool ShowWin);

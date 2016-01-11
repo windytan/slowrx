@@ -2,7 +2,7 @@
 #include "dsp.h"
 
 void printWave (Wave wave, double dt) {
-  for (int i=0;i<wave.size();i++)
+  for (int i=0;i<(int)wave.size();i++)
     printf("%lf,%lf\n",i*dt,wave[i]);
 }
 

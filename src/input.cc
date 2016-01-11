@@ -175,7 +175,7 @@ void Input::readMoreFromFile() {
   }
 
   if (m_num_chans > 1) {
-    for (size_t i=0; i<READ_CHUNK_LEN; i++) {
+    for (int i=0; i<READ_CHUNK_LEN; i++) {
       m_read_buffer[i] = m_read_buffer[i*m_num_chans];
     }
   }
@@ -191,8 +191,8 @@ void Input::readMoreFromStdin() {
   }
   framesread = fr;
 
-  for (size_t i=0; i<READ_CHUNK_LEN; i++) {
-    m_read_buffer[i] = m_read_buffer_s16[i] / 32768.0;
+  for (int i=0; i<READ_CHUNK_LEN; i++) {
+    m_read_buffer.at(i) = m_read_buffer_s16.at(i) / 32768.0;
   }
 
   readBufferTransfer(framesread);

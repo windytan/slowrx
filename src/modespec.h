@@ -28,9 +28,9 @@ enum eVISParity {
 
 struct ModeSpec {
   std::string name;
-  unsigned    scan_pixels;
-  unsigned    num_lines;
-  unsigned    header_lines;
+  int         scan_pixels;
+  int         num_lines;
+  int         header_lines;
   double      aspect_ratio;
   double      t_sync;
   double      t_porch;

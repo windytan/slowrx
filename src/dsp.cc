@@ -177,7 +177,7 @@ WindowType DSP::bestWindowFor(SSTVMode Mode, double SNR) {
 }
 
 double DSP::calcVideoSNR () {
-  double t = m_input->get_t();
+  const double t = m_input->get_t();
 
   if (t >= m_next_snr_time) {
     std::vector<double> bands = calcBandPowerPerHz(
@@ -220,50 +220,79 @@ double DSP::calcVideoLevel (SSTVMode mode, bool is_adaptive) {
   else             win_type = bestWindowFor(mode);
 
   double freq = calcPeakFreq(FREQ_BLACK, FREQ_WHITE, win_type);
-  return fclip((freq - FREQ_BLACK) / (FREQ_WHITE - FREQ_BLACK));
+  return fclipToByte((freq - FREQ_BLACK) / (FREQ_WHITE - FREQ_BLACK));
 }
 
-// param:  y values around peak
-// return: peak x position (-1 .. 1)
-double gaussianPeak (double y1, double y2, double y3) {
-  if (2*y2 - y3 - y1 == 0) {
-    return 0;
-  } else {
-    return ((y3 - y1) / (2 * (2*y2 - y3 - y1)));
+// return: refined peak x position (idx_peak-1 .. idx_peak+1)
+double gaussianPeak (const Wave& signal, int idx_peak, bool wrap_around) {
+  double y1,y2,y3;
+  const int idx_last = signal.size()-1;
+
+  bool was_negative = false;
+  if (wrap_around && idx_peak < 0) {
+    was_negative = true;
+    idx_peak += signal.size();
   }
+
+
+  if (idx_peak == 0) {
+    y1 = signal.at(wrap_around ? idx_last : 1);
+    y2 = signal.at(0);
+    y3 = signal.at(1);
+  } else if (idx_peak == idx_last) {
+    y1 = signal.at(idx_last-1);
+    y2 = signal.at(idx_last);
+    y3 = signal.at(wrap_around ? 0 : idx_last-1);
+  } else {
+    y1 = signal.at(idx_peak - 1);
+    y2 = signal.at(idx_peak);
+    y3 = signal.at(idx_peak + 1);
+  }
+
+  double refined = idx_peak;
+  if (was_negative)
+    refined -= (int)signal.size();
+
+  if (2*y2 - y3 - y1 != 0.0) {
+    double offset = ((y3 - y1) / (2 * (2*y2 - y3 - y1)));
+    refined += offset;
+  }
+
+  return refined;
 }
+
 /*WindowType DSPworker::bestWindowFor(SSTVMode Mode) {
   return bestWindowFor(Mode, 20);
 }*/
 
 namespace window {
-  Wave Hann (size_t winlen) {
+  Wave Hann (int winlen) {
     Wave result(winlen);
-    for (size_t i=0; i < winlen; i++)
-      result[i] = 0.5 * (1 - cos( (2 * M_PI * i) / (winlen)) );
+    for (int i=0; i < winlen; i++)
+      result[i] = 0.5 * (1 - cos( (2 * M_PI * i) / winlen) );
     return result;
   }
 
-  Wave Blackmann (size_t winlen) {
+  Wave Blackmann (int winlen) {
     Wave result(winlen);
-    for (size_t i=0; i < winlen; i++)
+    for (int i=0; i < winlen; i++)
       result[i] = 0.42 - 0.5*cos(2*M_PI*i/winlen) - 0.08*cos(4*M_PI*i/winlen);
 
     return result;
   }
 
-  Wave Rect (size_t winlen) {
+  Wave Rect (int winlen) {
     Wave result(winlen);
     double sigma = 0.4;
-    for (size_t i=0; i < winlen; i++)
+    for (int i=0; i < winlen; i++)
       result[i] = exp(-0.5*((i-(winlen-1)/2)/(sigma*(winlen-1)/2)));
 
     return result;
   }
 
-  Wave Gauss (size_t winlen) {
+  Wave Gauss (int winlen) {
     Wave result(winlen);
-    for (size_t i=0; i < winlen; i++)
+    for (int i=0; i < winlen; i++)
       result[i] = 1;
 
     return result;
@@ -271,7 +300,7 @@ namespace window {
 }
 
 double sinc (double x) {
-  return (x == 0 ? 1 : sin(M_PI*x) / (M_PI*x));
+  return (x == 0.0 ? 1 : sin(M_PI*x) / (M_PI*x));
 }
 
 namespace kernel {
@@ -376,7 +405,7 @@ std::vector<double> peaks (const Wave& wave, size_t n) {
     });
 
   Wave result;
-  for (size_t i=0;i<n && i<peaks.size(); i++)
+  for (int i=0;i<n && i<(int)peaks.size(); i++)
     result.push_back(peaks[i].first);
 
   std::sort(result.begin(), result.end());
@@ -385,9 +414,9 @@ std::vector<double> peaks (const Wave& wave, size_t n) {
 }
 
 
-std::vector<double> derivPeaks (const Wave& wave, size_t n) {
+std::vector<double> derivPeaks (const Wave& wave, int n) {
   std::vector<double> result = peaks(deriv(wave), n);
-  for (size_t i=0; i<result.size(); i++) {
+  for (int i=0; i<(int)result.size(); i++) {
     result[i] += .5;
   }
   return result;
@@ -406,13 +435,13 @@ std::tuple<bool,double,double> findMelody (const Wave& wave, const Melody& melod
   bool   was_found = true;
   int    start_at = 0;
   double avg_fdiff = 0.0;
-  double freq_margin = 25.0;
+  const double freq_margin = 25.0;
   double tshift = 0.0;
   double t = melody[melody.size()-1].dur;
   std::vector<double> fdiffs;
 
   for (int i=melody.size()-2; i>=0; i--)  {
-    if (melody[i].freq != 0) {
+    if (melody[i].freq != 0.0) {
       double delta_f_ref = melody[i].freq - melody[melody.size()-1].freq;
       double delta_f     = wave[wave.size()-1 - (t/dt)] - wave[wave.size()-1];
       double err_f       = delta_f - delta_f_ref;
@@ -427,7 +456,7 @@ std::tuple<bool,double,double> findMelody (const Wave& wave, const Melody& melod
     /* refine fshift */
     int melody_i = 0;
     double next_tone_t = melody[melody_i].dur;
-    for (size_t i=start_at; i<wave.size(); i++) {
+    for (int i=start_at; i<(int)wave.size(); i++) {
       double fref = melody[melody_i].freq;
       double fdiff = (wave[i] - fref);
       fdiffs.push_back(fdiff);
@@ -444,14 +473,14 @@ std::tuple<bool,double,double> findMelody (const Wave& wave, const Melody& melod
     Wave edges_rx = derivPeaks(subwave, melody.size()-1);
     Wave edges_ref;
     double t = 0.0;
-    for (size_t i=0; i<melody.size()-1; i++) {
+    for (int i=0; i<(int)melody.size()-1; i++) {
       t += melody[i].dur;
       edges_ref.push_back(t);
     }
 
     tshift = 0.0;
     if (edges_rx.size() == edges_ref.size()) {
-      for (size_t i=0; i<edges_rx.size(); i++) {
+      for (int i=0; i<(int)edges_rx.size(); i++) {
         tshift += (edges_rx[i]*dt - edges_ref[i]);
       }
       tshift = start_at*dt + (tshift / edges_rx.size()) - ((wave.size()-1)*dt);

@@ -10,17 +10,36 @@ void Picture::pushToVideoSignal(double s) {
   m_video_signal.push_back(s);
 }
 
-SSTVMode Picture::getMode          () const   { return m_mode; }
-double   Picture::getDrift         () const   { return m_drift; }
-double   Picture::getStartsAt      () const   { return m_starts_at; }
-double   Picture::getVideoDt       () const   { return m_video_dt; }
-double   Picture::getSyncDt        () const   { return m_sync_dt; }
-double   Picture::getSyncSignalAt  (size_t i) const { return m_sync_signal[i]; }
-double   Picture::getVideoSignalAt (size_t i) const { return m_video_signal[i]; }
-std::string Picture::getTimestamp() const { return std::string(m_timestamp); }
+SSTVMode Picture::getMode () const {
+  return m_mode;
+}
+double Picture::getDrift () const {
+  return m_drift;
+}
+double Picture::getStartsAt () const {
+  return m_starts_at;
+}
+double Picture::getVideoDt () const {
+  return m_video_dt;
+}
+double Picture::getSyncDt () const {
+  return m_sync_dt;
+}
+double Picture::getSyncSignalAt (int i) const {
+  return m_sync_signal.at(i);
+}
+double Picture::getVideoSignalAt (int i) const {
+  return m_video_signal.at(i);
+}
+std::string Picture::getTimestamp() const {
+  return std::string(m_timestamp);
+}
+void Picture::setProgress(double p) {
+  m_progress = p;
+}
 
-void setChannel (uint32_t& px, uint8_t ch, uint8_t val) {
-  assert (ch <= 3);
+void setChannel (uint32_t& px, int ch, uint8_t val) {
+  assert (ch >= 0 && ch <= 3);
   px &= ~(0xff << (8*ch));
   px |= val << (8*ch);
 }
@@ -61,13 +80,13 @@ void decodeMono (uint32_t src, uint8_t *dst) {
 }
 
 
-Glib::RefPtr<Gdk::Pixbuf> Picture::renderPixbuf(unsigned min_width, int upsample_factor) {
+Glib::RefPtr<Gdk::Pixbuf> Picture::renderPixbuf(int width) {
 
   ModeSpec m = getModeSpec(m_mode);
 
   std::vector<std::vector<uint32_t>> img(m.scan_pixels);
-  for (size_t x=0; x < m.scan_pixels; x++) {
-    img[x] = std::vector<uint32_t>(m.num_lines);
+  for (int x=0; x < m.scan_pixels; x++) {
+    img.at(x) = std::vector<uint32_t>(m.num_lines);
   }
 
   Wave signal_up =
@@ -92,11 +111,11 @@ Glib::RefPtr<Gdk::Pixbuf> Picture::renderPixbuf(unsigned min_width, int upsample
 
   /* chroma reconstruction from 4:2:0 */
   if (m_mode == MODE_R36 || m.family == MODE_PD) {
-    for (size_t x=0; x < m.scan_pixels; x++) {
+    for (int x=0; x < m.scan_pixels; x++) {
       Wave column_u, column_v;
       Wave column_u_filtered;
       Wave column_v_filtered;
-      for (size_t y=0; y < m.num_lines; y+=2) {
+      for (int y=0; y < m.num_lines; y+=2) {
         column_u.push_back(getChannel(img[x][y], 1));
         column_v.push_back(getChannel(img[x][y], 2));
       }
@@ -118,8 +137,8 @@ Glib::RefPtr<Gdk::Pixbuf> Picture::renderPixbuf(unsigned min_width, int upsample
   pixels = pixbuf_rx->get_pixels();
   int rowstride = pixbuf_rx->get_rowstride();
 
-  for (size_t x = 0; x < m.scan_pixels; x++) {
-    for (size_t y = 0; y < m.num_lines; y++) {
+  for (int y = 0; y < m.num_lines; y++) {
+    for (int x = 0; x < m.scan_pixels; x++) {
 
       p = pixels + y * rowstride + x * 3;
 
@@ -142,10 +161,8 @@ Glib::RefPtr<Gdk::Pixbuf> Picture::renderPixbuf(unsigned min_width, int upsample
   double rx_aspect     = 4.0/3.0;
   //double pad_to_aspect = 5.0/4.0;
 
-  unsigned img_width = round((m.num_lines - m.header_lines) * rx_aspect);
-  if (img_width < min_width)
-    img_width = min_width;
-  unsigned img_height = round(1.0*img_width/rx_aspect + m.header_lines);
+  int img_width  = width;//round((m.num_lines - m.header_lines) * rx_aspect);
+  int img_height = round(1.0*img_width/rx_aspect + m.header_lines);
 
   Glib::RefPtr<Gdk::Pixbuf> pixbuf_scaled;
   pixbuf_scaled = pixbuf_rx->scale_simple(img_width, img_height, Gdk::INTERP_HYPER);
@@ -173,14 +190,15 @@ void Picture::saveSync () {
 
   Wave big_sync = upsample(m_sync_signal, 2, KERNEL_TENT);
 
-  for (size_t i=1; i<m_sync_signal.size(); i++) {
-    int x = i % line_width;
-    int y = i / line_width;
-    int signal_idx = i * upsample_factor / m_drift + .5;
-    if (y < numlines) {
-      uint8_t val = clip((big_sync[signal_idx])*127);
-      p = pixels + y * rowstride + x * 3;
-      p[0] = p[1] = p[2] = val;
+    for (int i=0; i<(int)m_sync_signal.size(); i++) {
+      int x = i % line_width;
+      int y = i / line_width;
+      int signal_idx = i * upsample_factor / m_drift + .5;
+      if (y < numlines && signal_idx < (int)big_sync.size()) {
+        uint8_t val = clipToByte((big_sync[signal_idx])*127);
+        p = pixels + y * rowstride + x * 3;
+        p[0] = p[1] = p[2] = val;
+      }
     }
   }
 
@@ -191,8 +209,8 @@ void Picture::saveSync () {
 void Picture::resync () {
 
 #ifdef NOSYNC
-  drift_ = 1.0;
-  starts_at_ = 0.0;
+  m_drift = 1.0;
+  m_starts_at = 0.0;
   return;
 #endif
 
@@ -212,16 +230,13 @@ void Picture::resync () {
 
   for (double d = min_drift; d <= max_drift; d += drift_step) {
     std::vector<double> acc(line_width);
-    int peak_x = 0;
-    for (size_t i=1; i<m_sync_signal.size(); i++) {
+    for (int i=0; i<(int)m_sync_signal.size(); i++) {
       int x = i % line_width;
-      size_t signal_idx = round(i * upsample_factor / d);
-      double delta = (signal_idx < sync_up.size() ? sync_up[signal_idx] - sync_up[signal_idx-1] : 0);
-      if (delta >= 0.0)
-        acc[x] += delta;
-      if (acc[x] > acc[peak_x]) {
-        peak_x = x;
-      }
+      int signal_idx = round(i * upsample_factor / drift);
+      acc.at(x) += (signal_idx < (int)sync_up.size() ? sync_up.at(signal_idx) : 0);
+
+      if (thresh > 0.0)
+        acc.at(x) = acc.at(x) >= thresh ? 1.0 : 0.0;
     }
     histogram.push_back(acc[peak_x]);
     if (acc[peak_x] > peak_drift_val) {
@@ -267,9 +282,9 @@ void Picture::resync () {
 std::vector<PixelSample> pixelSamplingPoints(SSTVMode mode) {
   ModeSpec m = getModeSpec(mode);
   std::vector<PixelSample> pixel_grid;
-  for (size_t y=0; y<m.num_lines; y++) {
-    for (size_t x=0; x<m.scan_pixels; x++) {
-      for (size_t ch=0; ch < (m.color_enc == COLOR_MONO ? 1 : 3); ch++) {
+  for (int y=0; y<m.num_lines; y++) {
+    for (int x=0; x<m.scan_pixels; x++) {
+      for (int ch=0; ch < (m.color_enc == COLOR_MONO ? 1 : 3); ch++) {
         PixelSample px;
         px.pt = Point(x,y);
         px.ch = ch;
