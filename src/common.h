@@ -23,14 +23,24 @@ struct Tone {
 using Wave = std::vector<double>;
 using Melody = std::vector<Tone>;
 
-struct CirBuffer {
-  Wave   data;
-  int head;
-  int tail;
-  int    fill_count;
+template<class T> class CirBuffer {
+  public:
+    CirBuffer(int len);
+    void moveHead(int n);
+    int size() const;
+    void append(const std::vector<T>& input_data, int n);
+    void append(T input_element);
+    void forward(int n);
+    int getFillCount() const;
+    T at(int n) const;
 
-  CirBuffer(size_t len) : data(len), head(0), tail(0), fill_count(0) {}
-  size_t size() { return data.size(); }
+  private:
+    std::vector<T> m_data;
+    int  m_head;
+    int  m_tail;
+    int  m_fill_count;
+    int  m_len;
+
 };
 
 enum WindowType {

@@ -22,13 +22,11 @@ class Input {
     void   readMoreFromFile();
     void   readMoreFromStdin();
 
-    void   readBufferTransfer (int);
-    double forward (unsigned);
+    double forward (int);
     double forward ();
     double forwardTime (double);
     double get_t     () const;
     double getSamplerate () const;
-
 
     bool   isOpen   () const;
     bool   isLive    () const;
@@ -47,7 +45,7 @@ class Input {
           ->PaCallback(input, output, frameCount, timeInfo, statusFlags);
       }
 
-    CirBuffer     m_cirbuf;
+    CirBuffer<float>     m_cirbuf;
 
   private:
 

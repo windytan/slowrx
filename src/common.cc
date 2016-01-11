@@ -49,6 +49,71 @@ void ensure_dir_exists(std::string dir) {
   }
 }
 
+template<class T> CirBuffer<T>::CirBuffer(int size) : m_data(size * 2), m_head(0), m_tail(0), m_fill_count(0), m_len(size) {
+  assert(size > 0);
+}
+
+template<class T> void CirBuffer<T>::moveHead(int n) {
+  m_head = (m_head + n) % m_len;
+}
+
+template<class T> void CirBuffer<T>::forward(int n) {
+  m_tail = (m_tail + n) % m_len;
+  m_fill_count -= n;
+}
+
+template<class T> int CirBuffer<T>::getFillCount() const {
+  return m_fill_count;
+}
+
+template<class T> int CirBuffer<T>::size() const {
+  return m_data.size();
+}
+
+template<class T> T CirBuffer<T>::at(int n) const {
+  int i = m_tail + n;
+  if (i < 0) {
+    i = m_len - (abs(i) % m_len);
+  } else {
+    i = i % m_len;
+  }
+
+  return m_data.at(i);
+}
+
+template<class T> void CirBuffer<T>::append(const std::vector<T>& input_data, int num_elems) {
+
+  assert(num_elems <= (int)input_data.size());
+
+  for (int i=0; i<num_elems; i++)
+    m_data.at((m_head + i) % m_len) = input_data[i];
+
+  // mirror
+  //for (int i=0; i<m_len; i++)
+  //  m_data.at(m_len + i) = m_data.at(i);
+
+  m_head = (m_head + num_elems) % m_len;
+  m_fill_count += num_elems;
+  m_fill_count = std::min(m_fill_count, m_len);
+
+}
+
+template<class T> void CirBuffer<T>::append(T input_element) {
+
+  m_data.at(m_head) = input_element;
+
+  // mirror
+  m_data.at(m_head + m_len) = m_data.at(m_head);
+
+  m_head = (m_head + 1) % m_len;
+  m_fill_count += 1;
+  m_fill_count = std::min(m_fill_count, m_len);
+
+}
+
+// for the linker
+template class CirBuffer<double>;
+template class CirBuffer<float>;
 
 /*** Gtk+ event handlers ***/
 

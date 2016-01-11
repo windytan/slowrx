@@ -3,10 +3,8 @@
 
 bool g_is_pa_initialized = false;
 
-Input::Input() : m_cirbuf(CIRBUF_LEN*2), m_read_buffer(nullptr),
-  m_read_buffer_s16(nullptr), m_t(0) {
+Input::Input() : m_cirbuf(CIRBUF_LEN), m_is_open(false), m_t(0) {
 
-  m_cirbuf.head = MOMENT_LEN/2;
 }
 
 void Input::openAudioFile (std::string fname) {
@@ -155,7 +153,11 @@ int Input::PaCallback(const void *input, void *output,
       m_read_buffer[i] = in[i * m_num_chans];
   }
 
-  readBufferTransfer(framesread);
+  for (unsigned i = 0; i<READ_CHUNK_LEN; i++)
+    m_read_buffer[i] = in[i * m_num_chans];
+
+  m_cirbuf.append(m_read_buffer, framesread);
+
 
   return 0;
 }
@@ -195,7 +197,7 @@ void Input::readMoreFromStdin() {
     m_read_buffer.at(i) = m_read_buffer_s16.at(i) / 32768.0;
   }
 
-  readBufferTransfer(framesread);
+  m_cirbuf.append(m_read_buffer, framesread);
 }
 
 std::vector<std::pair<int,std::string>> listPortaudioDevices() {
@@ -221,51 +223,23 @@ int getDefaultPaDevice() {
   return Pa_GetDefaultInputDevice();
 }
 
-void Input::readBufferTransfer (int framesread) {
-
-  {
-    std::lock_guard<std::mutex> guard(m_buffer_mutex);
-
-    int cirbuf_fits = std::min(CIRBUF_LEN - m_cirbuf.head, int(framesread));
-
-    for (int i=0; i<cirbuf_fits; i++)
-      m_cirbuf.data[m_cirbuf.head + i] = m_read_buffer[i];
-
-    // wrap around
-    if (framesread > cirbuf_fits) {
-      for (size_t i=0; i<(framesread - cirbuf_fits); i++)
-        m_cirbuf.data[i] = m_read_buffer[cirbuf_fits + i];
-    }
-
-    // mirror
-    for (size_t i=0; i<CIRBUF_LEN; i++)
-      m_cirbuf.data[CIRBUF_LEN + i] = m_cirbuf.data[i];
-
-    m_cirbuf.head = (m_cirbuf.head + framesread) % CIRBUF_LEN;
-    m_cirbuf.fill_count += framesread;
-    m_cirbuf.fill_count = std::min(int(m_cirbuf.fill_count), CIRBUF_LEN);
-  }
-}
-
 // move processing window
-double Input::forward (unsigned nsamples) {
-  for (unsigned i = 0; i < nsamples; i++) {
+double Input::forward (int nsamples) {
+
+  for (int i = 0; i < nsamples; i++) {
 
     {
       std::lock_guard<std::mutex> guard(m_buffer_mutex);
-      m_cirbuf.tail = (m_cirbuf.tail + 1) % CIRBUF_LEN;
-      m_cirbuf.fill_count -= 1;
+      m_cirbuf.forward(1);
     }
 
-    if (m_cirbuf.fill_count < MOMENT_LEN) {
-      while (m_cirbuf.fill_count < MOMENT_LEN) {
-        if (m_stream_type == STREAM_TYPE_PA) {
-          std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        } else if (m_stream_type == STREAM_TYPE_FILE) {
-          readMoreFromFile();
-        } else if (m_stream_type == STREAM_TYPE_STDIN) {
-          readMoreFromStdin();
-        }
+    while (m_cirbuf.getFillCount() < MOMENT_LEN) {
+      if (m_stream_type == STREAM_TYPE_PA) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+      } else if (m_stream_type == STREAM_TYPE_FILE) {
+        readMoreFromFile();
+      } else if (m_stream_type == STREAM_TYPE_STDIN) {
+        readMoreFromStdin();
       }
     }
   }
