@@ -9,8 +9,7 @@ Input::Input() : m_cirbuf(CIRBUF_LEN), m_is_open(false), m_t(0) {
 
 void Input::openAudioFile (std::string fname) {
 
-  if (m_is_open)
-    close();
+  close();
 
   fprintf (stderr,"open '%s'\n", fname.c_str()) ;
   m_file = SndfileHandle(fname.c_str()) ;
@@ -25,16 +24,14 @@ void Input::openAudioFile (std::string fname) {
     m_stream_type = STREAM_TYPE_FILE;
 
     m_num_chans = m_file.channels();
-    delete m_read_buffer;
-    m_read_buffer = new float [READ_CHUNK_LEN * m_num_chans];
+    m_read_buffer = std::vector<float>(READ_CHUNK_LEN * m_num_chans);
     m_is_open = true;
   }
 }
 
 void Input::openPortAudio (int n) {
 
-  if (m_is_open)
-    close();
+  close();
 
   if (!g_is_pa_initialized) {
     printf("Pa_Initialize\n");
@@ -67,8 +64,7 @@ void Input::openPortAudio (int n) {
   if (!err) {
     m_num_chans = 1;
     printf("make readbuffer: %d floats\n",READ_CHUNK_LEN * m_num_chans);
-    delete m_read_buffer;
-    m_read_buffer = new float [READ_CHUNK_LEN * m_num_chans]();
+    m_read_buffer = std::vector<float>(READ_CHUNK_LEN * m_num_chans);
 
     err = Pa_StartStream( m_pa_stream );
 
@@ -105,8 +101,7 @@ void Input::openStdin() {
     printf( "'stdin' successfully changed to binary mode\n" );
 #endif
 
-  delete m_read_buffer_s16;
-  m_read_buffer_s16 = new int16_t [READ_CHUNK_LEN]();
+  m_read_buffer_s16 = std::vector<int16_t>(READ_CHUNK_LEN);
 
   m_stream_type = STREAM_TYPE_STDIN;
   m_is_open = true;
@@ -164,7 +159,7 @@ void Input::readMoreFromFile() {
   std::lock_guard<std::mutex> guard(m_buffer_mutex);
 
   unsigned long framesread = 0;
-  sf_count_t fr = m_file.readf(m_read_buffer, READ_CHUNK_LEN);
+  sf_count_t fr = m_file.readf(m_read_buffer.data(), READ_CHUNK_LEN);
   if (fr < READ_CHUNK_LEN) {
     m_is_open = false;
     if (fr < 0) {
@@ -191,7 +186,7 @@ void Input::readMoreFromStdin() {
   std::lock_guard<std::mutex> guard(m_buffer_mutex);
 
   unsigned long framesread = 0;
-  ssize_t fr = fread(m_read_buffer_s16, sizeof(uint16_t), READ_CHUNK_LEN, stdin);
+  ssize_t fr = fread(m_read_buffer_s16.data(), sizeof(uint16_t), READ_CHUNK_LEN, stdin);
   if (fr < READ_CHUNK_LEN) {
     m_is_open = false;
   }

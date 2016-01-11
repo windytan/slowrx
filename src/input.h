@@ -51,8 +51,8 @@ class Input {
 
   private:
 
-    float*   m_read_buffer;
-    int16_t* m_read_buffer_s16;
+    std::vector<float> m_read_buffer;
+    std::vector<int16_t> m_read_buffer_s16;
     SndfileHandle m_file;
     PaStream*     m_pa_stream;
     eStreamType   m_stream_type;
