@@ -34,6 +34,8 @@ class Picture {
   private:
     SSTVMode m_mode;
     std::vector<PixelSample> m_pixel_grid;
+    std::vector<bool> m_has_line;
+    double m_progress;
     Wave m_video_signal;
     double m_video_dt;
     Wave m_sync_signal;

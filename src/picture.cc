@@ -163,7 +163,9 @@ Glib::RefPtr<Gdk::Pixbuf> Picture::renderPixbuf(int width) {
 #ifdef RGBONLY
       decodeRGB(img[x][y], p);
 #else
-      if (m.color_enc == COLOR_RGB) {
+      if (!m_has_line.at(y)) {
+        p[0] = p[1] = p[2] = 0;
+      } else if (m.color_enc == COLOR_RGB) {
         decodeRGB(img[x][y], p);
       } else if (m.color_enc == COLOR_GBR) {
         decodeGBR(img[x][y], p);
@@ -370,6 +372,8 @@ std::vector<PixelSample> pixelSamplingPoints(SSTVMode mode) {
           } else if (ch == 2) {
             px.t = line_video_start + 1.5*m.t_scan + 2*m.t_sep +
              (x+.5) / m.scan_pixels * m.t_scan / 2;
+          } else {
+            exists = false;
           }
         }
 
