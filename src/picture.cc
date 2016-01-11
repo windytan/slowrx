@@ -101,7 +101,9 @@ void decodeMono (uint32_t src, uint8_t *dst) {
 
 Glib::RefPtr<Gdk::Pixbuf> Picture::renderPixbuf(int width) {
 
-  ModeSpec m = getModeSpec(m_mode);
+  assert(width > 0);
+
+  const ModeSpec m = getModeSpec(m_mode);
 
   std::vector<std::vector<uint32_t>> img(m.scan_pixels);
   for (int x=0; x < m.scan_pixels; x++) {
