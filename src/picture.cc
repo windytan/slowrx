@@ -72,13 +72,13 @@ void decodeYCbCr (uint32_t src, uint8_t *dst) {
   double g = (298.082*Y/256) - (100.291*Cb/256) - (208.120*Cr/256) + 135.576;
   double b = (298.082*Y/256) + (516.412*Cb/256)                    - 276.836;
 
-  dst[0] = clip(r);
-  dst[1] = clip(g);
-  dst[2] = clip(b);
+  dst[0] = clipToByte(r);
+  dst[1] = clipToByte(g);
+  dst[2] = clipToByte(b);
 }
 
 void decodeMono (uint32_t src, uint8_t *dst) {
-  dst[0] = dst[1] = dst[2] = clip((getChannel(src,0) - 15.5) * 1.172); // mmsstv test images
+  dst[0] = dst[1] = dst[2] = clipToByte((getChannel(src,0) - 15.5) * 1.172); // mmsstv test images
 }
 
 
@@ -91,24 +91,21 @@ Glib::RefPtr<Gdk::Pixbuf> Picture::renderPixbuf(int width) {
     img.at(x) = std::vector<uint32_t>(m.num_lines);
   }
 
-  Wave signal_up =
-    (upsample_factor > 1 ? upsample(m_video_signal, upsample_factor, KERNEL_TENT) : m_video_signal);
+  const Kernel sample_kern(KERNEL_LANCZOS2);
 
   for (PixelSample px : m_pixel_grid) {
 
-    double signal_t = (px.t/m_drift + m_starts_at) / m_video_dt * upsample_factor;
-    double val;
-    if (signal_t < 0 || signal_t >= signal_up.size()-1) {
-      val = 0;
-    } else {
-      val = signal_up[signal_t];
-    }
+    double signal_t = (px.t/m_drift + m_starts_at ) / m_video_dt;
+    double val = convolveSingle(m_video_signal, sample_kern, signal_t);
 
     int x  = px.pt.x;
     int y  = px.pt.y;
     int ch = px.ch;
 
-    setChannel(img[x][y], ch, clip(round(val*255)));
+    if (m_progress >= 1.0*y/(m.num_lines-1))
+      m_has_line.at(y) = true;
+
+    setChannel(img[x][y], ch, clipToByte(round(val*255)));
   }
 
   /* chroma reconstruction from 4:2:0 */
@@ -121,11 +118,11 @@ Glib::RefPtr<Gdk::Pixbuf> Picture::renderPixbuf(int width) {
         column_u.push_back(getChannel(img[x][y], 1));
         column_v.push_back(getChannel(img[x][y], 2));
       }
-      column_u_filtered = upsample(column_u, 2, KERNEL_TENT);
-      column_v_filtered = upsample(column_v, 2, KERNEL_TENT);
-      for (size_t y=0; y < m.num_lines; y++) {
-        setChannel(img[x][y], 1, clip(column_u_filtered[y+1]));
-        setChannel(img[x][y], 2, clip(column_v_filtered[y+1]));
+      column_u_filtered = upsample(column_u, 2, KERNEL_BOX, BORDER_REPEAT);
+      column_v_filtered = upsample(column_v, 2, KERNEL_BOX, BORDER_REPEAT);
+      for (int y=0; y < m.num_lines; y++) {
+        setChannel(img[x][y], 1, clipToByte(column_u_filtered[y]));
+        setChannel(img[x][y], 2, clipToByte(column_v_filtered[y]));
       }
     }
   }

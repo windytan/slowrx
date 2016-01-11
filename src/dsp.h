@@ -24,6 +24,16 @@ namespace window {
   Wave Gauss (int);
 }
 
+class Kernel {
+  public:
+    Kernel(int);
+    double at(double) const;
+    double getHalfWidth() const;
+  private:
+    int m_type;
+    Wave m_precalc;
+};
+
 class DSP {
   public:
 
@@ -62,12 +72,13 @@ class DSP {
 };
 
 Wave   convolve     (const Wave&, const Wave&, bool wrap_around=false);
+double convolveSingle (const Wave&, const Kernel&, double);
 Wave   deriv        (const Wave&);
 Wave   peaks        (const Wave&, int);
 Wave   derivPeaks   (const Wave&, int);
 Wave   rms          (const Wave&, int);
-Wave   upsample     (const Wave& orig, size_t factor, int kern_type);
-double gaussianPeak (double y1, double y2, double y3);
+Wave   upsample     (const Wave& orig, double factor, int kern_type, int border_treatment=BORDER_ZERO);
+double gaussianPeak (const Wave& signal, int idx_peak, bool wrap_around=false);
 double power        (fftw_complex coeff);
 double complexMag   (fftw_complex coeff);
 

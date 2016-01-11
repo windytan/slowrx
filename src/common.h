@@ -58,13 +58,16 @@ enum WindowType {
 };
 
 enum {
-  KERNEL_LANCZOS2, KERNEL_LANCZOS3, KERNEL_TENT
+  KERNEL_LANCZOS2, KERNEL_LANCZOS3, KERNEL_TENT, KERNEL_BOX
 };
 
 enum eStreamType {
   STREAM_TYPE_FILE, STREAM_TYPE_PA, STREAM_TYPE_STDIN
 };
 
+enum {
+  BORDER_REPEAT, BORDER_ZERO
+};
 
 typedef struct {
   Point pt;

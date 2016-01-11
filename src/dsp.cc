@@ -303,49 +303,82 @@ double sinc (double x) {
   return (x == 0.0 ? 1 : sin(M_PI*x) / (M_PI*x));
 }
 
-namespace kernel {
-  Wave Lanczos (size_t kernel_len, size_t a) {
-    Wave kern(kernel_len);
-    for (size_t i=0; i<kernel_len; i++) {
-      double x_kern = (1.0*i/(kernel_len-1) - .5)*2*a;
-      double x_wind = 2.0*i/(kernel_len-1) - 1;
-      kern[i] = sinc(x_kern) * sinc(x_wind);
-    }
-    return kern;
-  }
+Kernel::Kernel(int type) : m_type(type) {
 
-  Wave Tent (size_t kernel_len) {
-    Wave kern(kernel_len);
-    for (size_t i=0; i<kernel_len; i++) {
-      double x = 1.0*i/(kernel_len-1);
-      kern[i] = 1-2*fabs(x-0.5);
-    }
-    return kern;
+}
+
+double Kernel::at(double x) const {
+  double val = 0.0;
+  if (m_type == KERNEL_LANCZOS2) {
+    int a = 2;
+    val = (x >= -a && x <= a) ? sinc(x) * sinc(x/a) : 0;
+  } else if (m_type == KERNEL_LANCZOS3) {
+    int a = 3;
+    val = (x >= -a && x <= a) ? sinc(x) * sinc(x/a) : 0;
+  } else if (m_type == KERNEL_TENT) {
+    val = (x >= -1 && x <= 1) ? 1.0-std::fabs(x) : 0.0;
+  } else if (m_type == KERNEL_BOX) {
+    val = (x >= -1 && x <= 1) ? 0.5 : 0.0;
   }
+  return val;
+}
+
+double Kernel::getHalfWidth() const {
+  if (m_type == KERNEL_LANCZOS2) {
+    return 2.0;
+  }
+  return 1.0;
 }
 
 double complexMag (fftw_complex coeff) {
   return sqrt(pow(coeff[0],2) + pow(coeff[1],2));
 }
 
+double convolveSingle (const Wave& sig, const Kernel& kernel, double x) {
+
+  const int signal_len = sig.size();
+  const int i_dst = std::round(x);
+
+  double result = 0;
+
+  if (i_dst < 0 || i_dst >= signal_len)
+    return result;
+
+  for (int i_kern=-3; i_kern<=3; i_kern++) {
+    int i_src = i_dst + i_kern;
+    double x_kern = i_src - x;
+    if (i_src >= 0 && i_src < signal_len) {
+      result += sig.at(i_src) * kernel.at(x_kern);
+    }
+  }
+
+  return result;
+
+}
 
 Wave convolve (const Wave& sig, const Wave& kernel, bool wrap_around) {
 
   assert (kernel.size() % 2 == 1);
 
-  Wave result(sig.size());
+  const int signal_len = sig.size();
+  const int kernel_len = kernel.size();
 
-  for (size_t i=0; i<sig.size(); i++) {
+  Wave result(signal_len);
 
-    for (size_t i_kern=0; i_kern<kernel.size(); i_kern++) {
-      int i_new = i - kernel.size()/2  + i_kern;
+  for (int i_dst=0; i_dst<signal_len; i_dst++) {
+
+    for (int i_kern=0; i_kern<kernel_len; i_kern++) {
+      int i_src = i_dst - kernel_len/2 + i_kern;
       if (wrap_around) {
-        if (i_new < 0)
-          i_new += result.size();
-        result[i_new % result.size()] += sig[i] * kernel[i_kern];
+        if (i_src < 0) {
+          i_src = signal_len - (abs(i_src) % signal_len);
+        } else {
+          i_src = i_src % signal_len;
+        }
+        result.at(i_dst) += sig.at(i_src) * kernel[i_kern];
       } else {
-        if (i_new >= 0 && i_new <= int(result.size()-1))
-          result[i_new] += sig[i] * kernel[i_kern];
+        if (i_src >= 0 && i_src < signal_len)
+          result.at(i_dst) += sig.at(i_src) * kernel[i_kern];
       }
     }
 
@@ -354,50 +387,56 @@ Wave convolve (const Wave& sig, const Wave& kernel, bool wrap_around) {
   return result;
 }
 
-Wave upsample (const Wave& orig, size_t factor, int kern_type) {
+Wave upsample (const Wave& orig, double factor, int kern_type, int border_treatment) {
 
-  Wave kern;
-  if (kern_type == KERNEL_LANCZOS2) {
-    kern = kernel::Lanczos(factor*2*2 + 1, 2);
-  } else if (kern_type == KERNEL_LANCZOS3) {
-    kern = kernel::Lanczos(factor*3*2 + 1, 3);
-  } else if (kern_type == KERNEL_TENT) {
-    kern = kernel::Tent(factor*2 + 1);
+  const Kernel kern(kern_type);
+
+  int orig_size   = orig.size();
+  int result_size = std::ceil(orig_size * factor);
+  Wave result(result_size);
+
+  int halfwidth_samples = std::ceil(kern.getHalfWidth() * factor);
+
+  for (int i_src=-5; i_src<orig_size+5; i_src++) {
+    double x_src = i_src + .5;
+
+    double val_src = 0.0;
+    if (i_src < 0 || i_src >= orig_size) {
+      if (border_treatment == BORDER_REPEAT) {
+        val_src = orig.at(i_src < 0 ? 0 : orig_size-1);
+      }
+    } else {
+      val_src = orig.at(i_src);
+    }
+
+    if (val_src == 0.0)
+      continue;
+
+    for (int i_dst=factor*i_src-halfwidth_samples-5; i_dst<=factor*i_src+halfwidth_samples+5; i_dst++) {
+      if (i_dst >= 0 && i_dst < (int)result_size) {
+        double x_dst = (i_dst + .5) / factor;
+        result.at(i_dst) += val_src * kern.at(x_dst - x_src);
+      }
+    }
   }
-
-  size_t orig_size = orig.size();
-
-  Wave padded(orig_size * factor);
-  for (size_t i=0; i<orig_size; i++) {
-    padded[i * factor] = orig[i];
-  }
-  padded.insert(padded.begin(), factor-1, 0);
-  padded.insert(padded.begin(), orig[0]);
-  padded.push_back(orig[orig_size-1]);
-
-  Wave filtered = convolve(padded, kern);
-
-  filtered.erase(filtered.begin(), filtered.begin()+factor/2);
-  filtered.erase(filtered.end()-factor/2, filtered.end());
-
-  return filtered;
+  return result;
 }
 
 Wave deriv (const Wave& wave) {
   Wave result;
-  for (size_t i=1; i<wave.size(); i++)
+  for (int i=1; i<(int)wave.size(); i++)
     result.push_back(wave[i] - wave[i-1]);
   return result;
 }
 
-std::vector<double> peaks (const Wave& wave, size_t n) {
+std::vector<double> peaks (const Wave& wave, int n) {
   std::vector<std::pair<double,double> > peaks;
-  for (size_t i=0; i<wave.size(); i++) {
+  for (int i=0; i<(int)wave.size(); i++) {
     double y1 = (i==0 ? wave[0] : wave[i-1]);
     double y2 = wave[i];
-    double y3 = (i==wave.size()-1 ? wave[wave.size()-1] : wave[i+1]);
+    double y3 = (i==(int)wave.size()-1 ? wave[wave.size()-1] : wave[i+1]);
     if ( fabs(y2) >= fabs(y1) && fabs(y2) >= fabs(y3) )
-      peaks.push_back({ i + gaussianPeak(y1, y2, y3), wave[i]});
+      peaks.push_back({ gaussianPeak(wave, i, true), wave[i]});
   }
   std::sort(peaks.begin(), peaks.end(),
     [](std::pair<double,double> a, std::pair<double,double> b) {
