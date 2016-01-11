@@ -5,6 +5,7 @@
 #include <cassert>
 #include <vector>
 #include <memory>
+#include <mutex>
 
 #include "modespec.h"
 

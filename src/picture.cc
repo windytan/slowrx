@@ -4,9 +4,11 @@
 #include "gui.h"
 
 void Picture::pushToSyncSignal(double s) {
+  std::lock_guard<std::mutex> guard(m_mutex);
   m_sync_signal.push_back(s);
 }
 void Picture::pushToVideoSignal(double s) {
+  std::lock_guard<std::mutex> guard(m_mutex);
   m_video_signal.push_back(s);
 }
 
@@ -188,7 +190,9 @@ void Picture::saveSync () {
   pixels = pixbuf_rx->get_pixels();
   int rowstride = pixbuf_rx->get_rowstride();
 
-  Wave big_sync = upsample(m_sync_signal, 2, KERNEL_TENT);
+  {
+    std::lock_guard<std::mutex> guard(m_mutex);
+    Wave big_sync = upsample(m_sync_signal, upsample_factor, KERNEL_TENT);
 
     for (int i=0; i<(int)m_sync_signal.size(); i++) {
       int x = i % line_width;
@@ -214,21 +218,48 @@ void Picture::resync () {
   return;
 #endif
 
-  ModeSpec m = getModeSpec(m_mode);
-  int line_width = m.t_period / m_sync_dt;
+  const ModeSpec m = getModeSpec(m_mode);
+  const int line_width = m.t_period / m_sync_dt;
+  const double thresh = -1.0;
 
-  size_t upsample_factor = 2;
-  Wave sync_up = upsample(Wave(m_sync_signal), upsample_factor, KERNEL_TENT);
+  {
+    std::lock_guard<std::mutex> guard(m_mutex);
 
-  /* slant */
-  std::vector<double> histogram;
-  int peak_drift_at = 0;
-  double peak_drift_val = 0;
-  double min_drift  = 0.998;
-  double max_drift  = 1.002;
-  double drift_step = 0.00005;
+    const int upsample_factor = 2;
+    Wave sync_up = upsample(m_sync_signal, upsample_factor, KERNEL_LANCZOS2);
 
-  for (double d = min_drift; d <= max_drift; d += drift_step) {
+    /* slant */
+    std::vector<double> histogram;
+    int peak_drift_at = 0;
+    double peak_drift_val = 0.0;
+    const double min_drift  = 0.998;
+    const double max_drift  = 1.002;
+    const double drift_step = 0.00005;
+
+    for (double d = min_drift; d <= max_drift; d += drift_step) {
+      std::vector<double> acc(line_width);
+      int peak_x = 0;
+      for (int i=1; i<(int)m_sync_signal.size(); i++) {
+        int x = i % line_width;
+        int signal_idx = round(i * upsample_factor / d);
+        double delta = (signal_idx < (int)sync_up.size() ? sync_up.at(signal_idx) - sync_up.at(signal_idx-1) : 0);
+        if (delta >= 0.0)
+          acc.at(x) += delta;
+        if (acc[x] > acc[peak_x]) {
+          peak_x = x;
+        }
+      }
+      histogram.push_back(acc[peak_x]);
+      if (acc[peak_x] > peak_drift_val) {
+        peak_drift_at = histogram.size()-1;
+        peak_drift_val = acc[peak_x];
+      }
+    }
+
+    double peak_refined = gaussianPeak(histogram, peak_drift_at);
+    double drift = min_drift + peak_refined*drift_step;
+
+    /* align */
     std::vector<double> acc(line_width);
     for (int i=0; i<(int)m_sync_signal.size(); i++) {
       int x = i % line_width;
@@ -238,44 +269,39 @@ void Picture::resync () {
       if (thresh > 0.0)
         acc.at(x) = acc.at(x) >= thresh ? 1.0 : 0.0;
     }
-    histogram.push_back(acc[peak_x]);
-    if (acc[peak_x] > peak_drift_val) {
-      peak_drift_at = histogram.size()-1;
-      peak_drift_val = acc[peak_x];
+
+
+    int kernel_len = round(m.t_sync / m.t_period * line_width);
+    kernel_len += 1 - (kernel_len % 2);
+    printf("kernel_len = %d\n",kernel_len);
+    Wave sync_kernel(kernel_len);
+    for (int i=0; i<kernel_len; i++) {
+      sync_kernel.at(i) = (i < kernel_len / 2 ? -1 : 1);
     }
+    Wave sc = convolve(acc, sync_kernel, true);
+    int m_i = maxIndex(sc);
+    double peak_align = gaussianPeak(sc, m_i, true);
+
+    printf("m_i = %d\n",m_i);
+
+
+    double align_time = peak_align/line_width*m.t_period;// - m.t_sync*0.5;
+    if (m.family == MODE_SCOTTIE)
+      align_time -= m.t_sync + m.t_sep*2 + m.t_scan * 2;
+
+    if (align_time > m.t_period/2)
+      align_time -= m.t_period;
+
+    //fprintf(stderr,"drift = %.5f\n",drift);
+
+    m_drift = drift;
+    m_starts_at = align_time;
+
+    printf("align = %f/%d (%f ms)\n",peak_align,line_width,m_starts_at*1e3);
+    //m_starts_at = 0;
   }
 
-  double peak_refined = peak_drift_at +
-    gaussianPeak(histogram[peak_drift_at-1], histogram[peak_drift_at], histogram[peak_drift_at+1]);
-  double drift = min_drift + peak_refined*drift_step;
-
-  /* align */
-  std::vector<double> acc(line_width);
-  for (size_t i=1;i<m_sync_signal.size()-1; i++) {
-    int x = i % line_width;
-    size_t signal_idx = round(i * upsample_factor / drift);
-    acc[x] += (signal_idx < sync_up.size() ? sync_up[signal_idx] : 0);
-  }
-
-  int kernel_len = round(m.t_sync / m.t_period * line_width);
-  kernel_len += 1-(kernel_len%2);
-  Wave sync_kernel(kernel_len, 1);
-  Wave sc = convolve(acc, sync_kernel, true);
-  size_t m_i = maxIndex(sc);
-  double peak_align = m_i + gaussianPeak(sc[m_i-1], sc[m_i], sc[m_i+1]);
-
-  //printf("align = %f\n",peak_align);
-
-  double align_time = peak_align/line_width*m.t_period - m.t_sync*0.5;
-  if (m.family == MODE_SCOTTIE)
-    align_time -= m.t_sync + m.t_sep*2 + m.t_scan * 2;
-
-  //fprintf(stderr,"drift = %.5f\n",drift);
-
-  m_drift = drift;
-  m_starts_at = align_time;
-
-  //saveSync(pic);
+  saveSync();
 }
 
 // Time instants for all pixels

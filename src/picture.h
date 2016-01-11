@@ -35,6 +35,9 @@ class Picture {
     void resync();
     void saveSync();
     void save(std::string);
+    void setProgress(double);
+
+    std::mutex m_mutex;
 
   private:
     SSTVMode m_mode;
