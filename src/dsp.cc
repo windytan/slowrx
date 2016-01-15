@@ -303,85 +303,83 @@ double sinc (double x) {
   return (x == 0.0 ? 1 : sin(M_PI*x) / (M_PI*x));
 }
 
-Kernel::Kernel(int type) : m_type(type) {
+Kernel::Kernel(int type, double scale) : m_type(type), m_scale(scale) {
 
 }
 
-double Kernel::at(double x) const {
+double Kernel::at(double xdist) const {
   double val = 0.0;
+  double x = xdist / m_scale;
   if (m_type == KERNEL_LANCZOS2) {
     int a = 2;
-    val = (x >= -a && x <= a) ? sinc(x) * sinc(x/a) : 0;
+    val = (x >= -a && x <= a) ? sinc(x) * sinc(x/a) : 0.0;
   } else if (m_type == KERNEL_LANCZOS3) {
     int a = 3;
-    val = (x >= -a && x <= a) ? sinc(x) * sinc(x/a) : 0;
+    val = (x >= -a && x <= a) ? sinc(x) * sinc(x/a) : 0.0;
   } else if (m_type == KERNEL_TENT) {
-    val = (x >= -1 && x <= 1) ? 1.0-std::fabs(x) : 0.0;
+    val = (x >= -1.0 && x <= 1.0) ? 1.0-std::fabs(x) : 0.0;
   } else if (m_type == KERNEL_BOX) {
-    val = (x >= -1 && x <= 1) ? 0.5 : 0.0;
+    val = (x >= -1.0 && x <= 1.0) ? 0.5 : 0.0;
+  } else if (m_type == KERNEL_STEP) {
+    if (x >= -1.0 && x < 1.0) {
+      val = (x >= 0 ? 1.0 : -1.0);
+    }
+  } else if (m_type == KERNEL_PULSE) {
+    if (x >= -.5 && x < 1.5) {
+      val = (x >= 0.0 && x < 1.0 ? 1.0 : 0.0);
+    }
   }
   return val;
 }
 
 double Kernel::getHalfWidth() const {
-  if (m_type == KERNEL_LANCZOS2) {
-    return 2.0;
+  if (m_type == KERNEL_PULSE) {
+    return 2.0 * m_scale;
+  } else if (m_type == KERNEL_LANCZOS2) {
+    return 2.0 * m_scale;
+  } else if (m_type == KERNEL_LANCZOS3) {
+    return 3.0 * m_scale;
   }
-  return 1.0;
+  return 1.0 * m_scale;
 }
 
 double complexMag (fftw_complex coeff) {
   return sqrt(pow(coeff[0],2) + pow(coeff[1],2));
 }
 
-double convolveSingle (const Wave& sig, const Kernel& kernel, double x) {
+double convolveSingle (const Wave& sig, const Kernel& kernel, double x, int border_treatment) {
 
   const int signal_len = sig.size();
-  const int i_dst = std::round(x);
+  const int kernel_halfwidth = std::round(kernel.getHalfWidth());
 
   double result = 0;
 
-  if (i_dst < 0 || i_dst >= signal_len)
-    return result;
-
-  for (int i_kern=-3; i_kern<=3; i_kern++) {
-    int i_src = i_dst + i_kern;
+  for (int i_kern=-kernel_halfwidth; i_kern<=kernel_halfwidth; i_kern++) {
+    int i_src = x + i_kern;
     double x_kern = i_src - x;
+    double orig_value = 0;
     if (i_src >= 0 && i_src < signal_len) {
-      result += sig.at(i_src) * kernel.at(x_kern);
+      orig_value = sig.at(i_src);
+    } else if (border_treatment == BORDER_REPEAT) {
+      orig_value = sig.at(i_src < 0 ? 0 : signal_len-1);
+    } else if (border_treatment == BORDER_WRAPAROUND) {
+      orig_value = sig.at((i_src + signal_len) % signal_len);
     }
+    result += orig_value * kernel.at(x_kern);
   }
 
   return result;
 
 }
 
-Wave convolve (const Wave& sig, const Wave& kernel, bool wrap_around) {
-
-  assert (kernel.size() % 2 == 1);
+Wave convolve (const Wave& sig, const Kernel& kernel, int border_treatment) {
 
   const int signal_len = sig.size();
-  const int kernel_len = kernel.size();
 
   Wave result(signal_len);
 
   for (int i_dst=0; i_dst<signal_len; i_dst++) {
-
-    for (int i_kern=0; i_kern<kernel_len; i_kern++) {
-      int i_src = i_dst - kernel_len/2 + i_kern;
-      if (wrap_around) {
-        if (i_src < 0) {
-          i_src = signal_len - (abs(i_src) % signal_len);
-        } else {
-          i_src = i_src % signal_len;
-        }
-        result.at(i_dst) += sig.at(i_src) * kernel[i_kern];
-      } else {
-        if (i_src >= 0 && i_src < signal_len)
-          result.at(i_dst) += sig.at(i_src) * kernel[i_kern];
-      }
-    }
-
+    result.at(i_dst) = convolveSingle(sig, kernel, i_dst, border_treatment);
   }
 
   return result;

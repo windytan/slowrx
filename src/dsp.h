@@ -26,11 +26,12 @@ namespace window {
 
 class Kernel {
   public:
-    Kernel(int);
+    Kernel(int,double scale=1.0);
     double at(double) const;
     double getHalfWidth() const;
   private:
     int m_type;
+    double m_scale;
     Wave m_precalc;
 };
 
@@ -71,8 +72,8 @@ class DSP {
     std::shared_ptr<Input> m_input;
 };
 
-Wave   convolve     (const Wave&, const Wave&, bool wrap_around=false);
-double convolveSingle (const Wave&, const Kernel&, double);
+Wave   convolve     (const Wave&, const Kernel&, int border_treatment=BORDER_ZERO);
+double convolveSingle (const Wave&, const Kernel&, double, int border_treatment=BORDER_ZERO);
 Wave   deriv        (const Wave&);
 Wave   peaks        (const Wave&, int);
 Wave   derivPeaks   (const Wave&, int);
