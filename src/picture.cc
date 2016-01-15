@@ -75,19 +75,19 @@ uint8_t getChannel (const uint32_t& px, uint8_t ch) {
   return (px >> (8*ch)) & 0xff;
 }
 
-void decodeRGB (uint32_t src, uint8_t *dst) {
+void decodeRGB (uint32_t src, uint8_t* dst) {
   dst[0] = getChannel(src, 0);
   dst[1] = getChannel(src, 1);
   dst[2] = getChannel(src, 2);
 }
 
-void decodeGBR (uint32_t src, uint8_t *dst) {
+void decodeGBR (uint32_t src, uint8_t* dst) {
   dst[0] = getChannel(src, 2);
   dst[1] = getChannel(src, 0);
   dst[2] = getChannel(src, 1);
 }
 
-void decodeYCbCr (uint32_t src, uint8_t *dst) {
+void decodeYCbCr (uint32_t src, uint8_t* dst) {
   uint8_t Y  = getChannel(src, 0);
   uint8_t Cr = getChannel(src, 1);
   uint8_t Cb = getChannel(src, 2);
@@ -101,7 +101,7 @@ void decodeYCbCr (uint32_t src, uint8_t *dst) {
   dst[2] = clipToByte(b);
 }
 
-void decodeMono (uint32_t src, uint8_t *dst) {
+void decodeMono (uint32_t src, uint8_t* dst) {
   dst[0] = dst[1] = dst[2] = clipToByte((getChannel(src,0) - 15.5) * 1.172); // mmsstv test images
 }
 

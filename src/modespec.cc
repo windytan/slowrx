@@ -52,52 +52,52 @@ ModeSpec getModeSpec(SSTVMode mode) {
     {MODE_R72,   {"Robot 72", 320, 240, 0, 4.0/3.0, 9e-3, 3e-3, 6e-3,
                    138e-3, 300e-3, MODE_ROBOT, COLOR_YUV, 0x0C, PARITY_EVEN } },
 
-    {MODE_R36,   {"Robot 36", 320, 240, 0, 4.0/3.0, 11e-3, 0e-3, 4.5e-3,
-                   90e-3, 150e-3, MODE_ROBOT, COLOR_YUV, 0x08, PARITY_EVEN } },
+    {MODE_R36,   {"Robot 36", 320, 240, 0, 4.0/3.0, 9e-3, 3e-3, 6e-3,
+                   89e-3, 150e-3, MODE_ROBOT, COLOR_YUV, 0x08, PARITY_EVEN } },
 
-    {MODE_R24,   {"Robot 24", 160, 120, 0, 4.0/3.0, 9e-3, 0, 3e-3,
+    {MODE_R24,   {"Robot 24", 160, 120, 0, 4.0/3.0, 9e-3, 0.0, 3e-3,
                    93e-3, 200e-3, MODE_ROBOT, COLOR_YUV, 0x04, PARITY_EVEN } },
 
-    {MODE_R36BW, {"Robot 36 B/W", 320, 240, 0, 4.0/3.0, 10e-3, 0, 0,
+    {MODE_R36BW, {"Robot 36 B/W", 320, 240, 0, 4.0/3.0, 10e-3, 0.0, 0.0,
                    140e-3, 150e-3, MODE_ROBOTBW, COLOR_MONO, 0x0E, PARITY_EVEN } },
 
-    {MODE_R24BW, {"Robot 24 B/W", 320, 240, 0, 4.0/3.0, 12e-3, 0, 0,
+    {MODE_R24BW, {"Robot 24 B/W", 320, 240, 0, 4.0/3.0, 12e-3, 0.0, 0.0,
                    93e-3, 105e-3, MODE_ROBOTBW, COLOR_MONO, 0x0A, PARITY_EVEN } },
 
-    {MODE_R12BW, {"Robot 12 B/W", 160, 120, 0, 4.0/3.0, 8.5e-3, 0, 0,
+    {MODE_R12BW, {"Robot 12 B/W", 160, 120, 0, 4.0/3.0, 7e-3, 0.0, 0.0,
                    93e-3, 100e-3, MODE_ROBOTBW, COLOR_MONO, 0x06, PARITY_ODD } },
 
-    {MODE_R8BW,  {"Robot 8 B/W", 160, 120, 0, 4.0/3.0, 8.5e-3, 0, 0,
+    {MODE_R8BW,  {"Robot 8 B/W", 160, 120, 0, 4.0/3.0, 10e-3, 0.0, 0.0,
                    59e-3, 67e-3, MODE_ROBOTBW, COLOR_MONO, 0x02, PARITY_EVEN } },
 
-    {MODE_W260,  {"Wraase SC-2 60", 256, 256, 16, 4.0/3.0, 5.5225e-3, 0.5e-3, 0,
+    {MODE_W260,  {"Wraase SC-2 60", 256, 256, 16, 4.0/3.0, 5.5225e-3, 0.5e-3, 0.0,
                    78.3e-3, 240.833878e-3, MODE_WRAASE2, COLOR_RGB, 0x3B, PARITY_EVEN } },
 
-    {MODE_W2120, {"Wraase SC-2 120", 320, 256, 16, 4.0/3.0, 5.5225e-3, 0.5e-3, 0,
+    {MODE_W2120, {"Wraase SC-2 120", 320, 256, 16, 4.0/3.0, 5.5225e-3, 0.5e-3, 0.0,
                    156.5025e-3, 475.52e-3, MODE_WRAASE2, COLOR_RGB, 0x3F, PARITY_EVEN } },
 
-    {MODE_W2180, {"Wraase SC-2 180", 512, 256, 16, 4.0/3.0, 5.5225e-3, 0.5e-3, 0,
+    {MODE_W2180, {"Wraase SC-2 180", 512, 256, 16, 4.0/3.0, 5.5225e-3, 0.5e-3, 0.0,
                    235e-3, 711.0437e-3, MODE_WRAASE2, COLOR_RGB, 0x37, PARITY_EVEN } },
 
-    {MODE_PD50,  {"PD-50", 320, 256, 16, 4.0/3.0, 20e-3, 2.08e-3, 0,
+    {MODE_PD50,  {"PD-50", 320, 256, 16, 4.0/3.0, 20e-3, 2.08e-3, 0.0,
                    91.52e-3, 388.1586e-3, MODE_PD, COLOR_YUV, 0x5D, PARITY_EVEN } },
 
-    {MODE_PD90,  {"PD-90", 320, 256, 16, 4.0/3.0, 20e-3, 2.08e-3, 0,
-                   170.240e-3, 351.52062e-3, MODE_PD, COLOR_YUV, 0x63, PARITY_EVEN } },
+    {MODE_PD90,  {"PD-90", 320, 256, 16, 4.0/3.0, 20e-3, 2.08e-3, 0.0,
+                   170.240e-3, 703.04124e-3, MODE_PD, COLOR_YUV, 0x63, PARITY_EVEN } },
 
-    {MODE_PD120, {"PD-120", 320, 496, 16, 4.0/3.0, 20e-3, 2.08e-3, 0,
+    {MODE_PD120, {"PD-120", 320, 496, 16, 4.0/3.0, 20e-3, 2.08e-3, 0.0,
                    121.6e-3, 508.48e-3, MODE_PD, COLOR_YUV, 0x5F, PARITY_EVEN } },
 
-    {MODE_PD160, {"PD-160", 512, 400, 16, 4.0/3.0, 20e-3, 2.08e-3, 0,
+    {MODE_PD160, {"PD-160", 512, 400, 16, 4.0/3.0, 20e-3, 2.08e-3, 0.0,
                    195.584e-3, 804.416e-3, MODE_PD, COLOR_YUV, 0x62, PARITY_EVEN } },
 
-    {MODE_PD180, {"PD-180", 640, 496, 16, 4.0/3.0, 20e-3, 2.08e-3, 0,
+    {MODE_PD180, {"PD-180", 640, 496, 16, 4.0/3.0, 20e-3, 2.08e-3, 0.0,
                    183.04e-3, 754.24e-3, MODE_PD, COLOR_YUV, 0x60, PARITY_EVEN } },
 
-    {MODE_PD240, {"PD-240", 640, 496, 16, 4.0/3.0, 20e-3, 2.08e-3, 0,
+    {MODE_PD240, {"PD-240", 640, 496, 16, 4.0/3.0, 20e-3, 2.08e-3, 0.0,
                    244.48e-3, 1000e-3, MODE_PD, COLOR_YUV, 0x61, PARITY_EVEN } },
 
-    {MODE_PD290, {"PD-290", 800, 616, 16, 4.0/3.0, 20e-3, 2.08e-3, 0,
+    {MODE_PD290, {"PD-290", 800, 616, 16, 4.0/3.0, 20e-3, 2.08e-3, 0.0,
                    228.8e-3, 937.28e-3, MODE_PD, COLOR_YUV, 0x5E, PARITY_EVEN } },
 
     {MODE_P3,    {"Pasokon P3", 320, 496, 16, 4.0/3.0, 5.208e-3, 1.042e-3, 1.042e-3,
