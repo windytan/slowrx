@@ -64,7 +64,7 @@ class DSP {
     double        m_next_snr_time;
     double        m_SNR;
     WindowType    m_sync_window;
-    int           m_decim_ratio;
+    int           m_fft_decim_ratio;
     double        m_freq_if;
 
     std::vector<Wave> m_window;

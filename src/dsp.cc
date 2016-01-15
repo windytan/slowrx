@@ -1,7 +1,7 @@
 #include "dsp.h"
 #include <cmath>
 
-DSP::DSP() : m_fshift(0), m_sync_window(WINDOW_HANN511), m_decim_ratio(4),
+DSP::DSP() : m_fshift(0), m_sync_window(WINDOW_HANN511), m_fft_decim_ratio(4),
   m_freq_if(1900), m_window(16) {
 
   m_window[WINDOW_HANN95]   = window::Hann(95);
@@ -22,16 +22,9 @@ DSP::DSP() : m_fshift(0), m_sync_window(WINDOW_HANN511), m_decim_ratio(4),
   };
 
   m_fft_inbuf = fftw_alloc_complex(FFT_LEN);
-  if (m_fft_inbuf == NULL) {
-    perror("unable to allocate memory for FFT");
-    exit(EXIT_FAILURE);
-  }
   m_fft_outbuf = fftw_alloc_complex(FFT_LEN);
-  if (m_fft_outbuf == NULL) {
-    perror("unable to allocate memory for FFT");
-    fftw_free(m_fft_inbuf);
-    exit(EXIT_FAILURE);
-  }
+  assert(m_fft_inbuf != NULL && m_fft_outbuf != NULL);
+
   for (int i=0; i<FFT_LEN; i++) {
     m_fft_inbuf[i][0]  = m_fft_inbuf[i][1]  = 0.0;
     m_fft_outbuf[i][0] = m_fft_outbuf[i][1] = 0.0;
@@ -39,7 +32,6 @@ DSP::DSP() : m_fshift(0), m_sync_window(WINDOW_HANN511), m_decim_ratio(4),
 
   m_mag = std::vector<double>(FFT_LEN);
 
-  //m_fft_plan_small = fftw_plan_dft_1d(FFT_LEN_SMALL, m_fft_inbuf, m_fft_outbuf, FFTW_FORWARD, FFTW_ESTIMATE);
   m_fft_plan = fftw_plan_dft_1d(FFT_LEN, m_fft_inbuf, m_fft_outbuf, FFTW_FORWARD, FFTW_ESTIMATE);
 
   m_input = std::make_shared<Input>();
@@ -60,7 +52,7 @@ std::shared_ptr<Input> DSP::getInput() {
 // which MUST fit FFT_LEN_BIG * fftw_complex
 void DSP::calcWindowedFFT (WindowType win_type, int fft_len) {
 
-  assert(fft_len >= m_window[win_type].size() / m_decim_ratio);
+  assert(fft_len >= (int)m_window[win_type].size() / m_fft_decim_ratio);
 
   for (int i=0; i<fft_len; i++)
     m_fft_inbuf[i][0] = m_fft_inbuf[i][1] = 0;
@@ -84,9 +76,9 @@ void DSP::calcWindowedFFT (WindowType win_type, int fft_len) {
       // TODO
 
       // decimate
-      if (win_i % m_decim_ratio == 0) {
-        m_fft_inbuf[win_i / m_decim_ratio][0] = mixed[0] * m_window[win_type][win_i];
-        m_fft_inbuf[win_i / m_decim_ratio][1] = mixed[1] * m_window[win_type][win_i];
+      if (win_i % m_fft_decim_ratio == 0) {
+        m_fft_inbuf[win_i / m_fft_decim_ratio][0] = mixed[0] * m_window[win_type][win_i];
+        m_fft_inbuf[win_i / m_fft_decim_ratio][1] = mixed[1] * m_window[win_type][win_i];
       }
     }
   }
@@ -124,7 +116,7 @@ double DSP::calcPeakFreq (double minf, double maxf, WindowType wintype) {
   //printf(" %.3f ",result);
 
   // In Hertz
-  result = result / (fft_len*m_decim_ratio) * m_input->getSamplerate() + m_freq_if + m_fshift;
+  result = result / (fft_len*m_fft_decim_ratio) * m_input->getSamplerate() + m_freq_if + m_fshift;
 
 
   // cheb47 @ 44100 can't resolve <1700 Hz
@@ -539,6 +531,6 @@ void DSP::set_fshift (double fshift) {
 }
 
 int DSP::freq2bin (double freq, int fft_len) const {
-  return ((freq-m_freq_if) / m_input->getSamplerate() * fft_len * m_decim_ratio);
+  return ((freq-m_freq_if) / m_input->getSamplerate() * fft_len * m_fft_decim_ratio);
 }
 
