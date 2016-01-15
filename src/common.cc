@@ -32,8 +32,7 @@ double rad2deg (double rad) {
   return (180.0 / M_PI) * rad;
 }
 
-int maxIndex (std::vector<double> v) {
-  //const int n = sizeof(v) / sizeof(double);
+int maxIndex (Wave v) {
   return distance(v.begin(), max_element(v.begin(), v.end()));
 }
 

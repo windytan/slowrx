@@ -101,6 +101,7 @@ extern bool g_is_pa_initialized;
 void runTest(const char*);
 
 int maxIndex (std::vector<double>);
+int maxIndex (Wave);
 
 uint8_t freq2lum(double);
 
