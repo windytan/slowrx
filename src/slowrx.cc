@@ -1,7 +1,6 @@
-#include <getopt.h>
 #include "common.h"
 #include "gui.h"
-#include "dsp.h"
+#include <getopt.h>
 
 int main(int argc, char *argv[]) {
 /*

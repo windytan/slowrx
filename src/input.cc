@@ -145,7 +145,7 @@ int Input::PaCallback(const void *input, void *output,
   float* in = (float*)input;
 
 
-  for (unsigned i = 0; i<READ_CHUNK_LEN; i++)
+  for (int i = 0; i<READ_CHUNK_LEN; i++)
     m_read_buffer[i] = in[i * m_num_chans];
 
   m_cirbuf.append(m_read_buffer, framesread);
@@ -158,7 +158,7 @@ void Input::readMoreFromFile() {
 
   std::lock_guard<std::mutex> guard(m_buffer_mutex);
 
-  unsigned long framesread = 0;
+  int framesread = 0;
   sf_count_t fr = m_file.readf(m_read_buffer.data(), READ_CHUNK_LEN);
   if (fr < READ_CHUNK_LEN) {
     m_is_open = false;
@@ -185,7 +185,7 @@ void Input::readMoreFromStdin() {
 
   std::lock_guard<std::mutex> guard(m_buffer_mutex);
 
-  unsigned long framesread = 0;
+  int framesread = 0;
   ssize_t fr = fread(m_read_buffer_s16.data(), sizeof(uint16_t), READ_CHUNK_LEN, stdin);
   if (fr < READ_CHUNK_LEN) {
     m_is_open = false;

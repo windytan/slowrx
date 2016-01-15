@@ -1,6 +1,5 @@
 #ifndef MODESPEC_H_
 #define MODESPEC_H_
-
 #include <string>
 
 enum SSTVMode {

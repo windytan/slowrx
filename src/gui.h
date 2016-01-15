@@ -1,9 +1,9 @@
 #ifndef GUI_H_
 #define GUI_H_
 
-#include <gtkmm.h>
 #include "common.h"
 #include "listener.h"
+#include <gtkmm.h>
 
 class GUI {
 

@@ -1,6 +1,5 @@
-#include "common.h"
-#include "dsp.h"
 #include "picture.h"
+#include "dsp.h"
 #include "gui.h"
 
 Picture::Picture(SSTVMode mode) :

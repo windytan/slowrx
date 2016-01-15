@@ -1,11 +1,11 @@
 #ifndef DSP_H_
 #define DSP_H_
 
+#include "common.h"
+#include "input.h"
 #include <mutex>
 #include <thread>
 #include "fftw3.h"
-#include "common.h"
-#include "input.h"
 
 // moment length only affects length of global delay, I/O interval,
 // and maximum window size.

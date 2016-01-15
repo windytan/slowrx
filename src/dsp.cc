@@ -220,7 +220,7 @@ double DSP::calcVideoLevel (SSTVMode mode, bool is_adaptive) {
   else             win_type = bestWindowFor(mode);
 
   double freq = calcPeakFreq(FREQ_BLACK, FREQ_WHITE, win_type);
-  return fclipToByte((freq - FREQ_BLACK) / (FREQ_WHITE - FREQ_BLACK));
+  return fclip((freq - FREQ_BLACK) / (FREQ_WHITE - FREQ_BLACK));
 }
 
 // return: refined peak x position (idx_peak-1 .. idx_peak+1)
@@ -451,7 +451,6 @@ std::vector<double> peaks (const Wave& wave, int n) {
 
   return result;
 }
-
 
 std::vector<double> derivPeaks (const Wave& wave, int n) {
   std::vector<double> result = peaks(deriv(wave), n);

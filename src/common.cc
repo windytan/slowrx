@@ -48,7 +48,9 @@ void ensure_dir_exists(std::string dir) {
   }
 }
 
-template<class T> CirBuffer<T>::CirBuffer(int size) : m_data(size * 2), m_head(0), m_tail(0), m_fill_count(0), m_len(size) {
+template<class T> CirBuffer<T>::CirBuffer(int size) :
+  m_data(size * 2), m_head(0), m_tail(0), m_fill_count(0), m_len(size) {
+
   assert(size > 0);
 }
 
