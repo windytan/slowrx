@@ -1,5 +1,13 @@
-2012-10-09
-----------
-In GTK 3.6, gdk_threads_enter etc are deprecated. This is because in the future,
-all GTK calls should be made from the main thread. There's a workaround definition
-in the Makefile but this should be fixed in slowrx anytime soon.
+
+0.7:
+* broken modes
+* crashes
+* LPF for decimator
+* timing inspector
+* green "zero" in YUV
+
+future:
+* cairo hidpi
+* CLI mode
+* stdin CLI switch
+
