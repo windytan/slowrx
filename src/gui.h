@@ -56,6 +56,7 @@ class GUI {
     Gtk::Window *m_window_about;
     Gtk::Window *m_window_main;
     Gtk::Image  *m_image_rx;
+    Gtk::Image  *m_image_sync;
     Gtk::ToggleButton *m_switch_rx;
     Gtk::ToggleButton *m_switch_sync;
     Gtk::ToggleButton *m_switch_denoise;

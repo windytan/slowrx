@@ -26,6 +26,7 @@ GUI::GUI() : m_is_aborted_by_user(false), m_dispatcher_redraw(), m_dispatcher_re
   builder->get_widget("window_about",    m_window_about);
   builder->get_widget("window_main",     m_window_main);
   builder->get_widget("image_rx",        m_image_rx);
+  builder->get_widget("image_sync",        m_image_sync);
   builder->get_widget("button_abort",    m_button_abort);
   builder->get_widget("button_clear",    m_button_clear);
   builder->get_widget("button_manualstart",    m_button_manualstart);
