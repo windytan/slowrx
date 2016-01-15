@@ -90,7 +90,7 @@ class ProgressBar {
 std::vector<PixelSample> pixelSamplingPoints(SSTVMode mode);
 
 uint8_t  clipToByte          (double a);
-double   fclipToByte         (double a);
+double   fclip              (double a);
 double   deg2rad       (double Deg);
 std::string   GetFSK        ();
 void     setVU         (double *Power, int FFTLen, int WinIdx, bool ShowWin);

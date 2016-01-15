@@ -18,7 +18,7 @@ uint8_t clipToByte (double a) {
 }
 
 // Clip to [0..1]
-double fclipToByte (double a) {
+double fclip (double a) {
   if      (a < 0.0) return 0.0;
   else if (a > 1.0) return 1.0;
   return  a;
