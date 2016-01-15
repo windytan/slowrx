@@ -105,6 +105,23 @@ void decodeMono (uint32_t src, uint8_t *dst) {
   dst[0] = dst[1] = dst[2] = clipToByte((getChannel(src,0) - 15.5) * 1.172); // mmsstv test images
 }
 
+void reconstructChroma420 (std::vector<std::vector<uint32_t>>& img, const ModeSpec& m) {
+  const Kernel reconst_kernel(KERNEL_TENT);
+  for (int x=0; x < m.scan_pixels; x++) {
+    Wave column_u, column_v;
+    for (int y=0; y < m.num_lines; y+=2) {
+      column_u.push_back(getChannel(img[x][y], 1));
+      column_v.push_back(getChannel(img[x][y], 2));
+    }
+    for (int y=0; y < m.num_lines; y++) {
+      double u = convolveSingle(column_u, reconst_kernel, y*0.5-.25, BORDER_REPEAT);
+      double v = convolveSingle(column_v, reconst_kernel, y*0.5-.25, BORDER_REPEAT);
+      setChannel(img[x][y], 1, clipToByte(u));
+      setChannel(img[x][y], 2, clipToByte(v));
+    }
+  }
+}
+
 
 Glib::RefPtr<Gdk::Pixbuf> Picture::renderPixbuf(int width) {
 
@@ -117,50 +134,37 @@ Glib::RefPtr<Gdk::Pixbuf> Picture::renderPixbuf(int width) {
     img.at(x) = std::vector<uint32_t>(m.num_lines);
   }
 
-  const Kernel sample_kern(KERNEL_LANCZOS2);
+  const Kernel sample_kern(KERNEL_LANCZOS3);
 
-  for (PixelSample px : m_pixel_grid) {
+  {
+    std::lock_guard<std::mutex> guard(m_mutex);
+    double dt = 1.0 * m_video_decim_ratio / m_original_samplerate;
+    for (PixelSample px : m_pixel_grid) {
 
-    double signal_t = (px.t/m_drift + m_starts_at ) / m_video_dt;
-    double val = convolveSingle(m_video_signal, sample_kern, signal_t);
+      double signal_x = (m_starts_at + px.t/m_tx_speed) / dt;
+//      double val = (signal_x < m_video_signal.size() ? m_video_signal.at(signal_x) : 0);
+      double val = convolveSingle(m_video_signal, sample_kern, signal_x);
 
-    int x  = px.pt.x;
-    int y  = px.pt.y;
-    int ch = px.ch;
+      int x  = px.pt.x;
+      int y  = px.pt.y;
+      int ch = px.ch;
 
-    if (m_progress >= 1.0*y/(m.num_lines-1))
-      m_has_line.at(y) = true;
+      //if (m_progress >= 1.0*y/(m.num_lines-1))
+        m_has_line.at(y) = true;
 
-    setChannel(img[x][y], ch, clipToByte(round(val*255)));
-  }
-
-  /* chroma reconstruction from 4:2:0 */
-  if (m_mode == MODE_R36 || m.family == MODE_PD) {
-    for (int x=0; x < m.scan_pixels; x++) {
-      Wave column_u, column_v;
-      Wave column_u_filtered;
-      Wave column_v_filtered;
-      for (int y=0; y < m.num_lines; y+=2) {
-        column_u.push_back(getChannel(img[x][y], 1));
-        column_v.push_back(getChannel(img[x][y], 2));
-      }
-      column_u_filtered = upsample(column_u, 2, KERNEL_BOX, BORDER_REPEAT);
-      column_v_filtered = upsample(column_v, 2, KERNEL_BOX, BORDER_REPEAT);
-      for (int y=0; y < m.num_lines; y++) {
-        setChannel(img[x][y], 1, clipToByte(column_u_filtered[y]));
-        setChannel(img[x][y], 2, clipToByte(column_v_filtered[y]));
-      }
+      setChannel(img[x][y], ch, clipToByte(round(val*255)));
     }
   }
 
-  Glib::RefPtr<Gdk::Pixbuf> pixbuf_rx;
-  pixbuf_rx = Gdk::Pixbuf::create(Gdk::COLORSPACE_RGB, false, 8, m.scan_pixels, m.num_lines);
-  pixbuf_rx->fill(0x000000ff);
+  if (m_mode == MODE_R36 || m.family == MODE_PD)
+    reconstructChroma420(img, m);
+
+  m_pixbuf_rx->fill(0x000000ff);
 
   uint8_t *p;
   uint8_t *pixels;
-  pixels = pixbuf_rx->get_pixels();
-  int rowstride = pixbuf_rx->get_rowstride();
+  pixels = m_pixbuf_rx->get_pixels();
+  int rowstride = m_pixbuf_rx->get_rowstride();
 
   for (int y = 0; y < m.num_lines; y++) {
     for (int x = 0; x < m.scan_pixels; x++) {
