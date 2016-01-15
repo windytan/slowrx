@@ -216,11 +216,11 @@ bool GUI::isSaveEnabled() {
 }
 
 void GUI::receiving() {
-  m_button_abort->set_sensitive(true);
+  /*m_button_abort->set_sensitive(true);
   m_button_clear->set_sensitive(false);
   m_button_manualstart->set_sensitive(false);
   m_combo_manualmode->set_sensitive(false);
-  m_box_input->set_sensitive(false);
+  m_box_input->set_sensitive(false);*/
 }
 void GUI::notReceiving() {
   m_button_abort->set_sensitive(false);
@@ -252,20 +252,31 @@ void GUI::autoSettingsChanged(Gtk::StateFlags flags) {
 void GUI::inputDeviceChanged() {
   printf("inputDeviceChanged\n");
   m_listener.close();
+  printf(" listener closed\n");
   if (m_radio_input_portaudio->get_active()) {
+    printf(" PA\n");
+    printf(" set_sensitive false\n");
     m_button_audiofilechooser->set_sensitive(false);
+    printf(" set_sensitive true\n");
     m_combo_portaudio->set_sensitive(true);
+    printf(" get_active_row_number()\n");
     if (m_combo_portaudio->get_active_row_number() >= 0) {
+      printf(" open PA device #%d\n",m_combo_portaudio->get_active_row_number());
       m_listener.openPortAudioDev(m_combo_portaudio->get_active_row_number());
+    } else {
+      printf(" no PA device selected\n");
     }
   } else if (m_radio_input_file->get_active()) {
+    printf(" file\n");
     m_button_audiofilechooser->set_sensitive(true);
     m_combo_portaudio->set_sensitive(false);
   } else if (m_radio_input_stdin->get_active()) {
+    printf("stdin\n");
     m_button_audiofilechooser->set_sensitive(false);
     m_combo_portaudio->set_sensitive(false);
     m_listener.openStdin();
   }
+  printf(".\n");
 }
 
 int GUI::getSelectedPaDevice() {
@@ -296,10 +307,12 @@ void GUI::redrawNotify() {
   m_dispatcher_redraw.emit();
 }
 void GUI::onRedrawNotify() {
+  printf("redrawNotidy(), getCurrentPic():\n");
   std::shared_ptr<Picture> pic = m_listener.getCurrentPic();
+  printf("  lasttime->set_text\n");
   m_label_lasttime->set_text(pic->getTimestamp() + " / " + getModeSpec(pic->getMode()).name + " ");
-  m_image_rx->set(pic->renderPixbuf(500));
-
+  printf("  renderPixbuf()\n");
+  m_image_rx->set(pic->renderPixbuf(640));
 }
 
 void GUI::resyncNotify() {
