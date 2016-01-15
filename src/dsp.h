@@ -75,8 +75,8 @@ class DSP {
 Wave   convolve     (const Wave&, const Kernel&, int border_treatment=BORDER_ZERO);
 double convolveSingle (const Wave&, const Kernel&, double, int border_treatment=BORDER_ZERO);
 Wave   deriv        (const Wave&);
-Wave   peaks        (const Wave&, int);
-Wave   derivPeaks   (const Wave&, int);
+std::vector<double>   peaks        (const Wave&, int);
+std::vector<double>   derivPeaks   (const Wave&, int);
 Wave   rms          (const Wave&, int);
 Wave   upsample     (const Wave& orig, double factor, int kern_type, int border_treatment=BORDER_ZERO);
 double gaussianPeak (const Wave& signal, int idx_peak, bool wrap_around=false);

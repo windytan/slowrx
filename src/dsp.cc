@@ -129,7 +129,7 @@ double DSP::calcPeakFreq (double minf, double maxf, WindowType wintype) {
 
 }
 
-Wave DSP::calcBandPowerPerHz(const std::vector<std::vector<double>>& bands, WindowType wintype) {
+std::vector<double> DSP::calcBandPowerPerHz(const std::vector<std::vector<double>>& bands, WindowType wintype) {
 
   int fft_len = FFT_LEN;
 
@@ -433,7 +433,7 @@ std::vector<double> peaks (const Wave& wave, int n) {
       return fabs(b.second) < fabs(a.second);
     });
 
-  Wave result;
+  std::vector<double> result;
   for (int i=0;i<n && i<(int)peaks.size(); i++)
     result.push_back(peaks[i].first);
 
@@ -498,9 +498,9 @@ std::tuple<bool,double,double> findMelody (const Wave& wave, const Melody& melod
 
     /* refine start_at */
     Wave subwave(wave.begin()+start_at, wave.end());
-    Wave edges_rx = derivPeaks(subwave, melody.size()-1);
-    Wave edges_ref;
-    double t = 0.0;
+    std::vector<double> edges_rx = derivPeaks(subwave, melody.size()-1);
+    std::vector<double> edges_ref;
+    t = 0.0;
     for (int i=0; i<(int)melody.size()-1; i++) {
       t += melody[i].dur;
       edges_ref.push_back(t);
