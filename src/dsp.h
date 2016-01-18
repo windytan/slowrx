@@ -44,12 +44,12 @@ class DSP {
     double              calcPeakFreq    (double minf, double maxf, WindowType win_type);
     std::vector<double> calcBandPowerPerHz (const std::vector<std::vector<double>>&, WindowType wintype=WINDOW_HANN2047);
     double              calcVideoSNR    ();
-    double              calcVideoLevel  (SSTVMode, bool is_adaptive=false);
+    double              calcVideoLevel  (const ModeSpec&, bool is_adaptive=false);
     double              calcSyncPower   ();
     void                calcWindowedFFT (WindowType win_type, int fft_len);
 
     int                 freq2bin        (double freq, int fft_len) const;
-    WindowType          bestWindowFor   (SSTVMode, double SNR=99);
+    WindowType          bestWindowFor   (const ModeSpec&, double SNR=99);
     void                set_fshift      (double);
 
     std::shared_ptr<Input> getInput        ();

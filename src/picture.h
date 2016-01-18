@@ -9,12 +9,12 @@ class Picture {
 
   public:
 
-    Picture(SSTVMode mode, int srate);
+    Picture(ModeSpec mode, int srate);
 
     void pushToSyncSignal (double s);
     void pushToVideoSignal (double s);
 
-    SSTVMode getMode() const;
+    ModeSpec getMode() const;
     double getTxSpeed () const;
     double getStartsAt () const;
     int getVideoDecimRatio () const;
@@ -32,8 +32,8 @@ class Picture {
     std::mutex m_mutex;
 
   private:
-    SSTVMode m_mode;
-    std::vector<PixelSample> m_pixel_grid;
+    ModeSpec m_mode;
+    std::vector<PixelSample> m_pixelsamples;
     std::vector<bool> m_has_line;
     Glib::RefPtr<Gdk::Pixbuf> m_pixbuf_rx;
     double m_progress;

@@ -2,10 +2,10 @@
 #include "dsp.h"
 #include "gui.h"
 
-Picture::Picture(SSTVMode mode, int srate) :
+Picture::Picture(ModeSpec mode, int srate) :
   m_mode(mode),
-  m_pixel_grid(pixelSamplingPoints(mode)),
-  m_has_line(getModeSpec(mode).num_lines),
+  m_pixelsamples(pixelSamplingPoints(mode)),
+  m_has_line(mode.num_lines),
   m_progress(0),
   m_original_samplerate(srate),
   m_video_signal(),
@@ -36,7 +36,7 @@ void Picture::pushToVideoSignal(double s) {
   m_video_signal.push_back(s);
 }
 
-SSTVMode Picture::getMode () const {
+ModeSpec Picture::getMode () const {
   return m_mode;
 }
 double Picture::getTxSpeed () const {
@@ -106,32 +106,47 @@ void decodeMono (uint32_t src, uint8_t* dst) {
 }
 
 void reconstructChroma420 (std::vector<std::vector<uint32_t>>& img, const ModeSpec& m) {
-  const Kernel reconst_kernel(KERNEL_TENT);
+  std::vector<std::vector<uint32_t>> nimg(img);
+  //const Kernel reconst_kernel(KERNEL_TENT);
   for (int x=0; x < m.scan_pixels; x++) {
-    Wave column_u, column_v;
-    for (int y=0; y < m.num_lines; y+=2) {
-      column_u.push_back(getChannel(img[x][y], 1));
-      column_v.push_back(getChannel(img[x][y], 2));
-    }
     for (int y=0; y < m.num_lines; y++) {
-      double u = convolveSingle(column_u, reconst_kernel, y*0.5-.25, BORDER_REPEAT);
-      double v = convolveSingle(column_v, reconst_kernel, y*0.5-.25, BORDER_REPEAT);
-      setChannel(img[x][y], 1, clipToByte(u));
-      setChannel(img[x][y], 2, clipToByte(v));
+      setChannel(img[x][y], 1, getChannel(nimg[x/2][y/2], 1));
+      setChannel(img[x][y], 2, getChannel(nimg[x/2][y/2], 2));
     }
   }
 }
+
+void reconstructChroma422 (std::vector<std::vector<uint32_t>>& img, const ModeSpec& m) {
+  std::vector<std::vector<uint32_t>> nimg(img);
+  const Kernel reconst_kernel(KERNEL_TENT);
+
+  for (int y=0; y < m.num_lines; y++) {
+    Wave row_u, row_v;
+    for (int x=0; x < m.scan_pixels/2; x++) {
+      row_u.push_back(getChannel(img[x][y], 1));
+      row_v.push_back(getChannel(img[x][y], 2));
+    }
+
+    for (int x=0; x < m.scan_pixels; x++) {
+      double u = convolveSingle(row_u, reconst_kernel, 0.5*x, BORDER_ZERO);
+      double v = convolveSingle(row_v, reconst_kernel, 0.5*x, BORDER_ZERO);
+      printf("%3.0f->%3.0f ",row_u[x/2],u);
+      setChannel(img[x][y], 1, u);//getChannel(nimg[x/2][y], 1));
+      setChannel(img[x][y], 2, v);//getChannel(nimg[x/2][y], 2));
+    }
+    printf("\n");
+  }
+}
+
 
 
 Glib::RefPtr<Gdk::Pixbuf> Picture::renderPixbuf(int width) {
 
   assert(width > 0);
 
-  const ModeSpec m = getModeSpec(m_mode);
-
-  std::vector<std::vector<uint32_t>> img(m.scan_pixels);
-  for (int x=0; x < m.scan_pixels; x++) {
-    img.at(x) = std::vector<uint32_t>(m.num_lines);
+  std::vector<std::vector<uint32_t>> img(m_mode.scan_pixels);
+  for (int x=0; x < m_mode.scan_pixels; x++) {
+    img.at(x) = std::vector<uint32_t>(m_mode.num_lines);
   }
 
   const Kernel sample_kern(KERNEL_LANCZOS3);
@@ -205,7 +220,6 @@ Glib::RefPtr<Gdk::Pixbuf> Picture::renderPixbuf(int width) {
 
 Glib::RefPtr<Gdk::Pixbuf> Picture::renderSync(Wave sync_delta, int line_width) {
 
-  const ModeSpec m = getModeSpec(m_mode);
   const double dt = 1.0 * m_sync_decim_ratio / m_original_samplerate;
 
   const int graph_height = round(line_width * 0.2);
@@ -221,9 +235,9 @@ Glib::RefPtr<Gdk::Pixbuf> Picture::renderSync(Wave sync_delta, int line_width) {
   int rowstride = pixbuf_sy->get_rowstride();
 
   Wave acc(line_width);
-  for (int i=0; i<line_width*m.num_lines; i++) {
+  for (int i=0; i<line_width*m_mode.num_lines; i++) {
     int x = i % line_width;
-    double signal_t = 1.0 * i / line_width * m.t_period / m_tx_speed;
+    double signal_t = 1.0 * i / line_width * m_mode.t_period / m_tx_speed;
     int signal_idx = round(signal_t / dt);
     if (signal_idx < (int)sync_delta.size())
       acc.at(x) += sync_delta.at(signal_idx);
@@ -231,12 +245,12 @@ Glib::RefPtr<Gdk::Pixbuf> Picture::renderSync(Wave sync_delta, int line_width) {
 
   int m_i = maxIndex(acc);
 
-  printf("line = %.4f ms (%.6f lpm)\n",m.t_period / m_tx_speed * 1e3, 60.0 / (m.t_period / m_tx_speed));
+  printf("line = %.4f ms (%.6f lpm)\n",m_mode.t_period / m_tx_speed * 1e3, 60.0 / (m_mode.t_period / m_tx_speed));
 
   for (int y=0; y<waterfall_height; y++) {
     for (int x=0; x<line_width; x++) {
-      int line = std::round(1.0 * y / waterfall_height * m.num_lines);
-      double signal_t = 1.0 * (m_i+(line+.5)*line_width+x) / line_width * m.t_period / m_tx_speed;
+      int line = std::round(1.0 * y / waterfall_height * m_mode.num_lines);
+      double signal_t = 1.0 * (m_i+(line+.5)*line_width+x) / line_width * m_mode.t_period / m_tx_speed;
       int signal_idx = round(signal_t / dt);
       double val = 0;
       p = pixels + y * rowstride + x * 3;
@@ -353,89 +367,90 @@ void Picture::resync () {
 #ifdef WRITE_SYNC
     renderSync(sync_delta, line_width)->save("sync.png", "png");
 #endif
-
-    printf("align = %f/%d (%f ms)\ntx speed = %f\n",peak_align,line_width,m_starts_at*1e3,txspeed);
-    //m_starts_at = 0;
   }
+
+  printf("align = %f/%d (%f ms)\ntx speed = %f (error = %+.0f ppm)\n",peak_align,line_width,m_starts_at*1e3,txspeed,(txspeed-1) * 1e6);
+  //m_starts_at = 0;
 
 }
 
 // Time instants for all pixels
-std::vector<PixelSample> pixelSamplingPoints(SSTVMode mode) {
-  ModeSpec m = getModeSpec(mode);
-  std::vector<PixelSample> pixel_grid;
-  for (int y=0; y<m.num_lines; y++) {
-    for (int x=0; x<m.scan_pixels; x++) {
-      for (int ch=0; ch < (m.color_enc == COLOR_MONO ? 1 : 3); ch++) {
+std::vector<PixelSample> pixelSamplingPoints(ModeSpec mode) {
+  std::vector<PixelSample> pixelsamples;
+  for (int y=0; y<mode.num_lines; y++) {
+    for (int x=0; x<mode.scan_pixels; x++) {
+      for (int ch=0; ch < (mode.color_enc == COLOR_MONO ? 1 : 3); ch++) {
         PixelSample px;
         px.pt = Point(x,y);
         px.ch = ch;
         px.t  = -1;
 
-        if (m.family == MODE_MARTIN  || m.family == MODE_PASOKON ||
-            m.family == MODE_WRAASE2 || m.family == MODE_ROBOTBW ) {
-          px.t = y*(m.t_period) + m.t_sync + m.t_porch + ch*(m.t_scan + m.t_sep) +
-            (x+0.0)/m.scan_pixels * m.t_scan;
+        if (mode.family == MODE_SCOTTIE) {
+          px.t = y*(mode.t_period) + (x+0.5)/mode.scan_pixels * mode.t_scan +
+            mode.t_sync + (ch+1) * mode.t_sep + ch*mode.t_scan +
+            (ch == 2 ? mode.t_sync : 0);
         }
 
-        else if (m.family == MODE_SCOTTIE) {
-          px.t = y*(m.t_period) + (x+0.5)/m.scan_pixels * m.t_scan +
-            m.t_sync + (ch+1) * m.t_sep + ch*m.t_scan +
-            (ch == 2 ? m.t_sync : 0);
-        }
-
-        else if (m.family == MODE_PD) {
-          double line_video_start = (y/2)*(m.t_period) + m.t_sync + m.t_porch;
+        else if (mode.family == MODE_PD) {
           if (ch == 0) {
-            px.t = line_video_start + (y%2 == 1 ? 3*m.t_scan : 0) +
-              (x+0.0)/m.scan_pixels * m.t_scan;
-          } else if (ch == 1 && (y%2) == 0) {
-            px.t = line_video_start + m.t_scan +
-              (x+0.0)/m.scan_pixels * m.t_scan;
-          } else if (ch == 2 && (y%2) == 0) {
-            px.t = line_video_start + 2*m.t_scan +
-              (x+0.0)/m.scan_pixels * m.t_scan;
+            double line_video_start = (y/2)*(mode.t_period) + mode.t_sync + mode.t_porch;
+            px.t = line_video_start + (y%2 == 1 ? 3*mode.t_scan : 0) +
+              (x+0.0)/mode.scan_pixels * mode.t_scan;
+          } else if (ch == 1 && y < mode.num_lines*.5 && x < mode.scan_pixels*.5) {
+            double line_video_start = y*(mode.t_period) + mode.t_sync + mode.t_porch;
+            px.t = line_video_start + mode.t_scan +
+              (x+0.0)/mode.scan_pixels * mode.t_scan * 2;
+          } else if (ch == 2 && y < mode.num_lines*.5 && x < mode.scan_pixels*.5) {
+            double line_video_start = y*(mode.t_period) + mode.t_sync + mode.t_porch;
+            px.t = line_video_start + 2*mode.t_scan +
+              (x+0.0)/mode.scan_pixels * mode.t_scan * 2;
           }
         }
 
-        else if (mode == MODE_R72 || mode == MODE_R24) {
-          double line_video_start = y*(m.t_period) + m.t_sync + m.t_porch;
+        else if (mode.family == MODE_ROBOT && mode.color_enc == COLOR_YUV422) {
+          double line_video_start = y*(mode.t_period) + mode.t_sync + mode.t_porch;
           if (ch == 0) {
-            px.t = line_video_start + (x+0.0) / m.scan_pixels * m.t_scan;
-          } else if (ch == 1) {
-            px.t = line_video_start + m.t_scan + m.t_sep +
-             (x+0.0) / m.scan_pixels * m.t_scan / 2;
-          } else if (ch == 2) {
-            px.t = line_video_start + 1.5*m.t_scan + 2*m.t_sep +
-             (x+0.0) / m.scan_pixels * m.t_scan / 2;
+            px.t = line_video_start + (x+0.0) / mode.scan_pixels * mode.t_scan;
+          } else if (ch == 1 && x < mode.scan_pixels*.5) {
+            px.t = line_video_start + mode.t_scan + mode.t_sep + mode.t_chanporch +
+             (x+0.0) / (mode.scan_pixels-1) * mode.t_scan;
+          } else if (ch == 2 && x < mode.scan_pixels*.5) {
+            px.t = line_video_start + 1.5*mode.t_scan + 2*(mode.t_sep + mode.t_chanporch) +
+             (x+0.0) / (mode.scan_pixels-1) * mode.t_scan;
           }
         }
 
-        else if (mode == MODE_R36) {
-          double line_video_start = y*(m.t_period) + m.t_sync + m.t_porch;
+        else if (mode.family == MODE_ROBOT && mode.color_enc == COLOR_YUV420) {
           if (ch == 0) {
-            px.t = line_video_start + (x+.5) / m.scan_pixels * m.t_scan;
-          } else if (ch == 1 && (y % 2) == 0) {
-            px.t = line_video_start + m.t_scan + m.t_sep +
-              (x+.5) / m.scan_pixels * m.t_scan / 2;
-          } else if (ch == 2 && (y % 2) == 0) {
-            px.t = (y+1)*(m.t_period) + m.t_sync + m.t_porch + m.t_scan + m.t_sep +
-              (x+.5) / m.scan_pixels * m.t_scan / 2;
+            double line_video_start = y*(mode.t_period) + mode.t_sync + mode.t_porch;
+            px.t = line_video_start + (x+.5) / mode.scan_pixels * mode.t_scan;
+          } else if (ch == 1 && y < mode.num_lines*.5 && x < mode.scan_pixels*.5) {
+            double line_video_start = 2*y*(mode.t_period) + mode.t_sync + mode.t_porch;
+            px.t = line_video_start + mode.t_scan + mode.t_sep + mode.t_chanporch +
+              (x+0.0) / mode.scan_pixels * mode.t_scan;
+          } else if (ch == 2 && y < mode.num_lines*.5 && x < mode.scan_pixels*.5) {
+            double line_video_start = (2*y+1)*(mode.t_period) + mode.t_sync + mode.t_porch;
+            px.t = line_video_start + mode.t_scan + mode.t_sep + mode.t_chanporch +
+              (x+0.0) / mode.scan_pixels * mode.t_scan;
           }
+
+        } else {
+          px.t = y*(mode.t_period) + mode.t_sync + mode.t_porch + ch*(mode.t_scan + mode.t_sep) +
+            (x+0.0)/mode.scan_pixels * mode.t_scan;
         }
 
         if (px.t >= 0) {
-          pixel_grid.push_back(px);
+          pixelsamples.push_back(px);
         }
       }
     }
   }
 
-  std::sort(pixel_grid.begin(), pixel_grid.end(), [](PixelSample a, PixelSample b) {
+  std::sort(pixelsamples.begin(), pixelsamples.end(), [](PixelSample a, PixelSample b) {
       return a.t < b.t;
   });
 
-  return pixel_grid;
+  return pixelsamples;
 }
 
 void Picture::save(std::string dir) {

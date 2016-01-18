@@ -153,12 +153,12 @@ std::vector<double> DSP::calcBandPowerPerHz(const std::vector<std::vector<double
   return result;
 }
 
-WindowType DSP::bestWindowFor(SSTVMode Mode, double SNR) {
+WindowType DSP::bestWindowFor(const ModeSpec& mode, double SNR) {
   WindowType WinType;
 
   //double samplesInPixel = 1.0 * samplerate_ * ModeSpec[Mode].tScan / ModeSpec[Mode].ScanPixels;
 
-  if      (SNR >=  23.0 && Mode != MODE_PD180 && Mode != MODE_SDX)  WinType = WINDOW_CHEB47;
+  if      (SNR >=  23.0 /*&& mode.id != MODE_PD180 && mode.id != MODE_SDX*/)  WinType = WINDOW_CHEB47;
   else if (SNR >=  12.0)  WinType = WINDOW_HANN95;
   else if (SNR >=   8.0)  WinType = WINDOW_HANN127;
   else if (SNR >=   5.0)  WinType = WINDOW_HANN255;
@@ -205,7 +205,7 @@ double DSP::calcSyncPower () {
   return sync;
 }
 
-double DSP::calcVideoLevel (SSTVMode mode, bool is_adaptive) {
+double DSP::calcVideoLevel (const ModeSpec& mode, bool is_adaptive) {
   WindowType win_type;
 
   if (is_adaptive) win_type = bestWindowFor(mode, calcVideoSNR());

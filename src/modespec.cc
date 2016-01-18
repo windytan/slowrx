@@ -1,11 +1,11 @@
 #include "modespec.h"
-#include <map>
+#include <vector>
 
 /*
  * SSTV mode specifications
  * ========================
  *
- * All timings are in seconds.
+ * All timings given in milliseconds.
  *
  * Sources:
  *
@@ -22,115 +22,57 @@
  *             Waves". <http://www.sstv-handbook.com>
  */
 
-ModeSpec getModeSpec(SSTVMode mode) {
+std::pair<bool,ModeSpec> vis2mode(uint16_t vis) {
 
-  // {"Name", pixels, lines, header, aspect, t_sync, t_porc, t_sep,
-  //  t_scan, t_period, family, color, vis_list, parity }
+  // {id, "Name", pixels, lines, header, t_sync, t_porch, t_chansep, t_chanporch,
+  //  t_scan, t_period, family, color, vis, parity }
 
-  std::map<SSTVMode, ModeSpec> spec = {
-    {MODE_M1,    {"Martin M1", 320, 256, 16, 4.0/3.0, 4.862e-3, 0.572e-3, 0.572e-3,
-                   146.432e-3, 446.446e-3, MODE_MARTIN, COLOR_GBR, 0x2C, PARITY_EVEN } },
+  std::vector<ModeSpec> modes({
+    {"Martin M1", 320, 256, 16, 4.862, 0.572, 0.572, 0.0, 446.446, 146.432, MODE_MARTIN, COLOR_GBR, 0x2C, PARITY_EVEN },
+    {"Martin M2", 160, 256, 16, 4.862, 0.572, 0.572, 0.0, 226.7980, 73.216, MODE_MARTIN, COLOR_GBR, 0x28, PARITY_EVEN },
+  /*{"Martin M3", 320, 128,  8, 4.862, 0.572, 0.572, 0.0, 446.446,  73.216, MODE_MARTIN, COLOR_GBR, 0x24, PARITY_EVEN },
+    {"Martin M4", 160, 128,  8, 4.862, 0.572, 0.572, 0.0, 226.7986, 73.216, MODE_MARTIN, COLOR_GBR, 0x20, PARITY_EVEN },*/
 
-    {MODE_M2,    {"Martin M2", 160, 256, 16, 4.0/3.0, 4.862e-3, 0.572e-3, 0.572e-3,
-                   73.216e-3, 226.7980e-3, MODE_MARTIN, COLOR_GBR, 0x28, PARITY_EVEN } },
+    {"Scottie S1", 320, 256, 16, 9.0, 1.5, 1.5, 0.0,  428.22,  138.24,  MODE_SCOTTIE, COLOR_GBR, 0x3C, PARITY_EVEN },
+    {"Scottie S2", 160, 256, 16, 9.0, 1.5, 1.5, 0.0,  277.692,  88.064, MODE_SCOTTIE, COLOR_GBR, 0x38, PARITY_EVEN },
+    {"Scottie DX", 320, 256, 16, 9.0, 1.5, 1.5, 0.0, 1050.3,   345.6,   MODE_SCOTTIE, COLOR_GBR, 0x4C, PARITY_EVEN },
 
-    {MODE_M3,    {"Martin M3", 320, 128, 8, 4.0/3.0, 4.862e-3, 0.572e-3, 0.572e-3,
-                   73.216e-3, 446.446e-3, MODE_MARTIN, COLOR_GBR, 0x24, PARITY_EVEN } },
+    {"Robot 72", 320, 240, 0, 9.0, 3.0, 4.5, 1.5, 300.0, 138.0, MODE_ROBOT, COLOR_YUV422, 0x0C, PARITY_EVEN },
+    {"Robot 36", 320, 240, 0, 9.0, 3.0, 4.5, 1.5, 150.0,  88.0, MODE_ROBOT, COLOR_YUV420, 0x08, PARITY_EVEN },
+    {"Robot 24", 160, 120, 0, 9.0, 0.0, 2.0, 1.5, 200.0,  93.0, MODE_ROBOT, COLOR_YUV422, 0x04, PARITY_EVEN },
 
-    {MODE_M4,    {"Martin M4", 160, 128, 8, 4.0/3.0, 4.862e-3, 0.572e-3, 0.572e-3,
-                   73.216e-3, 226.7986e-3, MODE_MARTIN, COLOR_GBR, 0x20, PARITY_EVEN } },
+    {"Robot 36 B/W", 320, 240, 0, 12.0, 0.0, 0.0, 0.0, 150.0,   140.0, MODE_ROBOTBW, COLOR_MONO, 0x0E, PARITY_EVEN },
+    {"Robot 24 B/W", 320, 240, 0, 12.0, 0.0, 0.0, 0.0, 105.0,    93.0, MODE_ROBOTBW, COLOR_MONO, 0x0A, PARITY_EVEN },
+    {"Robot 12 B/W", 160, 120, 0,  7.0, 1.5, 0.0, 0.0, 100.0,    93.0, MODE_ROBOTBW, COLOR_MONO, 0x06, PARITY_ODD },
+    {"Robot 8 B/W",  160, 120, 0, 10.0, 0.0, 0.0, 0.0,  66.8966, 59.0, MODE_ROBOTBW, COLOR_MONO, 0x02, PARITY_EVEN },
 
-    {MODE_S1,    {"Scottie S1", 320, 256, 16, 4.0/3.0, 9e-3, 1.5e-3, 1.5e-3,
-                   138.24e-3, 428.22e-3, MODE_SCOTTIE, COLOR_GBR, 0x3C, PARITY_EVEN } },
+    {"Wraase SC-2 60",  256, 256, 16, 5.5225, 0.5, 0.0, 0.0, 240.833878, 78.3,    MODE_WRAASE2, COLOR_RGB, 0x3B, PARITY_EVEN },
+    {"Wraase SC-2 120", 320, 256, 16, 5.5225, 0.5, 0.0, 0.0, 475.52,    156.5025, MODE_WRAASE2, COLOR_RGB, 0x3F, PARITY_EVEN },
+    {"Wraase SC-2 180", 512, 256, 16, 5.5225, 0.5, 0.0, 0.0, 711.0437,  235.0,    MODE_WRAASE2, COLOR_RGB, 0x37, PARITY_EVEN },
 
-    {MODE_S2,    {"Scottie S2", 160, 256, 16, 4.0/3.0, 9e-3, 1.5e-3, 1.5e-3,
-                   88.064e-3, 277.692e-3, MODE_SCOTTIE, COLOR_GBR, 0x38, PARITY_EVEN } },
+    {"PD-50",  320, 256, 16, 20.0, 2.08, 0.0, 0.0,  388.1586,   91.52,  MODE_PD, COLOR_YUV420, 0x5D, PARITY_EVEN },
+    {"PD-90",  320, 256, 16, 20.0, 2.08, 0.0, 0.0,  703.04124, 170.240, MODE_PD, COLOR_YUV420, 0x63, PARITY_EVEN },
+    {"PD-120", 320, 496, 16, 20.0, 2.08, 0.0, 0.0,  508.48,    121.6,   MODE_PD, COLOR_YUV420, 0x5F, PARITY_EVEN },
+    {"PD-160", 512, 400, 16, 20.0, 2.08, 0.0, 0.0,  804.416,   195.584, MODE_PD, COLOR_YUV420, 0x62, PARITY_EVEN },
+    {"PD-180", 640, 496, 16, 20.0, 2.08, 0.0, 0.0,  754.24,    183.04,  MODE_PD, COLOR_YUV420, 0x60, PARITY_EVEN },
+    {"PD-240", 640, 496, 16, 20.0, 2.08, 0.0, 0.0, 1000.0,     244.48,  MODE_PD, COLOR_YUV420, 0x61, PARITY_EVEN },
+    {"PD-290", 800, 616, 16, 20.0, 2.08, 0.0, 0.0,  937.28,    228.8,   MODE_PD, COLOR_YUV420, 0x5E, PARITY_EVEN },
 
-    {MODE_SDX,   {"Scottie DX", 320, 256, 16, 4.0/3.0, 9e-3, 1.5e-3, 1.5e-3,
-                   345.6e-3, 1050.3e-3, MODE_SCOTTIE, COLOR_GBR, 0x4C, PARITY_EVEN } },
+    {"Pasokon P3", 320, 496, 16,  5.208, 1.042, 1.042, 0.0, 409.3747, 133.333, MODE_PASOKON, COLOR_RGB, 0x71, PARITY_EVEN },
+    {"Pasokon P5", 640, 496, 16,  7.813, 1.563, 1.563, 0.0, 614.065,  200.0,   MODE_PASOKON, COLOR_RGB, 0x72, PARITY_EVEN },
+    {"Pasokon P7", 640, 496, 16, 10.417, 2.083, 2.083, 0.0, 818.747,  266.666, MODE_PASOKON, COLOR_RGB, 0x73, PARITY_EVEN }
+  });
 
-    {MODE_R72,   {"Robot 72", 320, 240, 0, 4.0/3.0, 9e-3, 3e-3, 6e-3,
-                   138e-3, 300e-3, MODE_ROBOT, COLOR_YUV, 0x0C, PARITY_EVEN } },
 
-    {MODE_R36,   {"Robot 36", 320, 240, 0, 4.0/3.0, 9e-3, 3e-3, 6e-3,
-                   89e-3, 150e-3, MODE_ROBOT, COLOR_YUV, 0x08, PARITY_EVEN } },
+  bool found = false;
+  ModeSpec mode;
+  for (ModeSpec m : modes) {
+    if (m.vis == vis) {
+      found = true;
+      mode = m;
+      break;
+    }
+  }
 
-    {MODE_R24,   {"Robot 24", 160, 120, 0, 4.0/3.0, 9e-3, 0.0, 3e-3,
-                   93e-3, 200e-3, MODE_ROBOT, COLOR_YUV, 0x04, PARITY_EVEN } },
-
-    {MODE_R36BW, {"Robot 36 B/W", 320, 240, 0, 4.0/3.0, 10e-3, 0.0, 0.0,
-                   140e-3, 150e-3, MODE_ROBOTBW, COLOR_MONO, 0x0E, PARITY_EVEN } },
-
-    {MODE_R24BW, {"Robot 24 B/W", 320, 240, 0, 4.0/3.0, 12e-3, 0.0, 0.0,
-                   93e-3, 105e-3, MODE_ROBOTBW, COLOR_MONO, 0x0A, PARITY_EVEN } },
-
-    {MODE_R12BW, {"Robot 12 B/W", 160, 120, 0, 4.0/3.0, 7e-3, 0.0, 0.0,
-                   93e-3, 100e-3, MODE_ROBOTBW, COLOR_MONO, 0x06, PARITY_ODD } },
-
-    {MODE_R8BW,  {"Robot 8 B/W", 160, 120, 0, 4.0/3.0, 10e-3, 0.0, 0.0,
-                   59e-3, 67e-3, MODE_ROBOTBW, COLOR_MONO, 0x02, PARITY_EVEN } },
-
-    {MODE_W260,  {"Wraase SC-2 60", 256, 256, 16, 4.0/3.0, 5.5225e-3, 0.5e-3, 0.0,
-                   78.3e-3, 240.833878e-3, MODE_WRAASE2, COLOR_RGB, 0x3B, PARITY_EVEN } },
-
-    {MODE_W2120, {"Wraase SC-2 120", 320, 256, 16, 4.0/3.0, 5.5225e-3, 0.5e-3, 0.0,
-                   156.5025e-3, 475.52e-3, MODE_WRAASE2, COLOR_RGB, 0x3F, PARITY_EVEN } },
-
-    {MODE_W2180, {"Wraase SC-2 180", 512, 256, 16, 4.0/3.0, 5.5225e-3, 0.5e-3, 0.0,
-                   235e-3, 711.0437e-3, MODE_WRAASE2, COLOR_RGB, 0x37, PARITY_EVEN } },
-
-    {MODE_PD50,  {"PD-50", 320, 256, 16, 4.0/3.0, 20e-3, 2.08e-3, 0.0,
-                   91.52e-3, 388.1586e-3, MODE_PD, COLOR_YUV, 0x5D, PARITY_EVEN } },
-
-    {MODE_PD90,  {"PD-90", 320, 256, 16, 4.0/3.0, 20e-3, 2.08e-3, 0.0,
-                   170.240e-3, 703.04124e-3, MODE_PD, COLOR_YUV, 0x63, PARITY_EVEN } },
-
-    {MODE_PD120, {"PD-120", 320, 496, 16, 4.0/3.0, 20e-3, 2.08e-3, 0.0,
-                   121.6e-3, 508.48e-3, MODE_PD, COLOR_YUV, 0x5F, PARITY_EVEN } },
-
-    {MODE_PD160, {"PD-160", 512, 400, 16, 4.0/3.0, 20e-3, 2.08e-3, 0.0,
-                   195.584e-3, 804.416e-3, MODE_PD, COLOR_YUV, 0x62, PARITY_EVEN } },
-
-    {MODE_PD180, {"PD-180", 640, 496, 16, 4.0/3.0, 20e-3, 2.08e-3, 0.0,
-                   183.04e-3, 754.24e-3, MODE_PD, COLOR_YUV, 0x60, PARITY_EVEN } },
-
-    {MODE_PD240, {"PD-240", 640, 496, 16, 4.0/3.0, 20e-3, 2.08e-3, 0.0,
-                   244.48e-3, 1000e-3, MODE_PD, COLOR_YUV, 0x61, PARITY_EVEN } },
-
-    {MODE_PD290, {"PD-290", 800, 616, 16, 4.0/3.0, 20e-3, 2.08e-3, 0.0,
-                   228.8e-3, 937.28e-3, MODE_PD, COLOR_YUV, 0x5E, PARITY_EVEN } },
-
-    {MODE_P3,    {"Pasokon P3", 320, 496, 16, 4.0/3.0, 5.208e-3, 1.042e-3, 1.042e-3,
-                   133.333e-3, 409.3747e-3, MODE_PASOKON, COLOR_RGB, 0x71, PARITY_EVEN } },
-
-    {MODE_P5,    {"Pasokon P5", 640, 496, 16, 4.0/3.0, 7.813e-3, 1.563e-3, 1.563e-3,
-                   200e-3, 614.065e-3, MODE_PASOKON, COLOR_RGB, 0x72, PARITY_EVEN } },
-
-    {MODE_P7,    {"Pasokon P7", 640, 496, 16, 4.0/3.0, 10.417e-3, 2.083e-3, 2.083e-3,
-                   266.666e-3, 818.747e-3, MODE_PASOKON, COLOR_RGB, 0x73, PARITY_EVEN } },
-
-    {MODE_UNKNOWN,
-      {} }
-  };
-
-  return spec[mode];
+  return {found, mode};
 }
-
-SSTVMode vis2mode (uint16_t vis) {
-
-  std::map<int, SSTVMode> vismap = {
-    {0x02,MODE_R8BW}, {0x04,MODE_R24},  {0x06,MODE_R12BW}, {0x08,MODE_R36},
-    {0x0A,MODE_R24BW},{0x0C,MODE_R72},  {0x0E,MODE_R36BW}, {0x20,MODE_M4},    {0x24,MODE_M3},
-    {0x28,MODE_M2},   {0x2C,MODE_M1},   {0x37,MODE_W2180}, {0x38,MODE_S2},
-    {0x3C,MODE_S1},   {0x3F,MODE_W2120},{0x4C,MODE_SDX},   {0x5D,MODE_PD50},
-    {0x5E,MODE_PD290},{0x5F,MODE_PD120},{0x60,MODE_PD180}, {0x61,MODE_PD240},
-    {0x62,MODE_PD160},{0x63,MODE_PD90}, {0x71,MODE_P3},    {0x72,MODE_P5},
-    {0x73,MODE_P7}
-  };
-
-  if ( vismap.find(vis) == vismap.end() )
-    return MODE_UNKNOWN;
-  else
-    return vismap[vis];
-}
-
