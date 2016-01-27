@@ -6,8 +6,11 @@
 #include <vector>
 #include <memory>
 #include <mutex>
+#include <complex>
 
 #include "modespec.h"
+
+constexpr int kFFTLen = 512;
 
 struct Point {
   int x;
@@ -30,31 +33,20 @@ template<class T> class CirBuffer {
     void moveHead(int n);
     int size() const;
     void append(const std::vector<T>& input_data, int n);
+    void appendOverlapFiltered(T input_element, const Wave& filter);
     void append(T input_element);
     void forward(int n);
     int getFillCount() const;
     T at(int n) const;
+    void copy(typename std::vector<T>::iterator it_dst, int i_begin, int num_elems);
 
   private:
     std::vector<T> m_data;
     int  m_head;
     int  m_tail;
     int  m_fill_count;
-    int  m_len;
+    const int m_len;
 
-};
-
-enum WindowType {
-  WINDOW_CHEB47 = 0,
-  WINDOW_HANN95,
-  WINDOW_HANN127,
-  WINDOW_HANN255,
-  WINDOW_HANN511,
-  WINDOW_HANN1023,
-  WINDOW_HANN2047,
-  WINDOW_HANN31,
-  WINDOW_HANN63,
-  WINDOW_SQUARE47
 };
 
 enum {

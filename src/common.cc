@@ -33,7 +33,11 @@ double rad2deg (double rad) {
 }
 
 int maxIndex (Wave v) {
-  return distance(v.begin(), max_element(v.begin(), v.end()));
+  return std::distance(v.begin(), std::max_element(v.begin(), v.end()));
+}
+
+int minIndex (Wave v) {
+  return std::distance(v.begin(), std::min_element(v.begin(), v.end()));
 }
 
 void ensure_dir_exists(std::string dir) {
@@ -49,7 +53,7 @@ void ensure_dir_exists(std::string dir) {
 }
 
 template<class T> CirBuffer<T>::CirBuffer(int size) :
-  m_data(size * 2), m_head(0), m_tail(0), m_fill_count(0), m_len(size) {
+  m_data(size), m_head(0), m_tail(0), m_fill_count(0), m_len(size) {
 
   assert(size > 0);
 }
@@ -61,6 +65,10 @@ template<class T> void CirBuffer<T>::moveHead(int n) {
 template<class T> void CirBuffer<T>::forward(int n) {
   m_tail = (m_tail + n) % m_len;
   m_fill_count -= n;
+  if (m_fill_count < 0) {
+    std::cerr << "buffer underrun!\n";
+    m_fill_count = 0;
+  }
 }
 
 template<class T> int CirBuffer<T>::getFillCount() const {
@@ -72,14 +80,21 @@ template<class T> int CirBuffer<T>::size() const {
 }
 
 template<class T> T CirBuffer<T>::at(int n) const {
-  int i = m_tail + n;
-  if (i < 0) {
-    i = m_len - (abs(i) % m_len);
-  } else {
-    i = i % m_len;
-  }
+  return m_data[wrap_mod(n + m_tail, m_len)];
+}
 
-  return m_data.at(i);
+
+/*template<class T> T* CirBuffer<T>::copyTo(std::vector<T>::iterator begin) const {
+  auto it = m_data.begin();
+  return &(*it);
+}*/
+template<class T> void CirBuffer<T>::copy(typename std::vector<T>::iterator it_dst, int i_begin, int num_elems) {
+  auto it=it_dst;
+
+  for (int i=0; i<num_elems; i++) {
+    *it = m_data[wrap_mod(m_tail + i_begin + i, m_len)];
+    it++;
+  }
 }
 
 template<class T> void CirBuffer<T>::append(const std::vector<T>& input_data, int num_elems) {
@@ -89,13 +104,32 @@ template<class T> void CirBuffer<T>::append(const std::vector<T>& input_data, in
   for (int i=0; i<num_elems; i++)
     m_data.at((m_head + i) % m_len) = input_data[i];
 
-  // mirror
-  //for (int i=0; i<m_len; i++)
-  //  m_data.at(m_len + i) = m_data.at(i);
-
   m_head = (m_head + num_elems) % m_len;
   m_fill_count += num_elems;
-  m_fill_count = std::min(m_fill_count, m_len);
+
+  if (m_fill_count > m_len) {
+    std::cerr << "buffer overrun!\n";
+    m_fill_count = m_len;
+  }
+
+}
+
+// todo: check we're not going past tail
+template<class T> void CirBuffer<T>::appendOverlapFiltered(T input_element, const Wave& filter) {
+
+  int filter_len = filter.size();
+  m_data.at((m_head + filter_len) % m_len) *= 0.0;
+
+  for (int i=0; i<filter_len; i++)
+    m_data.at((m_head + i) % m_len) += input_element * filter[i];
+
+  m_head = (m_head + 1) % m_len;
+  m_fill_count ++;
+
+  if (m_fill_count > m_len) {
+    std::cerr << "buffer overrun!\n";
+    m_fill_count = m_len;
+  }
 
 }
 
@@ -103,18 +137,20 @@ template<class T> void CirBuffer<T>::append(T input_element) {
 
   m_data.at(m_head) = input_element;
 
-  // mirror
-  m_data.at(m_head + m_len) = m_data.at(m_head);
-
   m_head = (m_head + 1) % m_len;
   m_fill_count += 1;
   m_fill_count = std::min(m_fill_count, m_len);
 
 }
 
-// for the linker
+// keep the linker happy
 template class CirBuffer<double>;
 template class CirBuffer<float>;
+template class CirBuffer<std::complex<double>>;
+
+int wrap_mod(int i, int len) {
+  return (i < 0 ? (i % len) + len : (i % len));
+}
 
 /*** Gtk+ event handlers ***/
 
