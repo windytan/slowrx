@@ -61,11 +61,11 @@ enum {
   BORDER_REPEAT, BORDER_ZERO, BORDER_WRAPAROUND
 };
 
-typedef struct {
+struct PixelSample {
   Point pt;
   int ch;
   double t;
-} PixelSample;
+};
 
 class ProgressBar {
   public:
@@ -78,8 +78,6 @@ class ProgressBar {
     double m_val;
     int    m_width;
 };
-
-std::vector<PixelSample> pixelSamplingPoints(SSTVMode mode);
 
 uint8_t  clipToByte          (double a);
 double   fclip              (double a);
