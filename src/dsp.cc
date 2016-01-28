@@ -308,6 +308,9 @@ double Kernel::at(double xdist) const {
   } else if (m_type == KERNEL_LANCZOS3) {
     int a = 3;
     val = (x >= -a && x <= a) ? sinc(x) * sinc(x/a) : 0.0;
+  } else if (m_type == KERNEL_LANCZOS5) {
+    int a = 5;
+    val = (x >= -a && x <= a) ? sinc(x) * sinc(x/a) : 0.0;
   } else if (m_type == KERNEL_TENT) {
     val = (x >= -1.0 && x <= 1.0) ? 1.0-std::fabs(x) : 0.0;
   } else if (m_type == KERNEL_BOX) {
