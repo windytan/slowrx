@@ -27,16 +27,19 @@ GUI::GUI() : m_is_aborted_by_user(false), m_dispatcher_redraw(), m_dispatcher_re
   builder->get_widget("window_main",     m_window_main);
   builder->get_widget("image_rx",        m_image_rx);
   builder->get_widget("image_sync",        m_image_sync);
-  builder->get_widget("button_abort",    m_button_abort);
+  /*builder->get_widget("button_abort",    m_button_abort);
   builder->get_widget("button_clear",    m_button_clear);
   builder->get_widget("button_manualstart",    m_button_manualstart);
-  builder->get_widget("combo_manualmode",    m_combo_manualmode);
+  builder->get_widget("combo_manualmode",    m_combo_manualmode);*/
   builder->get_widget("combo_portaudio",    m_combo_portaudio);
 
   builder->get_widget("switch_rx",        m_switch_rx);
   builder->get_widget("switch_sync",        m_switch_sync);
-  builder->get_widget("switch_denoise",        m_switch_denoise);
   builder->get_widget("switch_fskid",        m_switch_fskid);
+
+  builder->get_widget("radio_denoise0",        m_radio_denoise[0]);
+  builder->get_widget("radio_denoise1",        m_radio_denoise[1]);
+  builder->get_widget("radio_denoise2",        m_radio_denoise[2]);
 
   builder->get_widget("check_save",        m_check_save);
 
@@ -49,6 +52,8 @@ GUI::GUI() : m_is_aborted_by_user(false), m_dispatcher_redraw(), m_dispatcher_re
   builder->get_widget("save_dir_chooser",       m_button_savedirchooser);
 
   builder->get_widget("box_input",       m_box_input);
+
+  //builder->get_widget("drawingarea1",       m_drawing_area);
 
   imageReset();
 
@@ -65,21 +70,23 @@ GUI::GUI() : m_is_aborted_by_user(false), m_dispatcher_redraw(), m_dispatcher_re
 
 void GUI::start() {
 
-  m_switch_denoise->signal_state_flags_changed().connect(
-      sigc::mem_fun(this, &GUI::autoSettingsChanged)
-  );
+  for (int i=0; i<3; i++) {
+    m_radio_denoise[i]->signal_state_flags_changed().connect(
+        sigc::mem_fun(this, &GUI::autoSettingsChanged)
+    );
+  }
   m_switch_rx->signal_state_flags_changed().connect(
       sigc::mem_fun(this, &GUI::autoSettingsChanged)
   );
   m_switch_rx->signal_state_flags_changed().connect(
       sigc::mem_fun(this, &GUI::autoSettingsChanged)
   );
-  m_button_abort->signal_clicked().connect(
+  /*m_button_abort->signal_clicked().connect(
       sigc::mem_fun(this, &GUI::abortedByUser)
   );
   m_button_clear->signal_clicked().connect(
       sigc::mem_fun(this, &GUI::imageReset)
-  );
+  );*/
 
   m_dispatcher_redraw.connect(sigc::mem_fun(*this, &GUI::onRedrawNotify));
   m_dispatcher_resync.connect(sigc::mem_fun(*this, &GUI::onResyncNotify));
@@ -199,19 +206,19 @@ void setVU (double *Power, int FFTLen, int WinIdx, bool ShowWin) {
 }
 #endif
 
-bool GUI::isRxEnabled() {
+bool GUI::isRxEnabled() const {
   return m_is_rx_enabled;
 }
-bool GUI::isDenoiseEnabled() {
-  return m_is_denoise_enabled;
+int GUI::getDenoiseLevel() const {
+  return m_denoise_level;
 }
-bool GUI::isSyncEnabled() {
+bool GUI::isSyncEnabled() const {
   return m_is_sync_enabled;
 }
-bool GUI::isAbortedByUser() {
+bool GUI::isAbortedByUser() const {
   return m_is_aborted_by_user;
 }
-bool GUI::isSaveEnabled() {
+bool GUI::isSaveEnabled() const {
   return m_check_save->get_active();
 }
 
@@ -223,15 +230,21 @@ void GUI::receiving() {
   m_box_input->set_sensitive(false);*/
 }
 void GUI::notReceiving() {
-  m_button_abort->set_sensitive(false);
-  m_button_clear->set_sensitive(true);
-  m_button_manualstart->set_sensitive(true);
-  m_combo_manualmode->set_sensitive(true);
+  //m_button_abort->set_sensitive(false);
+  //m_button_clear->set_sensitive(true);
+  //m_button_manualstart->set_sensitive(true);
+  //m_combo_manualmode->set_sensitive(true);
   m_box_input->set_sensitive(true);
 }
 
 void GUI::fetchAutoState() {
-  m_is_denoise_enabled = m_switch_denoise->get_active();
+  m_denoise_level = 0;
+  for (int i=0; i<3; i++) {
+    if (m_radio_denoise[i]->get_active()) {
+      m_denoise_level = i;
+      break;
+    }
+  }
   m_is_rx_enabled      = m_switch_rx->get_active();
   m_is_sync_enabled    = m_switch_sync->get_active();
   m_is_fskid_enabled   = m_switch_sync->get_active();
@@ -304,24 +317,28 @@ void GUI::audioFileSelected() {
 }
 
 void GUI::redrawNotify() {
+  //printf("redrawNotify(), emit()\n");
   m_dispatcher_redraw.emit();
 }
 void GUI::onRedrawNotify() {
-  printf("redrawNotidy(), getCurrentPic():\n");
+  //printf("onRedrawNotify(), getCurrentPic():\n");
   std::shared_ptr<Picture> pic = m_listener.getCurrentPic();
-  printf("  lasttime->set_text\n");
-  m_label_lasttime->set_text(pic->getTimestamp() + " / " + getModeSpec(pic->getMode()).name + " ");
-  printf("  renderPixbuf()\n");
+  //printf("  lasttime->set_text\n");
+  m_label_lasttime->set_text(pic->getTimestamp() + " / " + pic->getMode().name + " ");
+  //printf("  renderPixbuf()\n");
   m_image_rx->set(pic->renderPixbuf(640));
 }
 
 void GUI::resyncNotify() {
+  //printf("resyncNotify(), emit()\n");
   m_dispatcher_resync.emit();
 }
 void GUI::onResyncNotify() {
-  if (m_switch_sync->get_active()) {
+  //printf("onResyncNotify()\n");
+  //if (m_switch_sync->get_active()) {
     std::shared_ptr<Picture> pic = m_listener.getCurrentPic();
     pic->resync();
-  }
+  //m_image_sync->set(pic->renderSync(256));
+  //}
 }
 

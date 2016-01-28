@@ -20,11 +20,11 @@ class GUI {
     void receiving();
     void notReceiving();
 
-    bool isRxEnabled();
-    bool isDenoiseEnabled();
-    bool isSyncEnabled();
-    bool isAbortedByUser();
-    bool isSaveEnabled();
+    bool isRxEnabled() const;
+    int getDenoiseLevel() const;
+    bool isSyncEnabled() const;
+    bool isAbortedByUser() const;
+    bool isSaveEnabled() const;
 
     void redrawNotify();
     void onRedrawNotify();
@@ -47,7 +47,7 @@ class GUI {
     bool m_is_rx_enabled;
     bool m_is_sync_enabled;
     bool m_is_fskid_enabled;
-    bool m_is_denoise_enabled;
+    bool m_denoise_level;
     bool m_is_aborted_by_user;
 
     Glib::RefPtr<Gtk::Application> m_app;
@@ -59,7 +59,6 @@ class GUI {
     Gtk::Image  *m_image_sync;
     Gtk::ToggleButton *m_switch_rx;
     Gtk::ToggleButton *m_switch_sync;
-    Gtk::ToggleButton *m_switch_denoise;
     Gtk::ToggleButton *m_switch_fskid;
     Gtk::CheckButton *m_check_save;
     Gtk::Button *m_button_abort;
@@ -70,9 +69,11 @@ class GUI {
     Gtk::RadioButton *m_radio_input_portaudio;
     Gtk::RadioButton *m_radio_input_file;
     Gtk::RadioButton *m_radio_input_stdin;
+    Gtk::RadioButton *m_radio_denoise[3];
     Gtk::FileChooserButton *m_button_audiofilechooser;
     Gtk::FileChooserButton *m_button_savedirchooser;
     Gtk::Box *m_box_input;
+    Gtk::DrawingArea *m_drawing_area;
 
     Glib::Dispatcher m_dispatcher_redraw;
     Glib::Dispatcher m_dispatcher_resync;
