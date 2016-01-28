@@ -1,61 +1,54 @@
 #ifndef DSP_H_
 #define DSP_H_
 
-#include "common.h"
-#include "input.h"
 #include <mutex>
 #include <thread>
+#include <complex>
 #include "fftw3.h"
-
-// moment length only affects length of global delay, I/O interval,
-// and maximum window size.
-#define FFT_LEN     512
-
-#define FREQ_MIN    500.0
-#define FREQ_MAX   3300.0
-#define FREQ_BLACK 1500.0
-#define FREQ_WHITE 2300.0
-#define FREQ_SYNC  1200.0
+#include "common.h"
+#include "input.h"
 
 namespace window {
   Wave Hann (int);
   Wave Blackmann (int);
   Wave Rect (int);
-  Wave Gauss (int);
+  Wave Gauss (int,double,double amp=1.0);
 }
 
 class Kernel {
   public:
     Kernel(int,double scale=1.0);
     double at(double) const;
-    double getHalfWidth() const;
+    double getSupport() const;
   private:
     int m_type;
     double m_scale;
     Wave m_precalc;
 };
 
-class DSP {
+class FM {
   public:
 
-    DSP ();
-    ~DSP();
+    FM (int rate, std::shared_ptr<CirBuffer<std::complex<double>>> cirbuf);
+    ~FM();
 
-    double              calcPeakFreq    (double minf, double maxf, WindowType win_type);
-    std::vector<double> calcBandPowerPerHz (const std::vector<std::vector<double>>&, WindowType wintype=WINDOW_HANN2047);
+    double              calcPeakFreq    (double minf, double maxf, int which_window=0);
+    std::vector<double> calcBandPowerPerHz (const std::vector<std::vector<double>>&, int which_window=0);
     double              calcVideoSNR    ();
-    double              calcVideoLevel  (const ModeSpec&, bool is_adaptive=false);
+    double              calcVideoLevel  (const ModeSpec&, int denoise_level=0);
     double              calcSyncPower   ();
-    void                calcWindowedFFT (WindowType win_type, int fft_len);
+    void                calcPowerSpectrum (int which_window=0);
+    std::vector<double> getLastPowerSpectrum() const;
+    void                setRate(int rate);
 
-    int                 freq2bin        (double freq, int fft_len) const;
-    WindowType          bestWindowFor   (const ModeSpec&, double SNR=99);
+    int                 freq2bin        (double freq) const;
+    double              bin2freq(double bin) const;
+    //WindowType          bestWindowFor   (const ModeSpec&, double SNR=99);
     void                set_fshift      (double);
-
-    std::shared_ptr<Input> getInput        ();
 
   private:
 
+    int           m_samplerate;
     fftw_complex* m_fft_inbuf;
     fftw_complex* m_fft_outbuf;
     fftw_plan     m_fft_plan;
@@ -63,13 +56,15 @@ class DSP {
     double        m_fshift;
     double        m_next_snr_time;
     double        m_SNR;
-    WindowType    m_sync_window;
+    //WindowType    m_sync_window;
     int           m_fft_decim_ratio;
-    double        m_freq_if;
+    const double        m_freq_if;
+    const int     m_fft_len;
+    std::vector<double> m_lpf_coeffs;
 
     std::vector<Wave> m_window;
+    std::shared_ptr<CirBuffer<std::complex<double>>> m_input_cirbuf;
 
-    std::shared_ptr<Input> m_input;
 };
 
 Wave   convolve     (const Wave&, const Kernel&, int border_treatment=BORDER_ZERO);
@@ -82,5 +77,7 @@ Wave   upsample     (const Wave& orig, double factor, int kern_type, int border_
 double gaussianPeak (const Wave& signal, int idx_peak, bool wrap_around=false);
 double power        (fftw_complex coeff);
 double complexMag   (fftw_complex coeff);
+double sqComplexMag (fftw_complex coeff);
+std::complex<double> mixComplex(double input, double if_phi);
 
 #endif
