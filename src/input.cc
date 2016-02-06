@@ -240,6 +240,9 @@ double Input::forward (int nsamples) {
       } else if (m_stream_type == STREAM_TYPE_STDIN) {
         readMoreFromStdin();
       }
+
+      if (!m_is_open)
+        break;
     }
   }
   double dt = 1.0 * nsamples / m_samplerate;
