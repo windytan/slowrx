@@ -88,6 +88,11 @@ uint8_t getChannel (const uint32_t& px, uint8_t ch) {
   return (px >> (8*ch)) & 0xff;
 }
 
+double gammaCorr (double val) {
+  // from mmsstv test images
+  return (val - 15.5) * 1.172;
+}
+
 void decodeRGB (uint32_t src, uint8_t* dst) {
   dst[0] = getChannel(src, 0);
   dst[1] = getChannel(src, 1);
@@ -115,118 +120,134 @@ void decodeYCbCr (uint32_t src, uint8_t* dst) {
 }
 
 void decodeMono (uint32_t src, uint8_t* dst) {
-  dst[0] = dst[1] = dst[2] = clipToByte((getChannel(src,0) - 15.5) * 1.172); // mmsstv test images
+  dst[0] = dst[1] = dst[2] = clipToByte(gammaCorr(getChannel(src,0)));
 }
 
 void reconstructChroma420 (std::vector<std::vector<uint32_t>>& img, const ModeSpec& m) {
   std::vector<std::vector<uint32_t>> nimg(img);
-  //const Kernel reconst_kernel(KERNEL_TENT);
+  const Kernel reconst_kernel(KERNEL_TENT);
+
+  // stretch horizontally
+  for (int y=0; y < m.num_lines/2; y++) {
+    Wave row_u(m.scan_pixels/2), row_v(m.scan_pixels/2);
+    for (int x=0; x < m.scan_pixels/2; x++) {
+      row_u[x] = getChannel(img[x][y], 1);
+      row_v[x] = getChannel(img[x][y], 2);
+    }
+    for (int x=0; x < m.scan_pixels; x++) {
+      double u = convolveSingle(row_u, reconst_kernel, 0.5*x-.25, BORDER_REPEAT);
+      double v = convolveSingle(row_v, reconst_kernel, 0.5*x-.25, BORDER_REPEAT);
+      setChannel(img[x][y], 1, clipToByte(u));
+      setChannel(img[x][y], 2, clipToByte(v));
+    }
+  }
+
+  // stretch vertically
   for (int x=0; x < m.scan_pixels; x++) {
+    Wave col_u(m.num_lines/2), col_v(m.num_lines/2);
+    for (int y=0; y < m.num_lines/2; y++) {
+      col_u[y] = getChannel(img[x][y], 1);
+      col_v[y] = getChannel(img[x][y], 2);
+    }
     for (int y=0; y < m.num_lines; y++) {
-      setChannel(img[x][y], 1, getChannel(nimg[x/2][y/2], 1));
-      setChannel(img[x][y], 2, getChannel(nimg[x/2][y/2], 2));
+      double u = convolveSingle(col_u, reconst_kernel, 0.5*y-.25, BORDER_REPEAT);
+      double v = convolveSingle(col_v, reconst_kernel, 0.5*y-.25, BORDER_REPEAT);
+      setChannel(img[x][y], 1, clipToByte(u));
+      setChannel(img[x][y], 2, clipToByte(v));
     }
   }
 }
 
 void reconstructChroma422 (std::vector<std::vector<uint32_t>>& img, const ModeSpec& m) {
-  std::vector<std::vector<uint32_t>> nimg(img);
   const Kernel reconst_kernel(KERNEL_TENT);
 
   for (int y=0; y < m.num_lines; y++) {
-    Wave row_u, row_v;
+    Wave row_u(m.scan_pixels/2), row_v(m.scan_pixels/2);
     for (int x=0; x < m.scan_pixels/2; x++) {
-      row_u.push_back(getChannel(img[x][y], 1));
-      row_v.push_back(getChannel(img[x][y], 2));
+      row_u[x] = getChannel(img[x][y], 1);
+      row_v[x] = getChannel(img[x][y], 2);
     }
 
     for (int x=0; x < m.scan_pixels; x++) {
-      double u = convolveSingle(row_u, reconst_kernel, 0.5*x, BORDER_ZERO);
-      double v = convolveSingle(row_v, reconst_kernel, 0.5*x, BORDER_ZERO);
-      printf("%3.0f->%3.0f ",row_u[x/2],u);
-      setChannel(img[x][y], 1, u);//getChannel(nimg[x/2][y], 1));
-      setChannel(img[x][y], 2, v);//getChannel(nimg[x/2][y], 2));
+      double u = convolveSingle(row_u, reconst_kernel, 0.5*x, BORDER_REPEAT);
+      double v = convolveSingle(row_v, reconst_kernel, 0.5*x, BORDER_REPEAT);
+      setChannel(img[x][y], 1, clipToByte(u));
+      setChannel(img[x][y], 2, clipToByte(v));
     }
   }
 }
 
 
 
-Glib::RefPtr<Gdk::Pixbuf> Picture::renderPixbuf(int width) {
+Glib::RefPtr<Gdk::Pixbuf> Picture::renderPixbuf(int img_width) {
 
-  assert(width > 0);
+  assert(img_width > 0);
 
-  std::vector<std::vector<uint32_t>> img(m_mode.scan_pixels);
-  for (int x=0; x < m_mode.scan_pixels; x++) {
-    img.at(x) = std::vector<uint32_t>(m_mode.num_lines);
-  }
+  printf("\nrender\n======\n");
 
-  const Kernel sample_kern(KERNEL_LANCZOS3);
+  const Kernel sample_kern(KERNEL_TENT);
 
   {
     std::lock_guard<std::mutex> guard(m_mutex);
     double dt = 1.0 * m_video_decim_ratio / m_original_samplerate;
-    for (PixelSample px : m_pixel_grid) {
+    for (PixelSample px : m_pixelsamples) {
 
       double signal_x = (m_starts_at + px.t/m_tx_speed) / dt;
-//      double val = (signal_x < m_video_signal.size() ? m_video_signal.at(signal_x) : 0);
       double val = convolveSingle(m_video_signal, sample_kern, signal_x);
 
       int x  = px.pt.x;
       int y  = px.pt.y;
       int ch = px.ch;
 
-      //if (m_progress >= 1.0*y/(m.num_lines-1))
+      if (m_progress >= px.t)
         m_has_line.at(y) = true;
 
-      setChannel(img[x][y], ch, clipToByte(round(val*255)));
+      setChannel(m_img[x][y], ch, clipToByte(round(val*255)));
     }
-  }
 
-  if (m_mode == MODE_R36 || m.family == MODE_PD)
-    reconstructChroma420(img, m);
+    if (m_mode.color_enc == COLOR_YUV420)
+      reconstructChroma420(m_img, m_mode);
+    else if (m_mode.color_enc == COLOR_YUV422)
+      reconstructChroma422(m_img, m_mode);
 
-  m_pixbuf_rx->fill(0x000000ff);
+    m_pixbuf_rx->fill(0x383838ff);
 
-  uint8_t *p;
-  uint8_t *pixels;
-  pixels = m_pixbuf_rx->get_pixels();
-  int rowstride = m_pixbuf_rx->get_rowstride();
+    uint8_t *p;
+    uint8_t *pixels;
+    pixels = m_pixbuf_rx->get_pixels();
+    int rowstride = m_pixbuf_rx->get_rowstride();
 
-  for (int y = 0; y < m.num_lines; y++) {
-    for (int x = 0; x < m.scan_pixels; x++) {
+    for (int y = 0; y < m_mode.num_lines; y++) {
+      for (int x = 0; x < m_mode.scan_pixels; x++) {
 
-      p = pixels + y * rowstride + x * 3;
-
+        p = pixels + y * rowstride + x * 3;
 #ifdef RGBONLY
-      decodeRGB(img[x][y], p);
-#else
-      if (!m_has_line.at(y)) {
-        p[0] = p[1] = p[2] = 0;
-      } else if (m.color_enc == COLOR_RGB) {
         decodeRGB(img[x][y], p);
-      } else if (m.color_enc == COLOR_GBR) {
-        decodeGBR(img[x][y], p);
-      } else if (m.color_enc == COLOR_YUV) {
-        decodeYCbCr(img[x][y], p);
-      } else {
-        decodeMono(img[x][y], p);
-      }
+#else
+        if (!m_has_line.at(y)) {
+          p[0] = p[1] = p[2] = 0x38;
+        } else if (m_mode.color_enc == COLOR_RGB) {
+          decodeRGB(m_img[x][y], p);
+        } else if (m_mode.color_enc == COLOR_GBR) {
+          decodeGBR(m_img[x][y], p);
+        } else if (m_mode.color_enc == COLOR_YUV420 || m_mode.color_enc == COLOR_YUV422) {
+          decodeYCbCr(m_img[x][y], p);
+        } else {
+          decodeMono(m_img[x][y], p);
+        }
 #endif
+      }
     }
+
   }
 
-  double rx_aspect     = 4.0/3.0;
-  //double pad_to_aspect = 5.0/4.0;
-
-  int img_width  = width;//round((m.num_lines - m.header_lines) * rx_aspect);
-  int img_height = round(1.0*img_width/rx_aspect + m.header_lines);
+  int img_height = round(1.0*img_width/m_mode.aspect_ratio + m_mode.header_lines);
 
   printf("│  scale to: %dx%d\n",img_width, img_height);
   Glib::RefPtr<Gdk::Pixbuf> pixbuf_scaled =
-    m_pixbuf_rx->scale_simple(img_width, img_height, Gdk::INTERP_BILINEAR);
+    m_pixbuf_rx->scale_simple(img_width, img_height, Gdk::INTERP_NEAREST);
 
-  m_pixbuf_rx->save("testi.png", "png");
+  //m_pixbuf_rx->save("testi.png", "png");
 
   printf("└──\n");
   return pixbuf_scaled;
@@ -240,8 +261,8 @@ Glib::RefPtr<Gdk::Pixbuf> Picture::renderSync(Wave sync_delta, int line_width) {
   const int waterfall_height = line_width / 3;
 
   Glib::RefPtr<Gdk::Pixbuf> pixbuf_sy;
-  pixbuf_sy = Gdk::Pixbuf::create(Gdk::COLORSPACE_RGB, false, 8, line_width, waterfall_height + graph_height);
-  pixbuf_sy->fill(0x000000ff);
+  m_pixbuf_sync = Gdk::Pixbuf::create(Gdk::COLORSPACE_RGB, false, 8, line_width, waterfall_height + graph_height);
+  m_pixbuf_sync->fill(0x000000ff);
 
   uint8_t *p;
   uint8_t *pixels;
@@ -277,17 +298,26 @@ Glib::RefPtr<Gdk::Pixbuf> Picture::renderSync(Wave sync_delta, int line_width) {
           p[0] = clipToByte(-val);
         }
       }
-      if (x == line_width/2) {
+      /*if (x == line_width/2) {
         p[2] = 255;
-      }
+      }*/
     }
   }
-  for (int y=0; y<graph_height; y++) {
-    for (int x=0; x<line_width; x++) {
-      p = pixels + (waterfall_height + y) * rowstride + x * 3;
-      p[0] = p[1] = p[2] = 32;
-      if (acc.at(m_i) != 0 && 1.2-0.8*y/graph_height <= acc.at((x+m_i+line_width/2)%line_width)/acc.at(m_i) )
-        p[1] = p[2] = 255;
+
+  if (acc.at(m_i) != 0) {
+    for (int y=0; y<graph_height; y++) {
+      for (int x=0; x<line_width; x++) {
+        p = pixels + (waterfall_height + y) * rowstride + x * 3;
+        p[0] = p[1] = p[2] = 32;
+        double val = acc.at((x + m_i + line_width/2) % line_width) / acc.at(m_i);
+        int y_wave = graph_height*.5 - val * graph_height * 0.4;
+        if (y == y_wave) {
+          p[1] = p[2] = 255;
+        }
+        if (x == line_width/2 && y < graph_height * 0.18) {
+          p[0] = 192;
+        }
+      }
     }
   }
 
@@ -306,7 +336,11 @@ void Picture::resync () {
   printf("\nresync\n======\n");
 
   const double dt = 1.0 * m_sync_decim_ratio / m_original_samplerate;
-  const int line_width = 500;//round(m.t_period * m_original_samplerate / m_sync_decim_ratio);
+  const int line_width = 700;//round(mode.t_period * m_original_samplerate / m_sync_decim_ratio);
+
+  printf("│  sync decim ratio: %d\n│  samplerate: %.0f Hz\n",m_sync_decim_ratio, 1.0*m_original_samplerate/m_sync_decim_ratio);
+  printf("│  dt: %f\n",dt);
+  printf("│  line_width (%.1f ms): %d px\n",m_mode.t_period*1e3, line_width);
 
   Wave sync_delta;
 
@@ -317,75 +351,72 @@ void Picture::resync () {
 
   {
     std::lock_guard<std::mutex> guard(m_mutex);
+    sync_delta = convolve(m_sync_signal, sync_kernel);
+  }
 
-    double kernel_scale = m.t_sync / dt;
-    printf("kernel_scale = %f\n",kernel_scale);
-    Kernel sync_kernel(KERNEL_PULSE, kernel_scale);
-    Wave sync_delta = convolve(m_sync_signal, sync_kernel);
+  /* slant */
+  std::vector<double> histogram;
+  int peak_speed_at = 0;
+  double peak_speed_val = 0.0;
+  const double min_speed  = 0.998;
+  const double max_speed  = 1.002;
+  const double speed_step = 0.00005;
 
-    /* slant */
-    std::vector<double> histogram;
-    int peak_speed_at = 0;
-    double peak_speed_val = 0.0;
-    const double min_speed  = 0.998;
-    const double max_speed  = 1.002;
-    const double speed_step = 0.00005;
-
-    for (double spd = min_speed; spd <= max_speed; spd += speed_step) {
-      Wave acc(line_width);
-      int peak_x = 0;
-      for (int i=0; i<line_width*m.num_lines; i++) {
-        int x = i % line_width;
-        double signal_t = 1.0 * i / line_width * m.t_period / spd;
-        int signal_idx = round(signal_t / dt);
-        if (signal_idx >= 0 && signal_idx < (int)sync_delta.size())
-          acc.at(x) += sync_delta.at(signal_idx);
-        if (acc[x] > acc[peak_x]) {
-          peak_x = x;
-        }
-      }
-      histogram.push_back(acc[peak_x]);
-      if (acc[peak_x] > peak_speed_val) {
-        peak_speed_at = histogram.size()-1;
-        peak_speed_val = acc[peak_x];
-      }
-    }
-
-    double peak_refined = gaussianPeak(histogram, peak_speed_at);
-    double txspeed = min_speed + peak_refined*speed_step;
-
-    /* align */
+  for (double spd = min_speed; spd <= max_speed; spd += speed_step) {
     Wave acc(line_width);
-    for (int i=0; i<line_width*m.num_lines; i++) {
+    int peak_x = 0;
+    for (int i=0; i<line_width*m_mode.num_lines; i++) {
       int x = i % line_width;
-      double signal_t = 1.0 * i / line_width * m.t_period / txspeed;
+      double signal_t = 1.0 * i / line_width * m_mode.t_period / spd;
       int signal_idx = round(signal_t / dt);
-      if (signal_idx < (int)sync_delta.size())
+      if (signal_idx >= 0 && signal_idx < (int)sync_delta.size())
         acc.at(x) += sync_delta.at(signal_idx);
-
-      //if (thresh > 0.0)
-      //  acc.at(x) = acc.at(x) >= thresh ? 1.0 : 0.0;
+      if (acc[x] > acc[peak_x]) {
+        peak_x = x;
+      }
     }
+    histogram.push_back(acc[peak_x]);
+    if (acc[peak_x] > peak_speed_val) {
+      peak_speed_at = histogram.size()-1;
+      peak_speed_val = acc[peak_x];
+    }
+  }
 
-    int m_i = maxIndex(acc);
-    double peak_align = gaussianPeak(acc, m_i, true);
+  double peak_refined = gaussianPeak(histogram, peak_speed_at);
+  double txspeed = min_speed + peak_refined*speed_step;
 
-    double align_time = peak_align/line_width*m.t_period;// - m.t_sync*0.5;
-    if (m.family == MODE_SCOTTIE)
-      align_time -= m.t_sync + m.t_sep*2 + m.t_scan * 2;
+  /* align */
+  Wave acc(line_width);
+  for (int i=0; i<line_width*m_mode.num_lines; i++) {
+    int x = i % line_width;
+    double signal_t = 1.0 * i / line_width * m_mode.t_period / txspeed;
+    int signal_idx = round(signal_t / dt);
+    if (signal_idx < (int)sync_delta.size())
+      acc.at(x) += sync_delta.at(signal_idx);
 
-    if (align_time > m.t_period/2)
-      align_time -= m.t_period;
+    //if (thresh > 0.0)
+    //  acc.at(x) = acc.at(x) >= thresh ? 1.0 : 0.0;
+  }
 
-    //fprintf(stderr,"drift = %.5f\n",drift);
+  int max_i = maxIndex(acc);
+  double peak_align = gaussianPeak(acc, max_i, true);
+
+  double align_time = peak_align/line_width*m_mode.t_period - m_mode.t_sync*0.5;
+  if (m_mode.family == MODE_SCOTTIE)
+    align_time -= m_mode.t_sync + m_mode.t_sep*2 + m_mode.t_scan * 2;
+
+  if (align_time > m_mode.t_period/2)
+    align_time -= m_mode.t_period;
+
+  //fprintf(stderr,"drift = %.5f\n",drift);
+
+  {
+    std::lock_guard<std::mutex> guard(m_mutex);
 
     m_tx_speed = txspeed;
     m_starts_at = align_time;
 
-#define WRITE_SYNC
-#ifdef WRITE_SYNC
-    renderSync(sync_delta, line_width)->save("sync.png", "png");
-#endif
+    //renderSync(sync_delta, line_width)->save("sync.png", "png");
   }
 
   printf("│  align: %f/%d (%f ms)\n│  tx speed: %f (error = %+.0f ppm)\n",peak_align,line_width,m_starts_at*1e3,txspeed,(txspeed-1) * 1e6);

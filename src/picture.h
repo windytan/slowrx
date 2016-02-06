@@ -36,6 +36,8 @@ class Picture {
     std::vector<PixelSample> m_pixelsamples;
     std::vector<bool> m_has_line;
     Glib::RefPtr<Gdk::Pixbuf> m_pixbuf_rx;
+    Glib::RefPtr<Gdk::Pixbuf> m_pixbuf_sync;
+    std::vector<std::vector<uint32_t>> m_img;
     double m_progress;
     int    m_original_samplerate;
     Wave   m_video_signal;
@@ -47,5 +49,7 @@ class Picture {
     char   m_safe_timestamp[100];
     char   m_timestamp[100];
 };
+
+std::vector<PixelSample> pixelSamplingPoints(ModeSpec mode);
 
 #endif
