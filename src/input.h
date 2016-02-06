@@ -19,6 +19,7 @@ class Input {
     void   readMoreFromFile();
     void   readMoreFromStdin();
 
+    void   mixAndAppend(int);
     double forward (int);
     double forward ();
     double forwardTime (double);

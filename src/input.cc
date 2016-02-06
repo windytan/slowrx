@@ -148,29 +148,40 @@ bool Input::isLive() const {
   return (m_stream_type == STREAM_TYPE_PA);
 }
 
+void Input::mixAndAppend(int framesread) {
+  for (int i=0; i<framesread; i++) {
+    std::complex<double> mixed = std::complex<double>(m_read_buffer[i], 0) *
+      std::polar(1.0, m_if_ph);
+    m_cirbuf->appendOverlapFiltered(mixed, m_decimator_lpf_coeffs);
+    m_if_ph += 2 * M_PI * (-m_if_freq) / m_samplerate;
+  }
+}
+
 int Input::PaCallback(const void *input, void *output,
     unsigned long framesread,
     const PaStreamCallbackTimeInfo* timeInfo,
     PaStreamCallbackFlags statusFlags) {
 
-  std::lock_guard<std::mutex> guard(m_buffer_mutex);
 
   //printf("PaCallback\n");
   float* in = (float*)input;
 
+  {
+    std::lock_guard<std::mutex> guard(m_mutex);
+    for (int i = 0; i<kReadChunkLen; i++)
+      m_read_buffer[i] = in[i * m_num_chans];
 
-  for (int i = 0; i<READ_CHUNK_LEN; i++)
-    m_read_buffer[i] = in[i * m_num_chans];
-
-  m_cirbuf.append(m_read_buffer, framesread);
-
+    mixAndAppend(framesread);
+  }
 
   return 0;
 }
 
 void Input::readMoreFromFile() {
 
-  std::lock_guard<std::mutex> guard(m_buffer_mutex);
+
+  if (!m_is_open)
+    return;
 
   int framesread = 0;
   sf_count_t fr = m_file.readf(m_read_buffer.data(), kReadChunkLen);
@@ -195,13 +206,12 @@ void Input::readMoreFromFile() {
       }
     }
 
-  m_cirbuf.append(m_read_buffer, framesread);
+    mixAndAppend(framesread);
+  }
 
 }
 
 void Input::readMoreFromStdin() {
-
-  std::lock_guard<std::mutex> guard(m_buffer_mutex);
 
   int framesread = 0;
   ssize_t fr = fread(m_read_buffer_s16.data(), sizeof(int16_t), kReadChunkLen, stdin);
@@ -216,7 +226,8 @@ void Input::readMoreFromStdin() {
       m_read_buffer.at(i) = m_read_buffer_s16.at(i) / 32768.0;
     }
 
-  m_cirbuf.append(m_read_buffer, framesread);
+    mixAndAppend(framesread);
+  }
 }
 
 std::vector<std::pair<int,std::string>> listPortaudioDevices() {
@@ -248,8 +259,8 @@ double Input::forward (int nsamples) {
   for (int i = 0; i < nsamples; i++) {
 
     {
-      std::lock_guard<std::mutex> guard(m_buffer_mutex);
-      m_cirbuf.forward(1);
+      std::lock_guard<std::mutex> guard(m_mutex);
+      m_cirbuf->forward(1);
     }
 
     while (m_cirbuf->getFillCount() + kReadChunkLen <= m_cirbuf->size()) {
