@@ -1,14 +1,11 @@
 #ifndef INPUT_H_
 #define INPUT_H_
 
-#define READ_CHUNK_LEN 4096
-#define MOMENT_LEN     2047
-#define CIRBUF_LEN_FACTOR 8
-#define CIRBUF_LEN ((MOMENT_LEN+1)*CIRBUF_LEN_FACTOR)
-
-#include "common.h"
 #include "portaudio.h"
 #include <sndfile.hh>
+#include "common.h"
+
+constexpr int kReadChunkLen = 4096;
 
 class Input {
   public:

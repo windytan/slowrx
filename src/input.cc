@@ -1,9 +1,19 @@
-#include "input.h"
 #include <thread>
+#include "input.h"
+#include "dsp.h"
 
 bool g_is_pa_initialized = false;
 
-Input::Input() : m_cirbuf(CIRBUF_LEN), m_is_open(false), m_t(0) {
+Input::Input() : m_is_open(false), m_t(0), m_if_freq(1900.0), m_if_ph(0.0) {
+  m_cirbuf = std::make_shared<CirBuffer<std::complex<double>>>(kReadChunkLen * 3);
+
+  m_decimator_lpf_coeffs =
+    {0.000356,  0.000657,  0.000754,  0.000299, -0.001054, -0.003469, -0.006727,
+    -0.010087, -0.012264, -0.011603, -0.006419,  0.004536,  0.021609,  0.043929,
+     0.069344,  0.094687,  0.116329,  0.130909,  0.136054,  0.130909,  0.116329,
+     0.094687,  0.069344,  0.043929,  0.021609,  0.004536, -0.006419, -0.011603,
+    -0.012264, -0.010087, -0.006727, -0.003469, -0.001054,  0.000299,  0.000754,
+     0.000657,  0.000356};
 
 }
 
@@ -24,7 +34,7 @@ void Input::openAudioFile (std::string fname) {
     m_stream_type = STREAM_TYPE_FILE;
 
     m_num_chans = m_file.channels();
-    m_read_buffer = std::vector<float>(READ_CHUNK_LEN * m_num_chans);
+    m_read_buffer = std::vector<float>(kReadChunkLen * m_num_chans);
     m_is_open = true;
   }
 }
@@ -50,28 +60,27 @@ void Input::openPortAudio (int n) {
   const PaDeviceInfo *devinfo;
   devinfo = Pa_GetDeviceInfo(inputParameters.device);
 
-  printf("Pa_OpenStream\n");
+  printf("│  Pa_OpenStream\n");
   int err = Pa_OpenStream(
             &m_pa_stream,
             &inputParameters,
             NULL,
             44100,
-            READ_CHUNK_LEN,
+            kReadChunkLen,
             paClipOff,
             &Input::PaStaticCallback,
             this );
 
   if (!err) {
     m_num_chans = 1;
-    printf("make readbuffer: %d floats\n",READ_CHUNK_LEN * m_num_chans);
-    m_read_buffer = std::vector<float>(READ_CHUNK_LEN * m_num_chans);
+    m_read_buffer = std::vector<float>(kReadChunkLen * m_num_chans);
 
     err = Pa_StartStream( m_pa_stream );
 
     const PaStreamInfo *streaminfo;
     streaminfo = Pa_GetStreamInfo(m_pa_stream);
     m_samplerate = streaminfo->sampleRate;
-    fprintf(stderr,"  opened '%s' @ %.1f\n",devinfo->name,m_samplerate);
+    printf("|  opened '%s' @ %.1f\n",devinfo->name,m_samplerate);
 
     m_stream_type = STREAM_TYPE_PA;
 
@@ -101,7 +110,7 @@ void Input::openStdin() {
     printf( "'stdin' successfully changed to binary mode\n" );
 #endif
 
-  m_read_buffer_s16 = std::vector<int16_t>(READ_CHUNK_LEN);
+  m_read_buffer_s16 = std::vector<int16_t>(kReadChunkLen);
 
   m_stream_type = STREAM_TYPE_STDIN;
   m_is_open = true;
@@ -159,8 +168,9 @@ void Input::readMoreFromFile() {
   std::lock_guard<std::mutex> guard(m_buffer_mutex);
 
   int framesread = 0;
-  sf_count_t fr = m_file.readf(m_read_buffer.data(), READ_CHUNK_LEN);
-  if (fr < READ_CHUNK_LEN) {
+  sf_count_t fr = m_file.readf(m_read_buffer.data(), kReadChunkLen);
+  if (fr < kReadChunkLen) {
+    printf("[input] end of file\n");
     m_is_open = false;
     if (fr < 0) {
       framesread = 0;
@@ -171,11 +181,14 @@ void Input::readMoreFromFile() {
     framesread = fr;
   }
 
-  if (m_num_chans > 1) {
-    for (int i=0; i<READ_CHUNK_LEN; i++) {
-      m_read_buffer[i] = m_read_buffer[i*m_num_chans];
+  {
+    std::lock_guard<std::mutex> guard(m_mutex);
+
+    if (m_num_chans > 1) {
+      for (int i=0; i<kReadChunkLen; i++) {
+        m_read_buffer[i] = m_read_buffer[i*m_num_chans];
+      }
     }
-  }
 
   m_cirbuf.append(m_read_buffer, framesread);
 
@@ -186,15 +199,17 @@ void Input::readMoreFromStdin() {
   std::lock_guard<std::mutex> guard(m_buffer_mutex);
 
   int framesread = 0;
-  ssize_t fr = fread(m_read_buffer_s16.data(), sizeof(uint16_t), READ_CHUNK_LEN, stdin);
-  if (fr < READ_CHUNK_LEN) {
+  ssize_t fr = fread(m_read_buffer_s16.data(), sizeof(int16_t), kReadChunkLen, stdin);
+  if (fr < kReadChunkLen) {
     m_is_open = false;
   }
   framesread = fr;
 
-  for (int i=0; i<READ_CHUNK_LEN; i++) {
-    m_read_buffer.at(i) = m_read_buffer_s16.at(i) / 32768.0;
-  }
+  {
+    std::lock_guard<std::mutex> guard(m_mutex);
+    for (int i=0; i<kReadChunkLen; i++) {
+      m_read_buffer.at(i) = m_read_buffer_s16.at(i) / 32768.0;
+    }
 
   m_cirbuf.append(m_read_buffer, framesread);
 }
@@ -232,7 +247,7 @@ double Input::forward (int nsamples) {
       m_cirbuf.forward(1);
     }
 
-    while (m_cirbuf.getFillCount() < MOMENT_LEN) {
+    while (m_cirbuf->getFillCount() + kReadChunkLen <= m_cirbuf->size()) {
       if (m_stream_type == STREAM_TYPE_PA) {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
       } else if (m_stream_type == STREAM_TYPE_FILE) {
