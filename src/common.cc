@@ -58,10 +58,6 @@ template<class T> CirBuffer<T>::CirBuffer(int size) :
   assert(size > 0);
 }
 
-template<class T> void CirBuffer<T>::moveHead(int n) {
-  m_head = (m_head + n) % m_len;
-}
-
 template<class T> void CirBuffer<T>::forward(int n) {
   m_tail = (m_tail + n) % m_len;
   m_fill_count -= n;

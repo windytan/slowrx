@@ -30,7 +30,6 @@ using Melody = std::vector<Tone>;
 template<class T> class CirBuffer {
   public:
     CirBuffer(int len);
-    void moveHead(int n);
     int size() const;
     void append(const std::vector<T>& input_data, int n);
     void appendOverlapFiltered(T input_element, const Wave& filter);
