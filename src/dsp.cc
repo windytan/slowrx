@@ -175,7 +175,7 @@ double FM::calcVideoLevel (const ModeSpec& mode, int denoise_level) {
     }
   }
 
-  double freq = calcPeakFreq(1500.0-50.0, 2300.0+50.0, which_window);
+  double freq = calcPeakFreq(1500.0-100.0, 2300.0+100.0, which_window);
   //printf("%g\n",freq);
   return (freq - 1500.0) / (2300.0 - 1500.0);
 }
