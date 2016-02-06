@@ -3,7 +3,7 @@
 
 FM::FM(int rate, std::shared_ptr<CirBuffer<std::complex<double>>> cirbuf) : m_samplerate(rate),
   m_input_cirbuf(cirbuf), m_fshift(0), m_fft_decim_ratio(4), m_fft_len(kFFTLen),
-  m_freq_if(1900) {
+  m_freq_if(1900), m_fft_inbuf(kFFTLen), m_fft_outbuf(kFFTLen) {
 
   m_window.push_back(window::Gauss(m_fft_len, 16, 10.0));
   m_window.push_back(window::Gauss(m_fft_len, 32, 10.0));
@@ -37,41 +37,23 @@ FM::FM(int rate, std::shared_ptr<CirBuffer<std::complex<double>>> cirbuf) : m_sa
     0.0127521667, 0.0067664313, 0.0032312239, 0.0013212953, 0.0004272315
     };*/
 
-  m_fft_inbuf=fftw_alloc_complex(m_fft_len);
-  m_fft_outbuf=fftw_alloc_complex(m_fft_len);
-  assert(m_fft_inbuf!=NULL&&m_fft_outbuf!=NULL);
-
-  for(int i=0; i<m_fft_len; i++){
-    m_fft_inbuf[i][0]=m_fft_inbuf[i][1]=0.0;
-    m_fft_outbuf[i][0]=m_fft_outbuf[i][1]=0.0;
-  }
-
   m_mag = std::vector<double>(m_fft_len);
 
-  m_fft_plan = fftw_plan_dft_1d(m_fft_len, m_fft_inbuf, m_fft_outbuf, FFTW_FORWARD, FFTW_ESTIMATE);
+  m_fft_plan = fftw_plan_dft_1d(m_fft_len, reinterpret_cast<fftw_complex*>(&m_fft_inbuf[0]),
+      reinterpret_cast<fftw_complex*>(&m_fft_outbuf[0]), FFTW_FORWARD, FFTW_ESTIMATE);
 
 }
-
-FM::~FM() {
-  fftw_free(m_fft_inbuf);
-  fftw_free(m_fft_outbuf);
-}
-
 
 void FM::calcPowerSpectrum (int which_window) {
 
   for (int i = 0; i < m_fft_len; i++) {
-
-    std::complex<double> sample = m_input_cirbuf->at(i * m_fft_decim_ratio);
-
-    m_fft_inbuf[i][0] = sample.real() * m_window[which_window][i];
-    m_fft_inbuf[i][1] = sample.imag() * m_window[which_window][i];
+    m_fft_inbuf[i] = m_input_cirbuf->at(i * m_fft_decim_ratio) * m_window[which_window][i];
   }
 
   fftw_execute(m_fft_plan);
 
   for (int i=0; i<m_fft_len; i++) {
-    m_mag.at(i) = sqComplexMag(m_fft_outbuf[(i + m_fft_len/2) % m_fft_len]);
+    m_mag.at(i) = norm(m_fft_outbuf[(i + m_fft_len/2) % m_fft_len]);
   }
   //printf("\n");
 
@@ -325,12 +307,6 @@ double Kernel::getSupport() const {
   return 1.0 * m_scale;
 }
 
-double complexMag (fftw_complex coeff) {
-  return sqrt(sqComplexMag(coeff));
-}
-double sqComplexMag (fftw_complex coeff) {
-  return coeff[0]*coeff[0] + coeff[1]*coeff[1];
-}
 
 double convolveSingle (const Wave& sig, const Kernel& kernel, double x, int border_treatment) {
 
@@ -535,11 +511,4 @@ int FM::freq2bin (double freq) const {
 double FM::bin2freq (double bin) const {
   double f = (bin - m_fft_len/2) / (m_fft_len-1) * m_samplerate / m_fft_decim_ratio;
   return f + m_freq_if + m_fshift;
-}
-
-std::complex<double> mixComplex(double input, double if_phi) {
-  std::complex<double> output;
-  output.real(input * cos(if_phi) - input * sin(if_phi));
-  output.imag(input * cos(if_phi) + input * sin(if_phi));
-  return output;
 }

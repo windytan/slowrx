@@ -47,12 +47,13 @@ class Input {
           ->PaCallback(input, output, frameCount, timeInfo, statusFlags);
       }
 
-    CirBuffer<float>     m_cirbuf;
+    std::shared_ptr<CirBuffer<std::complex<double>>>     m_cirbuf;
 
   private:
 
     std::vector<float> m_read_buffer;
     std::vector<int16_t> m_read_buffer_s16;
+    std::vector<std::complex<double>> m_mixed_buffer;
     SndfileHandle m_file;
     PaStream*     m_pa_stream;
     eStreamType   m_stream_type;

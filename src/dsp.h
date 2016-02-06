@@ -30,7 +30,7 @@ class FM {
   public:
 
     FM (int rate, std::shared_ptr<CirBuffer<std::complex<double>>> cirbuf);
-    ~FM();
+    //~FM();
 
     double              calcPeakFreq    (double minf, double maxf, int which_window=0);
     std::vector<double> calcBandPowerPerHz (const std::vector<std::vector<double>>&, int which_window=0);
@@ -49,8 +49,8 @@ class FM {
   private:
 
     int           m_samplerate;
-    fftw_complex* m_fft_inbuf;
-    fftw_complex* m_fft_outbuf;
+    std::vector<std::complex<double>> m_fft_inbuf;
+    std::vector<std::complex<double>> m_fft_outbuf;
     fftw_plan     m_fft_plan;
     std::vector<double> m_mag;
     double        m_fshift;
