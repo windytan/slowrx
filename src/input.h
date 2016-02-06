@@ -59,7 +59,9 @@ class Input {
     int           m_num_chans;
     double        m_samplerate;
     double        m_t;
-    std::mutex    m_buffer_mutex;
+    double        m_if_freq;
+    double        m_if_ph;
+    Wave          m_decimator_lpf_coeffs;
 
 };
 
