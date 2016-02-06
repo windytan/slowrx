@@ -21,13 +21,14 @@ void Input::openAudioFile (std::string fname) {
 
   close();
 
-  fprintf (stderr,"open '%s'\n", fname.c_str()) ;
+  printf("open file\n=========\n");
+  std::cout << "│  " << fname << "\n";
   m_file = SndfileHandle(fname.c_str()) ;
 
   if (m_file.error()) {
     fprintf(stderr,"sndfile: %s\n", m_file.strError());
   } else {
-    fprintf (stderr,"  opened @ %d Hz, %d ch\n", m_file.samplerate(), m_file.channels()) ;
+    printf("│  %d Hz\n│  %d channels\n", m_file.samplerate(), m_file.channels()) ;
 
     m_samplerate = m_file.samplerate();
 
@@ -37,14 +38,17 @@ void Input::openAudioFile (std::string fname) {
     m_read_buffer = std::vector<float>(kReadChunkLen * m_num_chans);
     m_is_open = true;
   }
+  printf("└──\n");
 }
 
 void Input::openPortAudio (int n) {
 
   close();
 
+  printf("open PA\n=======\n");
+
   if (!g_is_pa_initialized) {
-    printf("Pa_Initialize\n");
+    printf("│  Pa_Initialize\n");
     PaError err = Pa_Initialize();
     if (err == paNoError)
       g_is_pa_initialized = true;
@@ -93,6 +97,7 @@ void Input::openPortAudio (int n) {
   } else {
     fprintf(stderr,"  error\n");
   }
+  printf("└──\n");
 }
 
 void Input::openStdin() {

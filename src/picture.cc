@@ -15,15 +15,28 @@ Picture::Picture(ModeSpec mode, int srate) :
   m_tx_speed(1.0),
   m_starts_at(0.0) {
 
+  printf("new Picture()\n=============\n");
+
   std::time_t t = std::time(NULL);
   std::strftime(m_timestamp, sizeof(m_timestamp),"%F %Rz", std::gmtime(&t));
   std::strftime(m_safe_timestamp, sizeof(m_safe_timestamp),"%Y%m%d_%H%M%SZ", std::gmtime(&t));
 
-  m_pixbuf_rx = Gdk::Pixbuf::create(Gdk::COLORSPACE_RGB, false, 8, getModeSpec(m_mode).scan_pixels, getModeSpec(m_mode).num_lines);
+  std::cout << "│  mode: " << m_mode.name << "\n";
+  std::cout << "│  timestamp: " << m_timestamp << " (" << m_safe_timestamp << ")\n";
+  printf("│  pixbuf: %d lines, %d pixels each\n",m_mode.num_lines, m_mode.scan_pixels);
+
+  for (int x=0; x < m_mode.scan_pixels; x++) {
+    m_img.at(x) = std::vector<uint32_t>(m_mode.num_lines);
+  }
+
+  m_pixbuf_rx = Gdk::Pixbuf::create(Gdk::COLORSPACE_RGB, false, 8, m_mode.scan_pixels, m_mode.num_lines);
   m_pixbuf_rx->fill(0x000000ff);
 
-  ModeSpec mo = getModeSpec(mode);
-  m_video_decim_ratio = 0.5 * mo.t_scan / mo.scan_pixels * m_original_samplerate;
+  m_video_decim_ratio = mode.t_scan / mode.scan_pixels * m_original_samplerate / 3.0;
+
+  printf("│  video decim ratio: %d\n",m_video_decim_ratio);
+  printf("└──\n");
+
 }
 
 
@@ -134,7 +147,6 @@ void reconstructChroma422 (std::vector<std::vector<uint32_t>>& img, const ModeSp
       setChannel(img[x][y], 1, u);//getChannel(nimg[x/2][y], 1));
       setChannel(img[x][y], 2, v);//getChannel(nimg[x/2][y], 2));
     }
-    printf("\n");
   }
 }
 
@@ -210,11 +222,13 @@ Glib::RefPtr<Gdk::Pixbuf> Picture::renderPixbuf(int width) {
   int img_width  = width;//round((m.num_lines - m.header_lines) * rx_aspect);
   int img_height = round(1.0*img_width/rx_aspect + m.header_lines);
 
+  printf("│  scale to: %dx%d\n",img_width, img_height);
   Glib::RefPtr<Gdk::Pixbuf> pixbuf_scaled =
     m_pixbuf_rx->scale_simple(img_width, img_height, Gdk::INTERP_BILINEAR);
 
   m_pixbuf_rx->save("testi.png", "png");
 
+  printf("└──\n");
   return pixbuf_scaled;
 }
 
@@ -289,12 +303,17 @@ void Picture::resync () {
   return;
 #endif
 
-  const ModeSpec m = getModeSpec(m_mode);
+  printf("\nresync\n======\n");
+
   const double dt = 1.0 * m_sync_decim_ratio / m_original_samplerate;
   const int line_width = 500;//round(m.t_period * m_original_samplerate / m_sync_decim_ratio);
 
-  printf("sync sample rate = %.2f Hz (dt=%.1f ms)\n",1.0*m_original_samplerate / m_sync_decim_ratio, dt*1e3);
-  printf("line_width (%.1f ms) = %d\n",m.t_period*1e3, line_width);
+  Wave sync_delta;
+
+  double kernel_scale = m_mode.t_sync / dt;
+  printf("│  kernel_scale: %g\n",kernel_scale);
+  printf("│  sync signal has: %ld samples\n",m_sync_signal.size());
+  Kernel sync_kernel(KERNEL_PULSE, kernel_scale);
 
   {
     std::lock_guard<std::mutex> guard(m_mutex);
@@ -369,9 +388,10 @@ void Picture::resync () {
 #endif
   }
 
-  printf("align = %f/%d (%f ms)\ntx speed = %f (error = %+.0f ppm)\n",peak_align,line_width,m_starts_at*1e3,txspeed,(txspeed-1) * 1e6);
+  printf("│  align: %f/%d (%f ms)\n│  tx speed: %f (error = %+.0f ppm)\n",peak_align,line_width,m_starts_at*1e3,txspeed,(txspeed-1) * 1e6);
   //m_starts_at = 0;
 
+  printf("└──\n");
 }
 
 // Time instants for all pixels
