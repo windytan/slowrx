@@ -87,10 +87,11 @@ std::tuple<bool,double,double> findMelody (const Wave&, const Melody&, double, d
 
 extern bool g_is_pa_initialized;
 
+int wrap_mod(int,int);
 void runTest(const char*);
 
-int maxIndex (std::vector<double>);
 int maxIndex (Wave);
+int minIndex (Wave);
 
 uint8_t freq2lum(double);
 
