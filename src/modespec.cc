@@ -24,7 +24,7 @@
 
 std::pair<bool,ModeSpec> vis2mode(uint16_t vis) {
 
-  // {id, "Name", pixels, lines, header, t_sync, t_porch, t_chansep, t_chanporch,
+  // {"Name", pixels, lines, header, t_sync, t_porch, t_chansep, t_chanporch,
   //  t_scan, t_period, family, color, vis, parity }
 
   std::vector<ModeSpec> modes({

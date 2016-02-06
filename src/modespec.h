@@ -18,7 +18,7 @@ enum ModeFamily {
 };
 
 enum eColorEnc {
-  COLOR_GBR, COLOR_RGB, COLOR_YUV, COLOR_MONO
+  COLOR_GBR, COLOR_RGB, COLOR_YUV422, COLOR_YUV420, COLOR_MONO
 };
 
 enum eVISParity {
@@ -34,6 +34,7 @@ struct ModeSpec {
   double      t_sync;
   double      t_porch;
   double      t_sep;
+  double      t_chanporch;
   double      t_scan;
   double      t_period;
   ModeFamily  family;
