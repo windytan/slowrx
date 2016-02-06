@@ -21,8 +21,8 @@ class Kernel {
     double at(double) const;
     double getSupport() const;
   private:
-    int m_type;
-    double m_scale;
+    const int m_type;
+    const double m_scale;
     Wave m_precalc;
 };
 
