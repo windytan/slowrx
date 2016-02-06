@@ -41,9 +41,9 @@ class Input {
       const PaStreamCallbackTimeInfo* timeInfo,
       PaStreamCallbackFlags statusFlags,
       void *userData ) {
-        return ((Input*)userData)
-          ->PaCallback(input, output, frameCount, timeInfo, statusFlags);
-      }
+        return
+          ((Input*)userData)->PaCallback(input, output, frameCount, timeInfo, statusFlags);
+    }
 
     std::shared_ptr<CirBuffer<std::complex<double>>>     m_cirbuf;
 
