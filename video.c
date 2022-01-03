@@ -78,13 +78,26 @@ gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
       ChanStart[2] = ChanStart[1] + ChanLen[1] + ModeSpec[Mode].SyncTime + ModeSpec[Mode].PorchTime;
       break;
 
+    case PD50:
+    case PD90:
+    case PD120:
+    case PD160:
+    case PD180:
+    case PD240:
+    case PD290:
+      ChanLen[0]   = ChanLen[1] = ChanLen[2] = ChanLen[3] = ModeSpec[Mode].PixelTime * ModeSpec[Mode].ImgWidth;
+      ChanStart[0] = ModeSpec[Mode].SyncTime + ModeSpec[Mode].PorchTime;
+      ChanStart[1] = ChanStart[0] + ChanLen[0] + ModeSpec[Mode].SeptrTime;
+      ChanStart[2] = ChanStart[1] + ChanLen[1] + ModeSpec[Mode].SeptrTime;
+      ChanStart[3] = ChanStart[2] + ChanLen[2] + ModeSpec[Mode].SeptrTime;
+      break;
+
     default:
       ChanLen[0]   = ChanLen[1] = ChanLen[2] = ModeSpec[Mode].PixelTime * ModeSpec[Mode].ImgWidth;
       ChanStart[0] = ModeSpec[Mode].SyncTime + ModeSpec[Mode].PorchTime;
       ChanStart[1] = ChanStart[0] + ChanLen[0] + ModeSpec[Mode].SeptrTime;
       ChanStart[2] = ChanStart[1] + ChanLen[1] + ModeSpec[Mode].SeptrTime;
       break;
-
   }
 
   // Number of channels per line
@@ -98,6 +111,19 @@ gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
     case R36:
       NumChans = 2;
       break;
+
+    //In PD* modes, each radio frame encodes
+    //4 channels, two luminance and two chroma
+    case PD50:
+    case PD90:
+    case PD120:
+    case PD160:
+    case PD180:
+    case PD240:
+    case PD290:
+      NumChans = 4;
+      break;
+
     default:
       NumChans = 3;
       break;
@@ -105,43 +131,91 @@ gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
 
   // Plan ahead the time instants (in samples) at which to take pixels out
   int PixelIdx = 0;
-  for (y=0; y<ModeSpec[Mode].NumLines; y++) {
-    for (Channel=0; Channel<NumChans; Channel++) {
-      for (x=0; x<ModeSpec[Mode].ImgWidth; x++) {
 
-        if (Mode == R36 || Mode == R24) {
-          if (Channel == 1) {
-            if (y % 2 == 0) PixelGrid[PixelIdx].Channel = 1;
-            else            PixelGrid[PixelIdx].Channel = 2;
-          } else            PixelGrid[PixelIdx].Channel = 0;
-        } else {
-          PixelGrid[PixelIdx].Channel = Channel;
+  if (NumChans == 4){ //Woking on PD* mode
+    //Each radio frame encodes two image lines
+    for (y = 0; y < ModeSpec[Mode].NumLines; y += 2){
+      for (Channel = 0; Channel < NumChans; Channel++){
+        for (x = 0; x < ModeSpec[Mode].ImgWidth; x++){
+          PixelGrid[PixelIdx].Time = (int)round(Rate * ( y/2 * ModeSpec[Mode].LineTime + ChanStart[Channel] +
+                                                ModeSpec[Mode].PixelTime * 1.0 * (x + 0.5))) +
+                                                Skip;
+          if (Channel == 0) {
+            PixelGrid[PixelIdx].X = x;
+            PixelGrid[PixelIdx].Y = y;
+            PixelGrid[PixelIdx].Channel = Channel;
+            PixelGrid[PixelIdx].Last = FALSE;
+            PixelIdx++;
+          }
+
+          else if (Channel == 1 || Channel == 2) {
+            PixelGrid[PixelIdx].X = x;
+            PixelGrid[PixelIdx].Y = y;
+            PixelGrid[PixelIdx].Channel = Channel;
+            PixelGrid[PixelIdx].Last = FALSE;
+            PixelIdx++;
+            PixelGrid[PixelIdx].Time = PixelGrid[PixelIdx - 1].Time;
+            PixelGrid[PixelIdx].X = x;
+            PixelGrid[PixelIdx].Y = y + 1;
+            PixelGrid[PixelIdx].Channel = Channel;
+            PixelGrid[PixelIdx].Last = FALSE;
+            PixelIdx++;
+          }
+
+          else if (Channel == 3) {
+            PixelGrid[PixelIdx].X = x;
+            PixelGrid[PixelIdx].Y = y + 1;
+            PixelGrid[PixelIdx].Channel = 0;
+            PixelGrid[PixelIdx].Last = FALSE;
+            PixelIdx++;
+          }
         }
-        
-        PixelGrid[PixelIdx].Time = (int)round(Rate * (y * ModeSpec[Mode].LineTime + ChanStart[Channel] +
-          (1.0*(x-.5)/ModeSpec[Mode].ImgWidth*ChanLen[PixelGrid[PixelIdx].Channel]))) + Skip;
-
-
-        PixelGrid[PixelIdx].X = x;
-        PixelGrid[PixelIdx].Y = y;
-        
-
-        PixelGrid[PixelIdx].Last = FALSE;
-
-        PixelIdx ++;
       }
     }
+    PixelGrid[PixelIdx - 1].Last = TRUE;
   }
-  PixelGrid[PixelIdx-1].Last = TRUE;
+  else {
+    for (y = 0; y < ModeSpec[Mode].NumLines; y++) {
+      for (Channel = 0; Channel < NumChans; Channel++) {
+        for (x = 0; x < ModeSpec[Mode].ImgWidth; x++) {
+          
+          if (Mode == R36 || Mode == R24) {
+            if (Channel == 1) {
+              if (y % 2 == 0)
+                PixelGrid[PixelIdx].Channel = 1;
+              else
+                PixelGrid[PixelIdx].Channel = 2;
+            }
+            else
+              PixelGrid[PixelIdx].Channel = 0;
+          }
+          else{
+            PixelGrid[PixelIdx].Channel = Channel;
+          }
 
-  for (k=0; k<PixelIdx; k++) {
+          PixelGrid[PixelIdx].Time = (int)round(Rate * (y * ModeSpec[Mode].LineTime + ChanStart[Channel] +
+                                                (1.0 * (x - .5) / ModeSpec[Mode].ImgWidth * ChanLen[PixelGrid[PixelIdx].Channel]))) +
+                                                Skip;
+          PixelGrid[PixelIdx].X = x;
+          PixelGrid[PixelIdx].Y = y;
+
+          PixelGrid[PixelIdx].Last = FALSE;
+
+          PixelIdx++;
+        }
+      }
+    }
+    PixelGrid[PixelIdx - 1].Last = TRUE;
+  }
+
+  for (k = 0; k < PixelIdx; k++) {
     if (PixelGrid[k].Time >= 0) {
       PixelIdx = k;
       break;
     }
   }
 
-        /*case PD50:
+  /*case PD50:
         case PD90:
         case PD120:
         case PD160:
@@ -173,9 +247,13 @@ gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
   gtk_image_set_from_pixbuf(GTK_IMAGE(gui.image_rx), pixbuf_disp);
   gdk_threads_leave();
 
-  Length        = ModeSpec[Mode].LineTime * ModeSpec[Mode].NumLines * 44100;
-  SyncTargetBin = GetBin(1200+CurrentPic.HedrShift, FFTLen);
-  Abort         = FALSE;
+  
+  if(NumChans == 4) //In PD* modes, each radio frame encodes two image lines
+    Length = ModeSpec[Mode].LineTime * ModeSpec[Mode].NumLines/2 * 44100;
+  else
+    Length = ModeSpec[Mode].LineTime * ModeSpec[Mode].NumLines * 44100;
+  SyncTargetBin = GetBin(1200 + CurrentPic.HedrShift, FFTLen);
+  Abort = FALSE;
   SyncSampleNum = 0;
 
   // Loop through signal
@@ -330,26 +408,28 @@ gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
     } /* endif (!Redraw) */
 
 
-
     if (SampleNum == PixelGrid[PixelIdx].Time) {
-
-      x = PixelGrid[PixelIdx].X;
-      y = PixelGrid[PixelIdx].Y;
-      Channel = PixelGrid[PixelIdx].Channel;
       
-      // Store pixel
-      Image[x][y][Channel] = StoredLum[SampleNum];
+      //In PD* modes, two pixels need data from the same sample
+      //Can't move on from SampleNum, until all are processed
+      while (SampleNum == PixelGrid[PixelIdx].Time) {
+        x = PixelGrid[PixelIdx].X;
+        y = PixelGrid[PixelIdx].Y;
+        Channel = PixelGrid[PixelIdx].Channel;
 
-      // Some modes have R-Y & B-Y channels that are twice the height of the Y channel
-      if (Channel > 0 && (Mode == R36 || Mode == R24))
-        Image[x][y+1][Channel] = StoredLum[SampleNum];
+        // Store pixel
+        Image[x][y][Channel] = StoredLum[SampleNum];
 
-      // Calculate and draw pixels to pixbuf on line change
-      if (x == ModeSpec[Mode].ImgWidth-1 || PixelGrid[PixelIdx].Last) {
-        for (tx = 0; tx < ModeSpec[Mode].ImgWidth; tx++) {
-          p = pixels + y * rowstride + tx * 3;
+        // Some modes have R-Y & B-Y channels that are twice the height of the Y channel
+        if (Channel > 0 && (Mode == R36 || Mode == R24))
+          Image[x][y+1][Channel] = StoredLum[SampleNum];
 
-          switch(ModeSpec[Mode].ColorEnc) {
+        // Calculate and draw pixels to pixbuf on line change
+        if (x == ModeSpec[Mode].ImgWidth - 1 || PixelGrid[PixelIdx].Last) {
+          for (tx = 0; tx < ModeSpec[Mode].ImgWidth; tx++) {
+            p = pixels + y * rowstride + tx * 3;
+
+            switch(ModeSpec[Mode].ColorEnc) {
 
             case RGB:
               p[0] = Image[tx][y][0];
@@ -373,27 +453,25 @@ gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
             case BW:
               p[0] = p[1] = p[2] = Image[tx][y][0];
               break;
+            }
+          }
 
+          if (!Redraw || y % 5 == 0 || PixelGrid[PixelIdx].Last) {
+            // Scale and update image
+            g_object_unref(pixbuf_disp);
+            pixbuf_disp = gdk_pixbuf_scale_simple(pixbuf_rx, 500,
+                                                  500.0 / ModeSpec[Mode].ImgWidth * ModeSpec[Mode].NumLines * ModeSpec[Mode].LineHeight, GDK_INTERP_BILINEAR);
+
+            gdk_threads_enter();
+            gtk_image_set_from_pixbuf(GTK_IMAGE(gui.image_rx), pixbuf_disp);
+            gdk_threads_leave();
           }
         }
 
-        if (!Redraw || y % 5 == 0 || PixelGrid[PixelIdx].Last) {
-          // Scale and update image
-          g_object_unref(pixbuf_disp);
-          pixbuf_disp = gdk_pixbuf_scale_simple(pixbuf_rx, 500,
-              500.0/ModeSpec[Mode].ImgWidth * ModeSpec[Mode].NumLines * ModeSpec[Mode].LineHeight, GDK_INTERP_BILINEAR);
-
-          gdk_threads_enter();
-          gtk_image_set_from_pixbuf(GTK_IMAGE(gui.image_rx), pixbuf_disp);
-          gdk_threads_leave();
-        }
+        PixelIdx++;
       }
-
-      PixelIdx ++;
-
-
     } /* endif (SampleNum == PixelGrid[PixelIdx].Time) */
-    
+
     if (!Redraw && SampleNum % 8820 == 0) {
       setVU(Power, FFTLen, WinIdx, TRUE);
     }
