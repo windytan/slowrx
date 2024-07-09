@@ -6,13 +6,17 @@ GTKLIBS   = $(shell pkg-config --libs gtk+-3.0)
 
 OFLAGS = -O3
 
+GUI_BIN = slowrx
+
+TARGETS = $(GUI_BIN)
+
 SOURCES = common.c modespec.c gui.c video.c vis.c sync.c pcm.c fsk.c slowrx.c
 OBJECTS = $(patsubst %.c,%.o,$(SOURCES))
 DEPENDS = $(patsubst %.c,%.d,$(SOURCES))
 
-all: slowrx
+all: $(TARGETS)
 
-slowrx: $(OBJECTS)
+$(GUI_BIN): $(OBJECTS)
 	$(CC) $(CFLAGS) -o $@ $(OBJECTS) $(GTKLIBS) -lfftw3 -lgthread-2.0 -lasound -lm -lpthread
 
 %.o: %.c common.h
@@ -20,6 +24,6 @@ slowrx: $(OBJECTS)
 	$(CC) $(CFLAGS) $(GTKCFLAGS) $(OFLAGS) -c -o $@ $<
 
 clean:
-	rm -f slowrx $(OBJECTS) $(DEPENDS)
+	rm -f $(TARGETS) $(OBJECTS) $(DEPENDS)
 
 -include $(DEPENDS)
