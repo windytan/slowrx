@@ -126,7 +126,6 @@ double   power     (fftw_complex coeff);
 guchar   clip          (double a);
 double   deg2rad       (double Deg);
 double   FindSync      (guchar Mode, double Rate, int *Skip);
-void     GetFSK        (char *dest);
 guchar   GetVIS        ();
 guint    GetBin        (double Freq, guint FFTLen);
 int      initPcmDevice ();

@@ -19,6 +19,7 @@
 #include <fftw3.h>
 
 #include "common.h"
+#include "fsk.h"
 #include "gui.h"
 #include "video.h"
 
