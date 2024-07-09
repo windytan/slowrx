@@ -1,40 +1,33 @@
-#include <stdio.h>
-#include <stdlib.h>
 #include <math.h>
+#include <stdio.h>
 #include <sys/stat.h>
-#include <sys/types.h>
-
-#include <alsa/asoundlib.h>
-
-#include <fftw3.h>
 
 #include "common.h"
 #include "modespec.h"
 #include "pcm.h"
 
-gboolean     Abort           = FALSE;
-gboolean     Adaptive        = TRUE;
-gboolean    *HasSync         = NULL;
-gshort       HedrShift       = 0;
-gboolean     ManualActivated = FALSE;
-gboolean     ManualResync    = FALSE;
-guchar      *StoredLum       = NULL;
+_Bool     Abort           = FALSE;
+_Bool     Adaptive        = TRUE;
+_Bool    *HasSync         = NULL;
+_Bool     ManualActivated = FALSE;
+_Bool     ManualResync    = FALSE;
+uint8_t   *StoredLum       = NULL;
 
 // Return the FFT bin index matching the given frequency
-guint GetBin (double Freq, guint FFTLen) {
+uint32_t GetBin (double Freq, uint32_t FFTLen) {
   return (Freq / 44100 * FFTLen);
 }
 
 // Sinusoid power from complex DFT coefficients
-double power (fftw_complex coeff) {
-  return pow(coeff[0],2) + pow(coeff[1],2);
+double power (double complex coeff) {
+  return pow(creal(coeff),2) + pow(cimag(coeff),2);
 }
 
 // Clip to [0..255]
-guchar clip (double a) {
+uint8_t clip (double a) {
   if      (a < 0)   return 0;
   else if (a > 255) return 255;
-  return  (guchar)round(a);
+  return  (uint8_t)round(a);
 }
 
 // Convert degrees -> radians

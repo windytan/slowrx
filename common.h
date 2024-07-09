@@ -6,27 +6,26 @@
 #define BUFLEN   4096
 #define SYNCPIXLEN 1.5e-3
 
-#include <glib.h>
-#include <glib/gtypes.h>
+#include <stdint.h>
+#include <stdbool.h>
+#include <complex.h>
 
-#include <fftw3.h>
-
-extern gboolean   Abort;
-extern gboolean   Adaptive;
-extern gboolean  *HasSync;
-extern gboolean   ManualActivated;
-extern gboolean   ManualResync;
-extern guchar    *StoredLum;
+extern _Bool   Abort;
+extern _Bool   Adaptive;
+extern _Bool  *HasSync;
+extern _Bool   ManualActivated;
+extern _Bool   ManualResync;
+extern uint8_t *StoredLum;
 
 // Various callback function types for various events.
 typedef void (*EventCallback)(void);
 typedef void (*TextStatusCallback)(const char* status);
 typedef void (*UpdateVUCallback)(double* Power, int FFTLen, int WinIdx);
 
-double   power     (fftw_complex coeff);
-guchar   clip          (double a);
-double   deg2rad       (double Deg);
-guint    GetBin        (double Freq, guint FFTLen);
+double   power     (double complex coeff);
+uint8_t  clip      (double a);
+double   deg2rad   (double Deg);
+uint32_t GetBin    (double Freq, uint32_t FFTLen);
 
 void     ensure_dir_exists(const char *dir);
 
