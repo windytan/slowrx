@@ -27,3 +27,5 @@ clean:
 	rm -f $(TARGETS) $(OBJECTS) $(DEPENDS)
 
 -include $(DEPENDS)
+
+gui.c: aboutdialog.ui
