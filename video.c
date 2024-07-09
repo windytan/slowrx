@@ -2,18 +2,32 @@
 #include <stdio.h>
 #include <math.h>
 #include <string.h>
-#include <gtk/gtk.h>
 #include <alsa/asoundlib.h>
 
 #include <fftw3.h>
 
 #include "common.h"
 #include "fft.h"
-#include "gui.h"
 #include "modespec.h"
 #include "pcm.h"
 #include "pic.h"
 #include "video.h"
+
+guchar      VideoImage[VIDEO_MAX_WIDTH][VIDEO_MAX_HEIGHT][VIDEO_MAX_CHANNELS] = {{{0}}};
+void (*OnVideoInitBuffer)(guchar Mode);
+void (*OnVideoWritePixel)(guchar x, guchar y, guchar r, guchar g, guchar b);
+EventCallback OnVideoStartRedraw;
+EventCallback OnVideoRefresh;
+UpdateVUCallback OnVideoPowerCalculated;
+
+typedef struct {
+  int X;
+  int Y;
+  int Time;
+  guchar Channel;
+  gboolean Last;
+} _PixelGrid;
+
 
 /* Demodulate the video signal & store all kinds of stuff for later stages
  *  Mode:      M1, M2, S1, S2, R72, R36...
@@ -23,7 +37,6 @@
  *  returns:   TRUE when finished, FALSE when aborted
  */
 gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
-
   guint      MaxBin = 0;
   guint      VideoPlusNoiseBins=0, ReceiverBins=0, NoiseOnlyBins=0;
   guint      n=0;
@@ -42,20 +55,9 @@ gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
   double     Pvideo_plus_noise=0, Pnoise_only=0, Pnoise=0, Psignal=0;
   double     SNR = 0;
   double     ChanStart[4] = {0}, ChanLen[4] = {0};
-  guchar     Image[800][616][3] = {{{0}}};
   guchar     Channel = 0, WinIdx = 0;
 
-  typedef struct {
-    int X;
-    int Y;
-    int Time;
-    guchar Channel;
-    gboolean Last;
-  } _PixelGrid;
-
-  _PixelGrid *PixelGrid;
-  PixelGrid = calloc( ModeSpec[Mode].ImgWidth * ModeSpec[Mode].NumLines * 3, sizeof(_PixelGrid) );
-
+  _PixelGrid  *PixelGrid = calloc( ModeSpec[Mode].ImgWidth * ModeSpec[Mode].NumLines * 3, sizeof(_PixelGrid) );
 
   // Initialize Hann windows of different lengths
   gushort HannLens[7] = { 48, 64, 96, 128, 256, 512, 1024 };
@@ -236,25 +238,14 @@ gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
           break;*/
 
   // Initialize pixbuffer
-  if (!Redraw) {
-    g_object_unref(pixbuf_rx);
-    pixbuf_rx = gdk_pixbuf_new (GDK_COLORSPACE_RGB, FALSE, 8, ModeSpec[Mode].ImgWidth, ModeSpec[Mode].NumLines);
-    gdk_pixbuf_fill(pixbuf_rx, 0);
+  if ((!Redraw) && OnVideoInitBuffer) {
+    OnVideoInitBuffer(Mode);
   }
 
-  int     rowstride = gdk_pixbuf_get_rowstride (pixbuf_rx);
-  guchar *pixels, *p;
-  pixels = gdk_pixbuf_get_pixels(pixbuf_rx);
+  if (OnVideoStartRedraw) {
+    OnVideoStartRedraw();
+  }
 
-  g_object_unref(pixbuf_disp);
-  pixbuf_disp = gdk_pixbuf_scale_simple(pixbuf_rx, 500,
-      500.0/ModeSpec[Mode].ImgWidth * ModeSpec[Mode].NumLines * ModeSpec[Mode].LineHeight, GDK_INTERP_BILINEAR);
-
-  gdk_threads_enter();
-  gtk_image_set_from_pixbuf(GTK_IMAGE(gui.image_rx), pixbuf_disp);
-  gdk_threads_leave();
-
-  
   if(NumChans == 4) //In PD* modes, each radio frame encodes two image lines
     Length = ModeSpec[Mode].LineTime * ModeSpec[Mode].NumLines/2 * 44100;
   else
@@ -425,53 +416,50 @@ gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
         Channel = PixelGrid[PixelIdx].Channel;
 
         // Store pixel
-        Image[x][y][Channel] = StoredLum[SampleNum];
+        VideoImage[x][y][Channel] = StoredLum[SampleNum];
 
         // Some modes have R-Y & B-Y channels that are twice the height of the Y channel
         if (Channel > 0 && (Mode == R36 || Mode == R24))
-          Image[x][y+1][Channel] = StoredLum[SampleNum];
+          VideoImage[x][y+1][Channel] = StoredLum[SampleNum];
 
         // Calculate and draw pixels to pixbuf on line change
         if (x == ModeSpec[Mode].ImgWidth - 1 || PixelGrid[PixelIdx].Last) {
           for (tx = 0; tx < ModeSpec[Mode].ImgWidth; tx++) {
-            p = pixels + y * rowstride + tx * 3;
+            guchar r = 0, g = 0, b = 0;
 
             switch(ModeSpec[Mode].ColorEnc) {
 
             case RGB:
-              p[0] = Image[tx][y][0];
-              p[1] = Image[tx][y][1];
-              p[2] = Image[tx][y][2];
+              r = VideoImage[tx][y][0];
+              g = VideoImage[tx][y][1];
+              b = VideoImage[tx][y][2];
               break;
 
             case GBR:
-              p[0] = Image[tx][y][2];
-              p[1] = Image[tx][y][0];
-              p[2] = Image[tx][y][1];
+              r = VideoImage[tx][y][2];
+              g = VideoImage[tx][y][0];
+              b = VideoImage[tx][y][1];
               break;
 
             case YUV:
-              p[0] = clip((100 * Image[tx][y][0] + 140 * Image[tx][y][1] - 17850) / 100.0);
-              p[1] = clip((100 * Image[tx][y][0] -  71 * Image[tx][y][1] - 33 *
-                  Image[tx][y][2] + 13260) / 100.0);
-              p[2] = clip((100 * Image[tx][y][0] + 178 * Image[tx][y][2] - 22695) / 100.0);
+              r = clip((100 * VideoImage[tx][y][0] + 140 * VideoImage[tx][y][1] - 17850) / 100.0);
+              g = clip((100 * VideoImage[tx][y][0] -  71 * VideoImage[tx][y][1] - 33 *
+                  VideoImage[tx][y][2] + 13260) / 100.0);
+              b = clip((100 * VideoImage[tx][y][0] + 178 * VideoImage[tx][y][2] - 22695) / 100.0);
               break;
 
             case BW:
-              p[0] = p[1] = p[2] = Image[tx][y][0];
+              r = g = b = VideoImage[tx][y][0];
               break;
+            }
+
+            if (OnVideoWritePixel) {
+              OnVideoWritePixel(x, y, r, g, b);
             }
           }
 
-          if (!Redraw || y % 5 == 0 || PixelGrid[PixelIdx].Last) {
-            // Scale and update image
-            g_object_unref(pixbuf_disp);
-            pixbuf_disp = gdk_pixbuf_scale_simple(pixbuf_rx, 500,
-                                                  500.0 / ModeSpec[Mode].ImgWidth * ModeSpec[Mode].NumLines * ModeSpec[Mode].LineHeight, GDK_INTERP_BILINEAR);
-
-            gdk_threads_enter();
-            gtk_image_set_from_pixbuf(GTK_IMAGE(gui.image_rx), pixbuf_disp);
-            gdk_threads_leave();
+          if ((!Redraw || y % 5 == 0 || PixelGrid[PixelIdx].Last) && OnVideoRefresh) {
+            OnVideoRefresh();
           }
         }
 
@@ -479,8 +467,8 @@ gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
       }
     } /* endif (SampleNum == PixelGrid[PixelIdx].Time) */
 
-    if (!Redraw && SampleNum % 8820 == 0) {
-      setVU(Power, FFTLen, WinIdx);
+    if (!Redraw && (SampleNum % 8820 == 0) && OnVideoPowerCalculated) {
+      OnVideoPowerCalculated(Power, FFTLen, WinIdx);
     }
 
     if (Abort) {

@@ -26,10 +26,13 @@
 #include "modespec.h"
 #include "pcm.h"
 #include "pic.h"
+#include "video.h"
 #include "vis.h"
 
 static const char *fsk_id;
 static GdkPixbuf *thumbbuf;
+static guchar *pixels, Mode;
+static int rowstride;
 
 static void onVisIdentified(void) {
   gdk_threads_enter();
@@ -64,6 +67,45 @@ static void onVisIdentified(void) {
 
 static void onVisPowerComputed(void) {
   setVU(VisPower, VIS_POWER_SZ, 6);
+}
+
+static void onVideoInitBuffer(guchar mode) {
+  Mode = mode;
+  g_object_unref(pixbuf_rx);
+  pixbuf_rx = gdk_pixbuf_new (GDK_COLORSPACE_RGB, FALSE, 8, ModeSpec[Mode].ImgWidth, ModeSpec[Mode].NumLines);
+  gdk_pixbuf_fill(pixbuf_rx, 0);
+}
+
+static void onVideoStartRedraw(void) {
+  rowstride = gdk_pixbuf_get_rowstride (pixbuf_rx);
+  pixels = gdk_pixbuf_get_pixels(pixbuf_rx);
+
+  g_object_unref(pixbuf_disp);
+  pixbuf_disp = gdk_pixbuf_scale_simple(pixbuf_rx, 500,
+      500.0/ModeSpec[Mode].ImgWidth * ModeSpec[Mode].NumLines * ModeSpec[Mode].LineHeight, GDK_INTERP_BILINEAR);
+
+  gdk_threads_enter();
+  gtk_image_set_from_pixbuf(GTK_IMAGE(gui.image_rx), pixbuf_disp);
+  gdk_threads_leave();
+
+}
+
+static void onVideoWritePixel(guchar x, guchar y, guchar r, guchar g, guchar b) {
+  guchar *p = pixels + y * rowstride + x * 3;
+  p[0] = r;
+  p[1] = g;
+  p[2] = b;
+}
+
+static void onVideoRefresh(void) {
+  // Scale and update image
+  g_object_unref(pixbuf_disp);
+  pixbuf_disp = gdk_pixbuf_scale_simple(pixbuf_rx, 500,
+      500.0 / ModeSpec[Mode].ImgWidth * ModeSpec[Mode].NumLines * ModeSpec[Mode].LineHeight, GDK_INTERP_BILINEAR);
+
+  gdk_threads_enter();
+  gtk_image_set_from_pixbuf(GTK_IMAGE(gui.image_rx), pixbuf_disp);
+  gdk_threads_leave();
 }
 
 static void onListenerWaiting(void) {
@@ -175,6 +217,11 @@ int main(int argc, char *argv[]) {
   }
 
   createGUI();
+  OnVideoInitBuffer = onVideoInitBuffer;
+  OnVideoStartRedraw = onVideoStartRedraw;
+  OnVideoRefresh = onVideoRefresh;
+  OnVideoWritePixel = onVideoWritePixel;
+  OnVideoPowerCalculated = setVU;
   OnVisIdentified = onVisIdentified;
   OnVisPowerComputed = onVisPowerComputed;
   OnListenerStatusChange = showStatusbarMessage;
