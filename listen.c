@@ -141,7 +141,7 @@ void *Listen() {
       if (OnListenerStatusChange) {
         OnListenerStatusChange("Receiving FSK ID...");
       }
-      GetFSK(id);
+      GetFSK(id, sizeof(id));
       printf("  FSKID \"%s\"\n",id);
       OnListenerReceivedFSKID(id);
     }

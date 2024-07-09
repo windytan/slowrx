@@ -23,7 +23,7 @@
  *
  */
 
-void GetFSK (char *dest) {
+void GetFSK (char* const dest, uint8_t dest_sz) {
 
   guint      FFTLen = 2048, i=0, LoBin, HiBin, MidBin, TestNum=0, TestPtr=0;
   guchar     Bit = 0, AsciiByte = 0, BytePtr = 0, TestBits[24] = {0}, BitPtr=0;
@@ -102,7 +102,9 @@ void GetFSK (char *dest) {
 
       if (++BitPtr == 6) {
         if (AsciiByte < 0x0d || BytePtr > 9) break;
-        dest[BytePtr] = AsciiByte + 0x20;
+        if (BytePtr < dest_sz) {
+          dest[BytePtr] = AsciiByte + 0x20;
+        }
         BitPtr        = 0;
         AsciiByte     = 0;
         BytePtr ++;
@@ -111,6 +113,7 @@ void GetFSK (char *dest) {
 
   }
     
-  dest[BytePtr] = '\0';
-
+  if (BytePtr < dest_sz) {
+    dest[BytePtr] = '\0';
+  }
 }
