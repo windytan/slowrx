@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <complex.h>
 #include <math.h>
 #include <alsa/asoundlib.h>
 
