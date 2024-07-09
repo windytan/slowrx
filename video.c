@@ -17,20 +17,21 @@
 #define VIDEO_MAX_WIDTH (800)
 #define VIDEO_MAX_HEIGHT (616)
 #define VIDEO_MAX_CHANNELS (3)
+#define VIDEO_FFT_LEN (1024)
 
-static guchar VideoImage[VIDEO_MAX_WIDTH][VIDEO_MAX_HEIGHT][VIDEO_MAX_CHANNELS] = {{{0}}};
-void (*OnVideoInitBuffer)(guchar Mode);
-void (*OnVideoWritePixel)(gushort x, gushort y, guchar r, guchar g, guchar b);
+static uint8_t VideoImage[VIDEO_MAX_WIDTH][VIDEO_MAX_HEIGHT][VIDEO_MAX_CHANNELS] = {{{0}}};
+void (*OnVideoInitBuffer)(uint8_t Mode);
+void (*OnVideoWritePixel)(uint16_t x, uint16_t y, uint8_t r, uint8_t g, uint8_t b);
 EventCallback OnVideoStartRedraw;
 EventCallback OnVideoRefresh;
 UpdateVUCallback OnVideoPowerCalculated;
 
 typedef struct {
-  int X;
-  int Y;
-  int Time;
-  guchar Channel;
-  gboolean Last;
+  int32_t Time;
+  int16_t X;
+  int16_t Y;
+  uint8_t Channel;
+  _Bool Last;
 } _PixelGrid;
 
 
@@ -41,31 +42,31 @@ typedef struct {
  *  Redraw:    FALSE = Apply windowing and FFT to the signal, TRUE = Redraw from cached FFT data
  *  returns:   TRUE when finished, FALSE when aborted
  */
-gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
-  guint      MaxBin = 0;
-  guint      VideoPlusNoiseBins=0, ReceiverBins=0, NoiseOnlyBins=0;
-  guint      n=0;
-  guint      SyncSampleNum;
-  guint      i=0, j=0;
-  guint      FFTLen=1024, WinLength=0;
-  guint      SyncTargetBin;
-  int        SampleNum, Length, NumChans;
-  int        x = 0, y = 0, tx=0, k=0;
-  double     Hann[7][1024] = {{0}};
+_Bool GetVideo(uint8_t Mode, double Rate, int32_t Skip, _Bool Redraw) {
+  uint32_t   MaxBin = 0;
+  uint32_t   VideoPlusNoiseBins=0, ReceiverBins=0, NoiseOnlyBins=0;
+  uint32_t   n=0;
+  uint32_t   SyncSampleNum;
+  uint32_t   i=0, j=0;
+  uint32_t   WinLength=0;
+  uint32_t   SyncTargetBin;
+  int32_t    SampleNum, Length, NumChans;
+  int32_t    x = 0, y = 0, tx=0, k=0;
+  double     Hann[7][VIDEO_FFT_LEN] = {{0}};
   double     Freq = 0;
   //double     PrevFreq = 0, InterpFreq = 0;
-  int        NextSNRtime = 0, NextSyncTime = 0;
+  int32_t    NextSNRtime = 0, NextSyncTime = 0;
   double     Praw, Psync;
-  double     Power[1024] = {0};
+  double     Power[VIDEO_FFT_LEN] = {0};
   double     Pvideo_plus_noise=0, Pnoise_only=0, Pnoise=0, Psignal=0;
   double     SNR = 0;
   double     ChanStart[4] = {0}, ChanLen[4] = {0};
-  guchar     Channel = 0, WinIdx = 0;
+  uint8_t     Channel = 0, WinIdx = 0;
 
   _PixelGrid  *PixelGrid = calloc( ModeSpec[Mode].ImgWidth * ModeSpec[Mode].NumLines * 3, sizeof(_PixelGrid) );
 
   // Initialize Hann windows of different lengths
-  gushort HannLens[7] = { 48, 64, 96, 128, 256, 512, 1024 };
+  uint16_t HannLens[7] = { 48, 64, 96, 128, 256, 512, 1024 };
   for (j = 0; j < 7; j++)
     for (i = 0; i < HannLens[j]; i++)
       Hann[j][i] = 0.5 * (1 - cos( (2 * M_PI * i) / (HannLens[j] - 1)) );
@@ -144,14 +145,14 @@ gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
   }
 
   // Plan ahead the time instants (in samples) at which to take pixels out
-  int PixelIdx = 0;
+  int32_t PixelIdx = 0;
 
   if (NumChans == 4){ //Woking on PD* mode
     //Each radio frame encodes two image lines
     for (y = 0; y < ModeSpec[Mode].NumLines; y += 2){
       for (Channel = 0; Channel < NumChans; Channel++){
         for (x = 0; x < ModeSpec[Mode].ImgWidth; x++){
-          PixelGrid[PixelIdx].Time = (int)round(Rate * ( y/2 * ModeSpec[Mode].LineTime + ChanStart[Channel] +
+          PixelGrid[PixelIdx].Time = (int32_t)round(Rate * ( y/2 * ModeSpec[Mode].LineTime + ChanStart[Channel] +
                                                 ModeSpec[Mode].PixelTime * 1.0 * (x + 0.5))) +
                                                 Skip;
           if (Channel == 0) {
@@ -207,7 +208,7 @@ gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
             PixelGrid[PixelIdx].Channel = Channel;
           }
 
-          PixelGrid[PixelIdx].Time = (int)round(Rate * (y * ModeSpec[Mode].LineTime + ChanStart[Channel] +
+          PixelGrid[PixelIdx].Time = (int32_t)round(Rate * (y * ModeSpec[Mode].LineTime + ChanStart[Channel] +
                                                 (1.0 * (x - .5) / ModeSpec[Mode].ImgWidth * ChanLen[PixelGrid[PixelIdx].Channel]))) +
                                                 Skip;
           PixelGrid[PixelIdx].X = x;
@@ -255,7 +256,7 @@ gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
     Length = ModeSpec[Mode].LineTime * ModeSpec[Mode].NumLines/2 * 44100;
   else
     Length = ModeSpec[Mode].LineTime * ModeSpec[Mode].NumLines * 44100;
-  SyncTargetBin = GetBin(1200 + CurrentPic.HedrShift, FFTLen);
+  SyncTargetBin = GetBin(1200 + CurrentPic.HedrShift, VIDEO_FFT_LEN);
   Abort = FALSE;
   SyncSampleNum = 0;
 
@@ -275,20 +276,20 @@ gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
  
         Praw = Psync = 0;
 
-        memset(fft.in, 0, sizeof(double)*FFTLen);
+        memset(fft.in, 0, sizeof(double)*VIDEO_FFT_LEN);
        
         // Hann window
         for (i = 0; i < 64; i++) fft.in[i] = pcm.Buffer[pcm.WindowPtr+i-32] / 32768.0 * Hann[1][i];
 
         fftw_execute(fft.Plan1024);
 
-        for (i=GetBin(1500+CurrentPic.HedrShift,FFTLen); i<=GetBin(2300+CurrentPic.HedrShift, FFTLen); i++)
+        for (i=GetBin(1500+CurrentPic.HedrShift,VIDEO_FFT_LEN); i<=GetBin(2300+CurrentPic.HedrShift, VIDEO_FFT_LEN); i++)
           Praw += power(fft.out[i]);
 
         for (i=SyncTargetBin-1; i<=SyncTargetBin+1; i++)
           Psync += power(fft.out[i]) * (1- .5*abs((gint)(SyncTargetBin-i)));
 
-        Praw  /= (GetBin(2300+CurrentPic.HedrShift, FFTLen) - GetBin(1500+CurrentPic.HedrShift, FFTLen));
+        Praw  /= (GetBin(2300+CurrentPic.HedrShift, VIDEO_FFT_LEN) - GetBin(1500+CurrentPic.HedrShift, VIDEO_FFT_LEN));
         Psync /= 2.0;
 
         // If there is more than twice the amount of power per Hz in the
@@ -306,35 +307,35 @@ gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
 
       if (SampleNum == NextSNRtime) {
         
-        memset(fft.in, 0, sizeof(double)*FFTLen);
+        memset(fft.in, 0, sizeof(double)*VIDEO_FFT_LEN);
 
         // Apply Hann window
-        for (i = 0; i < FFTLen; i++) fft.in[i] = pcm.Buffer[pcm.WindowPtr + i - FFTLen/2] / 32768.0 * Hann[6][i];
+        for (i = 0; i < VIDEO_FFT_LEN; i++) fft.in[i] = pcm.Buffer[pcm.WindowPtr + i - VIDEO_FFT_LEN/2] / 32768.0 * Hann[6][i];
 
         fftw_execute(fft.Plan1024);
 
         // Calculate video-plus-noise power (1500-2300 Hz)
 
         Pvideo_plus_noise = 0;
-        for (n = GetBin(1500+CurrentPic.HedrShift, FFTLen); n <= GetBin(2300+CurrentPic.HedrShift, FFTLen); n++)
+        for (n = GetBin(1500+CurrentPic.HedrShift, VIDEO_FFT_LEN); n <= GetBin(2300+CurrentPic.HedrShift, VIDEO_FFT_LEN); n++)
           Pvideo_plus_noise += power(fft.out[n]);
 
         // Calculate noise-only power (400-800 Hz + 2700-3400 Hz)
 
         Pnoise_only = 0;
-        for (n = GetBin(400+CurrentPic.HedrShift,  FFTLen); n <= GetBin(800+CurrentPic.HedrShift, FFTLen);  n++)
+        for (n = GetBin(400+CurrentPic.HedrShift,  VIDEO_FFT_LEN); n <= GetBin(800+CurrentPic.HedrShift, VIDEO_FFT_LEN);  n++)
           Pnoise_only += power(fft.out[n]);
 
-        for (n = GetBin(2700+CurrentPic.HedrShift, FFTLen); n <= GetBin(3400+CurrentPic.HedrShift, FFTLen); n++)
+        for (n = GetBin(2700+CurrentPic.HedrShift, VIDEO_FFT_LEN); n <= GetBin(3400+CurrentPic.HedrShift, VIDEO_FFT_LEN); n++)
           Pnoise_only += power(fft.out[n]);
 
         // Bandwidths
-        VideoPlusNoiseBins = GetBin(2300, FFTLen) - GetBin(1500, FFTLen) + 1;
+        VideoPlusNoiseBins = GetBin(2300, VIDEO_FFT_LEN) - GetBin(1500, VIDEO_FFT_LEN) + 1;
 
-        NoiseOnlyBins      = GetBin(800,  FFTLen) - GetBin(400,  FFTLen) + 1 +
-                             GetBin(3400, FFTLen) - GetBin(2700, FFTLen) + 1;
+        NoiseOnlyBins      = GetBin(800,  VIDEO_FFT_LEN) - GetBin(400,  VIDEO_FFT_LEN) + 1 +
+                             GetBin(3400, VIDEO_FFT_LEN) - GetBin(2700, VIDEO_FFT_LEN) + 1;
 
-        ReceiverBins       = GetBin(3400, FFTLen) - GetBin(400,  FFTLen);
+        ReceiverBins       = GetBin(3400, VIDEO_FFT_LEN) - GetBin(400,  VIDEO_FFT_LEN);
 
         // Eq 15
         Pnoise  = Pnoise_only * (1.0 * ReceiverBins / NoiseOnlyBins);
@@ -369,7 +370,7 @@ gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
         // Minimum winlength can be doubled for Scottie DX
         if (Mode == SDX && WinIdx < 6) WinIdx++;
 
-        memset(fft.in, 0, sizeof(double)*FFTLen);
+        memset(fft.in, 0, sizeof(double)*VIDEO_FFT_LEN);
         memset(Power,  0, sizeof(double)*1024);
 
         // Apply window function
@@ -382,7 +383,7 @@ gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
         MaxBin = 0;
           
         // Find the bin with most power
-        for (n = GetBin(1500 + CurrentPic.HedrShift, FFTLen) - 1; n <= GetBin(2300 + CurrentPic.HedrShift, FFTLen) + 1; n++) {
+        for (n = GetBin(1500 + CurrentPic.HedrShift, VIDEO_FFT_LEN) - 1; n <= GetBin(2300 + CurrentPic.HedrShift, VIDEO_FFT_LEN) + 1; n++) {
 
           Power[n] = power(fft.out[n]);
           if (MaxBin == 0 || Power[n] > Power[MaxBin]) MaxBin = n;
@@ -390,14 +391,14 @@ gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
         }
 
         // Find the peak frequency by Gaussian interpolation
-        if (MaxBin > GetBin(1500 + CurrentPic.HedrShift, FFTLen) - 1 && MaxBin < GetBin(2300 + CurrentPic.HedrShift, FFTLen) + 1) {
+        if (MaxBin > GetBin(1500 + CurrentPic.HedrShift, VIDEO_FFT_LEN) - 1 && MaxBin < GetBin(2300 + CurrentPic.HedrShift, VIDEO_FFT_LEN) + 1) {
           Freq = MaxBin +            (log( Power[MaxBin + 1] / Power[MaxBin - 1] )) /
                            (2 * log( pow(Power[MaxBin], 2) / (Power[MaxBin + 1] * Power[MaxBin - 1])));
           // In Hertz
-          Freq = Freq / FFTLen * 44100;
+          Freq = Freq / VIDEO_FFT_LEN * 44100;
         } else {
           // Clip if out of bounds
-          Freq = ( (MaxBin > GetBin(1900 + CurrentPic.HedrShift, FFTLen)) ? 2300 : 1500 ) + CurrentPic.HedrShift;
+          Freq = ( (MaxBin > GetBin(1900 + CurrentPic.HedrShift, VIDEO_FFT_LEN)) ? 2300 : 1500 ) + CurrentPic.HedrShift;
         }
 
       } /* endif (SampleNum == PixelGrid[PixelIdx].Time) */
@@ -430,7 +431,7 @@ gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
         // Calculate and draw pixels to pixbuf on line change
         if (x == ModeSpec[Mode].ImgWidth - 1 || PixelGrid[PixelIdx].Last) {
           for (tx = 0; tx < ModeSpec[Mode].ImgWidth; tx++) {
-            guchar r = 0, g = 0, b = 0;
+            uint8_t r = 0, g = 0, b = 0;
 
             switch(ModeSpec[Mode].ColorEnc) {
 
@@ -473,7 +474,7 @@ gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
     } /* endif (SampleNum == PixelGrid[PixelIdx].Time) */
 
     if (!Redraw && (SampleNum % 8820 == 0) && OnVideoPowerCalculated) {
-      OnVideoPowerCalculated(Power, FFTLen, WinIdx);
+      OnVideoPowerCalculated(Power, VIDEO_FFT_LEN, WinIdx);
     }
 
     if (Abort) {
