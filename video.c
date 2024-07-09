@@ -13,7 +13,11 @@
 #include "pic.h"
 #include "video.h"
 
-guchar      VideoImage[VIDEO_MAX_WIDTH][VIDEO_MAX_HEIGHT][VIDEO_MAX_CHANNELS] = {{{0}}};
+#define VIDEO_MAX_WIDTH (800)
+#define VIDEO_MAX_HEIGHT (616)
+#define VIDEO_MAX_CHANNELS (3)
+
+static guchar VideoImage[VIDEO_MAX_WIDTH][VIDEO_MAX_HEIGHT][VIDEO_MAX_CHANNELS] = {{{0}}};
 void (*OnVideoInitBuffer)(guchar Mode);
 void (*OnVideoWritePixel)(gushort x, gushort y, guchar r, guchar g, guchar b);
 EventCallback OnVideoStartRedraw;
