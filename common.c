@@ -25,7 +25,6 @@ pthread_t    thread1;
 
 FFTStuff     fft;
 PicMeta      CurrentPic;
-PcmData      pcm;
 
 GdkPixbuf   *pixbuf_rx       = NULL;
 GdkPixbuf   *pixbuf_disp     = NULL;

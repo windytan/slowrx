@@ -17,6 +17,8 @@
  *
  */
 
+PcmData      pcm;
+
 // Capture fresh PCM data to buffer
 void readPcm(gint numsamples) {
 
