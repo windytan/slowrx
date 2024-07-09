@@ -46,6 +46,11 @@ static void onListenerReceivedManual(void) {
 static void onListenerReceiveFSK(void) {
   gdk_threads_enter        ();
   gtk_widget_set_sensitive (gui.button_abort, FALSE);
+
+  // Refresh ListenerEnableFSKID and ListenerAutoSlantCorrect while we're here
+  ListenerEnableFSKID = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(gui.tog_fsk));
+  ListenerAutoSlantCorrect = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(gui.tog_slant));
+
   gdk_threads_leave        ();
 }
 
