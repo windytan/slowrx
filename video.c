@@ -39,8 +39,8 @@ typedef struct {
  *  Mode:      M1, M2, S1, S2, R72, R36...
  *  Rate:      exact sampling rate used
  *  Skip:      number of PCM samples to skip at the beginning (for sync phase adjustment)
- *  Redraw:    FALSE = Apply windowing and FFT to the signal, TRUE = Redraw from cached FFT data
- *  returns:   TRUE when finished, FALSE when aborted
+ *  Redraw:    false = Apply windowing and FFT to the signal, true = Redraw from cached FFT data
+ *  returns:   true when finished, false when aborted
  */
 _Bool GetVideo(uint8_t Mode, double Rate, int32_t Skip, _Bool Redraw) {
   uint32_t   MaxBin = 0;
@@ -159,7 +159,7 @@ _Bool GetVideo(uint8_t Mode, double Rate, int32_t Skip, _Bool Redraw) {
             PixelGrid[PixelIdx].X = x;
             PixelGrid[PixelIdx].Y = y;
             PixelGrid[PixelIdx].Channel = Channel;
-            PixelGrid[PixelIdx].Last = FALSE;
+            PixelGrid[PixelIdx].Last = false;
             PixelIdx++;
           }
 
@@ -167,13 +167,13 @@ _Bool GetVideo(uint8_t Mode, double Rate, int32_t Skip, _Bool Redraw) {
             PixelGrid[PixelIdx].X = x;
             PixelGrid[PixelIdx].Y = y;
             PixelGrid[PixelIdx].Channel = Channel;
-            PixelGrid[PixelIdx].Last = FALSE;
+            PixelGrid[PixelIdx].Last = false;
             PixelIdx++;
             PixelGrid[PixelIdx].Time = PixelGrid[PixelIdx - 1].Time;
             PixelGrid[PixelIdx].X = x;
             PixelGrid[PixelIdx].Y = y + 1;
             PixelGrid[PixelIdx].Channel = Channel;
-            PixelGrid[PixelIdx].Last = FALSE;
+            PixelGrid[PixelIdx].Last = false;
             PixelIdx++;
           }
 
@@ -181,13 +181,13 @@ _Bool GetVideo(uint8_t Mode, double Rate, int32_t Skip, _Bool Redraw) {
             PixelGrid[PixelIdx].X = x;
             PixelGrid[PixelIdx].Y = y + 1;
             PixelGrid[PixelIdx].Channel = 0;
-            PixelGrid[PixelIdx].Last = FALSE;
+            PixelGrid[PixelIdx].Last = false;
             PixelIdx++;
           }
         }
       }
     }
-    PixelGrid[PixelIdx - 1].Last = TRUE;
+    PixelGrid[PixelIdx - 1].Last = true;
   }
   else {
     for (y = 0; y < ModeSpec[Mode].NumLines; y++) {
@@ -214,13 +214,13 @@ _Bool GetVideo(uint8_t Mode, double Rate, int32_t Skip, _Bool Redraw) {
           PixelGrid[PixelIdx].X = x;
           PixelGrid[PixelIdx].Y = y;
 
-          PixelGrid[PixelIdx].Last = FALSE;
+          PixelGrid[PixelIdx].Last = false;
 
           PixelIdx++;
         }
       }
     }
-    PixelGrid[PixelIdx - 1].Last = TRUE;
+    PixelGrid[PixelIdx - 1].Last = true;
   }
 
   for (k = 0; k < PixelIdx; k++) {
@@ -257,7 +257,7 @@ _Bool GetVideo(uint8_t Mode, double Rate, int32_t Skip, _Bool Redraw) {
   else
     Length = ModeSpec[Mode].LineTime * ModeSpec[Mode].NumLines * 44100;
   SyncTargetBin = GetBin(1200 + CurrentPic.HedrShift, VIDEO_FFT_LEN);
-  Abort = FALSE;
+  Abort = false;
   SyncSampleNum = 0;
 
   // Loop through signal
@@ -287,7 +287,7 @@ _Bool GetVideo(uint8_t Mode, double Rate, int32_t Skip, _Bool Redraw) {
           Praw += power(fft.out[i]);
 
         for (i=SyncTargetBin-1; i<=SyncTargetBin+1; i++)
-          Psync += power(fft.out[i]) * (1- .5*abs((gint)(SyncTargetBin-i)));
+          Psync += power(fft.out[i]) * (1- .5*abs((int32_t)(SyncTargetBin-i)));
 
         Praw  /= (GetBin(2300+CurrentPic.HedrShift, VIDEO_FFT_LEN) - GetBin(1500+CurrentPic.HedrShift, VIDEO_FFT_LEN));
         Psync /= 2.0;
@@ -479,7 +479,7 @@ _Bool GetVideo(uint8_t Mode, double Rate, int32_t Skip, _Bool Redraw) {
 
     if (Abort) {
       free(PixelGrid);
-      return FALSE;
+      return false;
     }
 
     pcm.WindowPtr ++;
@@ -487,6 +487,6 @@ _Bool GetVideo(uint8_t Mode, double Rate, int32_t Skip, _Bool Redraw) {
   }
 
   free(PixelGrid);
-  return TRUE;
+  return true;
 
 }
