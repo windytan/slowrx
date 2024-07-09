@@ -23,14 +23,14 @@ double FindSync (uint8_t Mode, double Rate, int32_t *Skip) {
   uint16_t xAcc[700] = {0};
   uint16_t lines[600][(MAXSLANT-MINSLANT)*2];
   uint16_t cy, cx, Retries = 0;
-  _Bool    SyncImg[700][630] = {{FALSE}};
+  _Bool    SyncImg[700][630] = {{false}};
   double   t=0, slantAngle, s;
   double   ConvoFilter[8] = { 1,1,1,1,-1,-1,-1,-1 };
   double   convd, maxconvd=0;
   int32_t  xmax=0;
 
   // Repeat until slant < 0.5° or until we give up
-  while (TRUE) {
+  while (true) {
 
     // Draw the 2D sync signal at current rate
     
