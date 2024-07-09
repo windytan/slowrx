@@ -289,7 +289,7 @@ gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
           Praw += power(fft.out[i]);
 
         for (i=SyncTargetBin-1; i<=SyncTargetBin+1; i++)
-          Psync += power(fft.out[i]) * (1- .5*abs(SyncTargetBin-i));
+          Psync += power(fft.out[i]) * (1- .5*abs((gint)(SyncTargetBin-i)));
 
         Praw  /= (GetBin(2300+CurrentPic.HedrShift, FFTLen) - GetBin(1500+CurrentPic.HedrShift, FFTLen));
         Psync /= 2.0;
