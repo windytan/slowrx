@@ -127,7 +127,6 @@ guchar   clip          (double a);
 double   deg2rad       (double Deg);
 double   FindSync      (guchar Mode, double Rate, int *Skip);
 void     GetFSK        (char *dest);
-gboolean GetVideo      (guchar Mode, double Rate, int Skip, gboolean Redraw);
 guchar   GetVIS        ();
 guint    GetBin        (double Freq, guint FFTLen);
 int      initPcmDevice ();
