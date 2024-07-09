@@ -6,6 +6,11 @@
 #define BUFLEN   4096
 #define SYNCPIXLEN 1.5e-3
 
+#include <glib.h>
+#include <glib/gtypes.h>
+
+#include <fftw3.h>
+
 extern gboolean   Abort;
 extern gboolean   Adaptive;
 extern gboolean  *HasSync;
