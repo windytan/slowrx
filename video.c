@@ -8,6 +8,7 @@
 #include <fftw3.h>
 
 #include "common.h"
+#include "gui.h"
 #include "modespec.h"
 #include "video.h"
 
