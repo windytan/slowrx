@@ -28,7 +28,7 @@ void GetFSK (char* const dest, uint8_t dest_sz) {
   uint32_t   i=0, LoBin, HiBin, MidBin, TestNum=0, TestPtr=0;
   uint8_t    Bit = 0, AsciiByte = 0, BytePtr = 0, TestBits[24] = {0}, BitPtr=0;
   double     HiPow,LoPow,Hann[970];
-  _Bool      InSync = FALSE;
+  _Bool      InSync = false;
 
   // Bit-reversion lookup table
   static const guchar BitRev[] = {
@@ -46,7 +46,7 @@ void GetFSK (char* const dest, uint8_t dest_sz) {
   // Create 22ms Hann window
   for (i = 0; i < 970; i++) Hann[i] = 0.5 * (1 - cos( 2 * M_PI * i / 969.0 ) );
 
-  while ( TRUE ) {
+  while ( true ) {
 
     // Read data from DSP
     readPcm(InSync ? 970: 485);
@@ -88,7 +88,7 @@ void GetFSK (char* const dest, uint8_t dest_sz) {
       for (i=0; i<12; i++) TestNum |= TestBits[(TestPtr - (23-i*2)) % 24] << (11-i);
 
       if (BitRev[(TestNum >>  6) & 0x3f] == 0x20 && BitRev[TestNum & 0x3f] == 0x2a) {
-        InSync    = TRUE;
+        InSync    = true;
         AsciiByte = 0;
         BitPtr    = 0;
         BytePtr   = 0;
