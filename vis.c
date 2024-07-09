@@ -162,7 +162,7 @@ guchar GetVIS () {
     }
 
     if (++ptr == 10) {
-      setVU(Power, 2048, 6, FALSE);
+      setVU(Power, 2048, 6);
       ptr = 0;
     }
 

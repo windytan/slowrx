@@ -98,7 +98,7 @@ void createGUI() {
 }
 
 // Draw signal level meters according to given values
-void setVU (double *Power, int FFTLen, int WinIdx, gboolean ShowWin) {
+void setVU (double *Power, int FFTLen, int WinIdx) {
   int          x,y, W=100, H=30;
   guchar       *pixelsPWR, *pixelsSNR, *pPWR, *pSNR;
   unsigned int rowstridePWR,rowstrideSNR, LoBin, HiBin, i;

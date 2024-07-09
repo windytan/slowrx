@@ -45,7 +45,7 @@ struct _GuiObjs {
 extern GuiObjs   gui;
 
 void     createGUI     ();
-void     setVU         (double *Power, int FFTLen, int WinIdx, gboolean ShowWin);
+void     setVU         (double *Power, int FFTLen, int WinIdx);
 void     saveCurrentPic();
 
 void     evt_chooseDir     ();

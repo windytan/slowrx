@@ -478,7 +478,7 @@ gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
     } /* endif (SampleNum == PixelGrid[PixelIdx].Time) */
 
     if (!Redraw && SampleNum % 8820 == 0) {
-      setVU(Power, FFTLen, WinIdx, TRUE);
+      setVU(Power, FFTLen, WinIdx);
     }
 
     if (Abort) {
