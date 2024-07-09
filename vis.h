@@ -1,15 +1,15 @@
 #ifndef _VIS_H_
 #define _VIS_H_
 
-#include <glib.h>
-#include <glib/gtypes.h>
+#include <stdint.h>
+#include <stdbool.h>
 
 extern TextStatusCallback OnVisStatusChange;
 extern EventCallback OnVisIdentified;
 extern UpdateVUCallback OnVisPowerComputed;
-extern int VIS;
-extern gboolean VisAutoStart;
+extern uint8_t VIS;
+extern _Bool VisAutoStart;
 
-guchar   GetVIS        ();
+uint8_t GetVIS();
 
 #endif

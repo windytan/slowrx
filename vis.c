@@ -22,20 +22,22 @@
 TextStatusCallback OnVisStatusChange;
 EventCallback OnVisIdentified;
 UpdateVUCallback OnVisPowerComputed;
-int VIS;
-gboolean VisAutoStart;
-static double VisPower[2048] = {0};
+uint8_t VIS;
+_Bool VisAutoStart;
 
-guchar GetVIS () {
+#define VIS_FFT_LEN (2048)
+static double VisPower[VIS_FFT_LEN] = {0};
 
-  int        ptr=0;
-  int        Parity = 0, HedrPtr = 0;
-  guint      FFTLen = 2048, i=0, j=0, k=0, MaxBin = 0;
+uint8_t GetVIS () {
+
+  int32_t    ptr=0;
+  int32_t    Parity = 0, HedrPtr = 0;
+  uint32_t   i=0, j=0, k=0, MaxBin = 0;
   double     HedrBuf[100] = {0}, tone[100] = {0}, Hann[882] = {0};
-  gboolean   gotvis = FALSE;
-  guchar     Bit[8] = {0}, ParityBit = 0;
+  _Bool      gotvis = FALSE;
+  uint8_t     Bit[8] = {0}, ParityBit = 0;
 
-  for (i = 0; i < FFTLen; i++) fft.in[i]    = 0;
+  for (i = 0; i < VIS_FFT_LEN; i++) fft.in[i]    = 0;
 
   // Create 20ms Hann window
   for (i = 0; i < 882; i++) Hann[i] = 0.5 * (1 - cos( (2 * M_PI * (double)i) / 881 ) );
@@ -63,22 +65,22 @@ guchar GetVIS () {
 
     // Find the bin with most power
     MaxBin = 0;
-    for (i = 0; i <= GetBin(6000, FFTLen); i++) {
+    for (i = 0; i <= GetBin(6000, VIS_FFT_LEN); i++) {
       VisPower[i] = power(fft.out[i]);
-      if ( (i >= GetBin(500,FFTLen) && i < GetBin(3300,FFTLen)) &&
+      if ( (i >= GetBin(500,VIS_FFT_LEN) && i < GetBin(3300,VIS_FFT_LEN)) &&
            (MaxBin == 0 || VisPower[i] > VisPower[MaxBin]))
         MaxBin = i;
     }
 
     // Find the peak frequency by Gaussian interpolation
-    if (MaxBin > GetBin(500, FFTLen) && MaxBin < GetBin(3300, FFTLen) &&
+    if (MaxBin > GetBin(500, VIS_FFT_LEN) && MaxBin < GetBin(3300, VIS_FFT_LEN) &&
         VisPower[MaxBin] > 0 && VisPower[MaxBin+1] > 0 && VisPower[MaxBin-1] > 0)
          HedrBuf[HedrPtr] = MaxBin +            (log( VisPower[MaxBin + 1] / VisPower[MaxBin - 1] )) /
                              (2 * log( pow(VisPower[MaxBin], 2) / (VisPower[MaxBin + 1] * VisPower[MaxBin - 1])));
     else HedrBuf[HedrPtr] = HedrBuf[(HedrPtr-1) % 45];
 
     // In Hertz
-    HedrBuf[HedrPtr] = HedrBuf[HedrPtr] / FFTLen * 44100;
+    HedrBuf[HedrPtr] = HedrBuf[HedrPtr] / VIS_FFT_LEN * 44100;
 
     // Header buffer holds 45 * 10 msec = 450 msec
     HedrPtr = (HedrPtr + 1) % 45;
