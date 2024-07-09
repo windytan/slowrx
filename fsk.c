@@ -9,6 +9,7 @@
 #include "fft.h"
 #include "fsk.h"
 #include "pcm.h"
+#include "pic.h"
 
 /* 
  *

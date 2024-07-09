@@ -17,17 +17,6 @@ extern guchar    *StoredLum;
 typedef void (*EventCallback)(void);
 typedef void (*TextStatusCallback)(const char* status);
 
-typedef struct _PicMeta PicMeta;
-struct _PicMeta {
-  gshort HedrShift;
-  guchar Mode;
-  double Rate;
-  int    Skip;
-  GdkPixbuf *thumbbuf;
-  char   timestr[40];
-};
-extern PicMeta CurrentPic;
-
 // SSTV modes
 enum {
   UNKNOWN=0,

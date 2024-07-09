@@ -10,7 +10,7 @@ GUI_BIN = slowrx
 
 TARGETS = $(GUI_BIN)
 
-SOURCES = common.c fft.c modespec.c gui.c video.c vis.c sync.c pcm.c fsk.c listen.c config.c slowrx.c
+SOURCES = common.c pic.c fft.c modespec.c gui.c video.c vis.c sync.c pcm.c fsk.c listen.c config.c slowrx.c
 OBJECTS = $(patsubst %.c,%.o,$(SOURCES))
 DEPENDS = $(patsubst %.c,%.d,$(SOURCES))
 

@@ -23,8 +23,6 @@ guchar      *StoredLum       = NULL;
 
 pthread_t    thread1;
 
-PicMeta      CurrentPic;
-
 // Return the FFT bin index matching the given frequency
 guint GetBin (double Freq, guint FFTLen) {
   return (Freq / 44100 * FFTLen);

@@ -10,6 +10,7 @@
 #include "gui.h"
 #include "modespec.h"
 #include "pcm.h"
+#include "pic.h"
 
 /* 
  *

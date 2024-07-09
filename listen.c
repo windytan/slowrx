@@ -24,6 +24,7 @@
 #include "listen.h"
 #include "modespec.h"
 #include "pcm.h"
+#include "pic.h"
 #include "sync.h"
 #include "video.h"
 #include "vis.h"
