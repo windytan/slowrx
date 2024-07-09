@@ -34,7 +34,7 @@ void readPcm(gint numsamples) {
       printf("ALSA: buffer overrun\n");
     else if (samplesread < 0) {
       printf("ALSA error %d (%s)\n", samplesread, snd_strerror(samplesread));
-      gtk_widget_set_tooltip_text(gui.image_devstatus, "ALSA error");
+      showPCMError("ALSA error");
       Abort = TRUE;
       pthread_exit(NULL);
     }

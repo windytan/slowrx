@@ -46,6 +46,7 @@ extern GuiObjs   gui;
 
 void     createGUI     ();
 void     setVU         (double *Power, int FFTLen, int WinIdx);
+void     showPCMError  (const char *error);
 void     showPCMDropWarning(void);
 void     populateDeviceList ();
 void     saveCurrentPic();

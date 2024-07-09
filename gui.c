@@ -97,6 +97,10 @@ void createGUI() {
 
 }
 
+void showPCMError(const char *error) {
+  gtk_widget_set_tooltip_text(gui.image_devstatus, error);
+}
+
 void showPCMDropWarning(void) {
   gdk_threads_enter();
   gtk_image_set_from_stock(GTK_IMAGE(gui.image_devstatus),GTK_STOCK_DIALOG_WARNING,GTK_ICON_SIZE_SMALL_TOOLBAR);
