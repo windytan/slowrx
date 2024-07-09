@@ -11,8 +11,6 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#include <glib.h>
-#include <glib/gtypes.h>
 #include <pthread.h>
 
 #include <alsa/asoundlib.h>
@@ -38,8 +36,8 @@ EventCallback OnListenerReceiveFSK;
 EventCallback OnListenerAutoSlantCorrect;
 EventCallback OnListenerReceiveFinished;
 TextStatusCallback OnListenerReceivedFSKID;
-gboolean ListenerAutoSlantCorrect;
-gboolean ListenerEnableFSKID;
+_Bool ListenerAutoSlantCorrect;
+_Bool ListenerEnableFSKID;
 struct tm *ListenerReceiveStartTime = NULL;
 
 void StartListener(void) {
@@ -53,12 +51,12 @@ void WaitForListenerStop(void) {
 // The thread that listens to VIS headers and calls decoders etc
 void *Listen() {
 
-  guchar      Mode=0;
+  uint8_t     Mode=0;
   time_t      timet;
-  gboolean    Finished;
+  _Bool       Finished;
   char        id[20];
 
-  while (TRUE) {
+  while (true) {
     if (OnListenerWaiting) {
       OnListenerWaiting();
     }
@@ -66,7 +64,7 @@ void *Listen() {
     pcm.WindowPtr = 0;
     snd_pcm_prepare(pcm.handle);
     snd_pcm_start  (pcm.handle);
-    Abort = FALSE;
+    Abort = false;
 
     do {
 
@@ -78,10 +76,10 @@ void *Listen() {
 
       // If manual resync was requested, redraw image
       if (ManualResync) {
-        ManualResync = FALSE;
+        ManualResync = false;
         snd_pcm_drop(pcm.handle);
         printf("getvideo at %.2f skip %d\n",CurrentPic.Rate,CurrentPic.Skip);
-        GetVideo(CurrentPic.Mode, CurrentPic.Rate, CurrentPic.Skip, TRUE);
+        GetVideo(CurrentPic.Mode, CurrentPic.Rate, CurrentPic.Skip, true);
         if (OnListenerReceivedManual) {
           OnListenerReceivedManual();
         }
@@ -107,14 +105,14 @@ void *Listen() {
 
     // Allocate space for cached Lum
     free(StoredLum);
-    StoredLum = calloc( (int)((ModeSpec[CurrentPic.Mode].LineTime * ModeSpec[CurrentPic.Mode].NumLines + 1) * 44100), sizeof(guchar));
+    StoredLum = calloc( (int)((ModeSpec[CurrentPic.Mode].LineTime * ModeSpec[CurrentPic.Mode].NumLines + 1) * 44100), sizeof(uint8_t));
     if (StoredLum == NULL) {
       perror("Listen: Unable to allocate memory for Lum");
       exit(EXIT_FAILURE);
     }
 
     // Allocate space for sync signal
-    HasSync = calloc((int)(ModeSpec[CurrentPic.Mode].LineTime * ModeSpec[CurrentPic.Mode].NumLines / (13.0/44100) +1), sizeof(gboolean));
+    HasSync = calloc((int)(ModeSpec[CurrentPic.Mode].LineTime * ModeSpec[CurrentPic.Mode].NumLines / (13.0/44100) +1), sizeof(_Bool));
     if (HasSync == NULL) {
       perror("Listen: Unable to allocate memory for sync signal");
       exit(EXIT_FAILURE);
@@ -129,7 +127,7 @@ void *Listen() {
     }
     printf("  getvideo @ %.1f Hz, Skip %d, HedrShift %+d Hz\n", 44100.0, 0, CurrentPic.HedrShift);
 
-    Finished = GetVideo(CurrentPic.Mode, 44100, 0, FALSE);
+    Finished = GetVideo(CurrentPic.Mode, 44100, 0, false);
 
     if (OnListenerReceiveFSK) {
       OnListenerReceiveFSK();
@@ -163,7 +161,7 @@ void *Listen() {
    
       // Final image  
       printf("  getvideo @ %.1f Hz, Skip %d, HedrShift %+d Hz\n", CurrentPic.Rate, CurrentPic.Skip, CurrentPic.HedrShift);
-      GetVideo(CurrentPic.Mode, CurrentPic.Rate, CurrentPic.Skip, TRUE);
+      GetVideo(CurrentPic.Mode, CurrentPic.Rate, CurrentPic.Skip, true);
     }
 
     free (HasSync);
