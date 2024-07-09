@@ -7,6 +7,7 @@
 
 #include "common.h"
 #include "gui.h"
+#include "gui_events.h"
 
 void createGUI() {
 
