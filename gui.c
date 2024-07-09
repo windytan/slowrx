@@ -97,6 +97,13 @@ void createGUI() {
 
 }
 
+void showPCMDropWarning(void) {
+  gdk_threads_enter();
+  gtk_image_set_from_stock(GTK_IMAGE(gui.image_devstatus),GTK_STOCK_DIALOG_WARNING,GTK_ICON_SIZE_SMALL_TOOLBAR);
+  gtk_widget_set_tooltip_text(gui.image_devstatus, "Device is dropping samples");
+  gdk_threads_leave();
+}
+
 // Draw signal level meters according to given values
 void setVU (double *Power, int FFTLen, int WinIdx) {
   int          x,y, W=100, H=30;

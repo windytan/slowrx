@@ -43,10 +43,7 @@ void readPcm(gint numsamples) {
     
     // On first appearance of error, update the status icon
     if (!pcm.BufferDrop) {
-      gdk_threads_enter();
-      gtk_image_set_from_stock(GTK_IMAGE(gui.image_devstatus),GTK_STOCK_DIALOG_WARNING,GTK_ICON_SIZE_SMALL_TOOLBAR);
-      gtk_widget_set_tooltip_text(gui.image_devstatus, "Device is dropping samples");
-      gdk_threads_leave();
+      showPCMDropWarning();
       pcm.BufferDrop = TRUE;
     }
 
