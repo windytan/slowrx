@@ -4,7 +4,6 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#include <gtk/gtk.h>
 #include <alsa/asoundlib.h>
 
 #include <fftw3.h>
