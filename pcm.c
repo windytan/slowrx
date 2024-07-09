@@ -7,7 +7,6 @@
 #include <fftw3.h>
 
 #include "common.h"
-#include "config.h"
 #include "pcm.h"
 
 /*
