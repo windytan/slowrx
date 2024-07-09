@@ -9,6 +9,8 @@
 #include "gui.h"
 #include "gui_events.h"
 
+GuiObjs      gui;
+
 void createGUI() {
 
   GtkBuilder *builder;

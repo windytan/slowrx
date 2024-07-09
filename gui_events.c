@@ -1,8 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
-#include <sys/stat.h>
-#include <sys/types.h>
 
 #include <gtk/gtk.h>
 #include <alsa/asoundlib.h>
@@ -10,6 +8,7 @@
 #include <fftw3.h>
 
 #include "common.h"
+#include "gui.h"
 #include "modespec.h"
 #include "pcm.h"
 

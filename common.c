@@ -24,7 +24,6 @@ guchar      *StoredLum       = NULL;
 pthread_t    thread1;
 
 FFTStuff     fft;
-GuiObjs      gui;
 PicMeta      CurrentPic;
 PcmData      pcm;
 

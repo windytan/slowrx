@@ -9,6 +9,7 @@
 #include <fftw3.h>
 
 #include "common.h"
+#include "gui.h"
 #include "pcm.h"
 
 /*
