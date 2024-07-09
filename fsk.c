@@ -13,6 +13,8 @@
 #include "pcm.h"
 #include "pic.h"
 
+#define FSK_FFT_LEN (2048)
+
 /* 
  * Decode FSK ID
  *
@@ -23,7 +25,7 @@
 
 void GetFSK (char* const dest, uint8_t dest_sz) {
 
-  uint32_t   FFTLen = 2048, i=0, LoBin, HiBin, MidBin, TestNum=0, TestPtr=0;
+  uint32_t   i=0, LoBin, HiBin, MidBin, TestNum=0, TestPtr=0;
   uint8_t    Bit = 0, AsciiByte = 0, BytePtr = 0, TestBits[24] = {0}, BitPtr=0;
   double     HiPow,LoPow,Hann[970];
   _Bool      InSync = FALSE;
@@ -39,7 +41,7 @@ void GetFSK (char* const dest, uint8_t dest_sz) {
     0x03, 0x23, 0x13, 0x33,   0x0b, 0x2b, 0x1b, 0x3b,
     0x07, 0x27, 0x17, 0x37,   0x0f, 0x2f, 0x1f, 0x3f };
 
-  for (i = 0; i < FFTLen; i++) fft.in[i] = 0;
+  for (i = 0; i < FSK_FFT_LEN; i++) fft.in[i] = 0;
 
   // Create 22ms Hann window
   for (i = 0; i < 970; i++) Hann[i] = 0.5 * (1 - cos( 2 * M_PI * i / 969.0 ) );
@@ -62,9 +64,9 @@ void GetFSK (char* const dest, uint8_t dest_sz) {
     // FFT of last 22 ms
     fftw_execute(fft.Plan2048);
 
-    LoBin  = GetBin(1900+CurrentPic.HedrShift, FFTLen)-1;
-    MidBin = GetBin(2000+CurrentPic.HedrShift, FFTLen);
-    HiBin  = GetBin(2100+CurrentPic.HedrShift, FFTLen)+1;
+    LoBin  = GetBin(1900+CurrentPic.HedrShift, FSK_FFT_LEN)-1;
+    MidBin = GetBin(2000+CurrentPic.HedrShift, FSK_FFT_LEN);
+    HiBin  = GetBin(2100+CurrentPic.HedrShift, FSK_FFT_LEN)+1;
 
     LoPow = 0;
     HiPow = 0;
