@@ -21,6 +21,7 @@ extern guchar    *StoredLum;
 // Various callback function types for various events.
 typedef void (*EventCallback)(void);
 typedef void (*TextStatusCallback)(const char* status);
+typedef void (*UpdateVUCallback)(double* Power, int FFTLen, int WinIdx);
 
 double   power     (fftw_complex coeff);
 guchar   clip          (double a);
