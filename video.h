@@ -12,7 +12,7 @@
 extern guchar VideoImage[VIDEO_MAX_WIDTH][VIDEO_MAX_HEIGHT][VIDEO_MAX_CHANNELS];
 extern void (*OnVideoInitBuffer)(guchar Mode);
 extern EventCallback OnVideoStartRedraw;
-extern void (*OnVideoWritePixel)(guchar x, guchar y, guchar r, guchar g, guchar b);
+extern void (*OnVideoWritePixel)(gushort x, gushort y, guchar r, guchar g, guchar b);
 extern EventCallback OnVideoRefresh;
 extern UpdateVUCallback OnVideoPowerCalculated;
 

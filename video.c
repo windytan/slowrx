@@ -15,7 +15,7 @@
 
 guchar      VideoImage[VIDEO_MAX_WIDTH][VIDEO_MAX_HEIGHT][VIDEO_MAX_CHANNELS] = {{{0}}};
 void (*OnVideoInitBuffer)(guchar Mode);
-void (*OnVideoWritePixel)(guchar x, guchar y, guchar r, guchar g, guchar b);
+void (*OnVideoWritePixel)(gushort x, gushort y, guchar r, guchar g, guchar b);
 EventCallback OnVideoStartRedraw;
 EventCallback OnVideoRefresh;
 UpdateVUCallback OnVideoPowerCalculated;

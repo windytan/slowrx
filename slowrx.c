@@ -86,8 +86,8 @@ static void onVideoStartRedraw(void) {
 
 }
 
-static void onVideoWritePixel(guchar x, guchar y, guchar r, guchar g, guchar b) {
-  guchar *p = pixels + y * rowstride + x * 3;
+static void onVideoWritePixel(gushort x, gushort y, guchar r, guchar g, guchar b) {
+  guchar *p = &pixels[(y * rowstride) + (x * 3)];
   p[0] = r;
   p[1] = g;
   p[2] = b;
