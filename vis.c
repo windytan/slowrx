@@ -7,7 +7,6 @@
 
 #include "common.h"
 #include "fft.h"
-#include "gui.h"
 #include "modespec.h"
 #include "pcm.h"
 #include "pic.h"
@@ -21,13 +20,18 @@
  */
 
 TextStatusCallback OnVisStatusChange;
+EventCallback OnVisIdentified;
+EventCallback OnVisPowerComputed;
+int VIS;
+gboolean VisAutoStart;
+double VisPower[2048] = {0};
 
 guchar GetVIS () {
 
-  int        selmode, ptr=0;
-  int        VIS = 0, Parity = 0, HedrPtr = 0;
+  int        ptr=0;
+  int        Parity = 0, HedrPtr = 0;
   guint      FFTLen = 2048, i=0, j=0, k=0, MaxBin = 0;
-  double     Power[2048] = {0}, HedrBuf[100] = {0}, tone[100] = {0}, Hann[882] = {0};
+  double     HedrBuf[100] = {0}, tone[100] = {0}, Hann[882] = {0};
   gboolean   gotvis = FALSE;
   guchar     Bit[8] = {0}, ParityBit = 0;
 
@@ -60,17 +64,17 @@ guchar GetVIS () {
     // Find the bin with most power
     MaxBin = 0;
     for (i = 0; i <= GetBin(6000, FFTLen); i++) {
-      Power[i] = power(fft.out[i]);
+      VisPower[i] = power(fft.out[i]);
       if ( (i >= GetBin(500,FFTLen) && i < GetBin(3300,FFTLen)) &&
-           (MaxBin == 0 || Power[i] > Power[MaxBin]))
+           (MaxBin == 0 || VisPower[i] > VisPower[MaxBin]))
         MaxBin = i;
     }
 
     // Find the peak frequency by Gaussian interpolation
     if (MaxBin > GetBin(500, FFTLen) && MaxBin < GetBin(3300, FFTLen) &&
-        Power[MaxBin] > 0 && Power[MaxBin+1] > 0 && Power[MaxBin-1] > 0)
-         HedrBuf[HedrPtr] = MaxBin +            (log( Power[MaxBin + 1] / Power[MaxBin - 1] )) /
-                             (2 * log( pow(Power[MaxBin], 2) / (Power[MaxBin + 1] * Power[MaxBin - 1])));
+        VisPower[MaxBin] > 0 && VisPower[MaxBin+1] > 0 && VisPower[MaxBin-1] > 0)
+         HedrBuf[HedrPtr] = MaxBin +            (log( VisPower[MaxBin + 1] / VisPower[MaxBin - 1] )) /
+                             (2 * log( pow(VisPower[MaxBin], 2) / (VisPower[MaxBin + 1] * VisPower[MaxBin - 1])));
     else HedrBuf[HedrPtr] = HedrBuf[(HedrPtr-1) % 45];
 
     // In Hertz
@@ -129,10 +133,6 @@ guchar GetVIS () {
               printf("  Unknown VIS\n");
               gotvis = FALSE;
             } else {
-              gdk_threads_enter();
-              gtk_combo_box_set_active (GTK_COMBO_BOX(gui.combo_mode), VISmap[VIS]-1);
-              gtk_spin_button_set_value (GTK_SPIN_BUTTON(gui.spin_shift), CurrentPic.HedrShift);
-              gdk_threads_leave();
               break;
             }
           }
@@ -140,32 +140,22 @@ guchar GetVIS () {
       }
     }
 
-    if (gotvis)
-     if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(gui.tog_rx))) break;
+    if (gotvis && OnVisIdentified) {
+      OnVisIdentified();
+    }
+    if (gotvis && VisAutoStart) {
+      break;
+    }
 
     // Manual start
     if (ManualActivated) {
-
-      gdk_threads_enter();
-      gtk_widget_set_sensitive( gui.frame_manual, FALSE );
-      gtk_widget_set_sensitive( gui.combo_card,   FALSE );
-      gdk_threads_leave();
-
-      selmode   = gtk_combo_box_get_active (GTK_COMBO_BOX(gui.combo_mode)) + 1;
-      CurrentPic.HedrShift = gtk_spin_button_get_value_as_int (GTK_SPIN_BUTTON(gui.spin_shift));
-      VIS = 0;
-      for (i=0; i<0x80; i++) {
-        if (VISmap[i] == selmode) {
-          VIS = i;
-          break;
-        }
-      }
-
       break;
     }
 
     if (++ptr == 10) {
-      setVU(Power, 2048, 6);
+      if (OnVisPowerComputed) {
+        OnVisPowerComputed();
+      }
       ptr = 0;
     }
 

@@ -31,6 +31,41 @@
 static const char *fsk_id;
 static GdkPixbuf *thumbbuf;
 
+static void onVisIdentified(void) {
+  gdk_threads_enter();
+  gtk_combo_box_set_active (GTK_COMBO_BOX(gui.combo_mode), VISmap[VIS]-1);
+  gtk_spin_button_set_value (GTK_SPIN_BUTTON(gui.spin_shift), CurrentPic.HedrShift);
+  
+  // Synchronise tog_rx with VisAutoStart
+  VisAutoStart = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(gui.tog_rx));
+
+  // Manual start: update the VIS parameters from the UI
+  if (ManualActivated) {
+    int selmode, i;
+
+    gdk_threads_enter();
+    gtk_widget_set_sensitive( gui.frame_manual, FALSE );
+    gtk_widget_set_sensitive( gui.combo_card,   FALSE );
+    gdk_threads_leave();
+
+    selmode   = gtk_combo_box_get_active (GTK_COMBO_BOX(gui.combo_mode)) + 1;
+    CurrentPic.HedrShift = gtk_spin_button_get_value_as_int (GTK_SPIN_BUTTON(gui.spin_shift));
+    VIS = 0;
+    for (i=0; i<0x80; i++) {
+      if (VISmap[i] == selmode) {
+        VIS = i;
+        break;
+      }
+    }
+  }
+
+  gdk_threads_leave();
+}
+
+static void onVisPowerComputed(void) {
+  setVU(VisPower, 2048, 6);
+}
+
 static void onListenerWaiting(void) {
   gdk_threads_enter        ();
   gtk_widget_set_sensitive (gui.grid_vu,      TRUE);
@@ -140,6 +175,8 @@ int main(int argc, char *argv[]) {
   }
 
   createGUI();
+  OnVisIdentified = onVisIdentified;
+  OnVisPowerComputed = onVisPowerComputed;
   OnListenerStatusChange = showStatusbarMessage;
   OnListenerWaiting = onListenerWaiting;
   OnListenerReceivedManual = onListenerReceivedManual;
