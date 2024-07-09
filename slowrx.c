@@ -23,6 +23,7 @@
 #include "gui.h"
 #include "modespec.h"
 #include "pcm.h"
+#include "sync.h"
 #include "video.h"
 
 // The thread that listens to VIS headers and calls decoders etc
