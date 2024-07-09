@@ -19,6 +19,7 @@
 #include <fftw3.h>
 
 #include "common.h"
+#include "config.h"
 #include "fft.h"
 #include "gui.h"
 #include "listen.h"
@@ -30,29 +31,14 @@
  */
 
 int main(int argc, char *argv[]) {
-
-  FILE        *ConfFile;
-  const gchar *confdir;
   GString     *confpath;
-  gchar       *confdata;
-  gsize       *keylen=NULL;
 
   gtk_init (&argc, &argv);
 
   gdk_threads_init ();
 
   // Load config
-  confdir  = g_get_user_config_dir();
-  confpath = g_string_new(confdir);
-  g_string_append(confpath, "/slowrx.ini");
-
-  config = g_key_file_new();
-  if (g_key_file_load_from_file(config, confpath->str, G_KEY_FILE_KEEP_COMMENTS, NULL)) {
-
-  } else {
-    printf("No valid config file found\n");
-    g_key_file_load_from_data(config, "[slowrx]\ndevice=default", -1, G_KEY_FILE_NONE, NULL);
-  }
+  load_config_settings(&confpath);
 
   // Prepare FFT
   fft.in = fftw_alloc_real(2048);
@@ -77,15 +63,7 @@ int main(int argc, char *argv[]) {
   gtk_main();
 
   // Save config on exit
-  ConfFile = fopen(confpath->str,"w");
-  if (ConfFile == NULL) {
-    perror("Unable to open config file for writing");
-  } else {
-    confdata = g_key_file_to_data(config,keylen,NULL);
-    fprintf(ConfFile,"%s",confdata);
-    fwrite(confdata,1,(size_t)keylen,ConfFile);
-    fclose(ConfFile);
-  }
+  save_config_settings(confpath);
 
   g_object_unref(pixbuf_rx);
   free(StoredLum);

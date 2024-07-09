@@ -25,8 +25,6 @@ pthread_t    thread1;
 
 PicMeta      CurrentPic;
 
-GKeyFile    *config          = NULL;
-
 // Return the FFT bin index matching the given frequency
 guint GetBin (double Freq, guint FFTLen) {
   return (Freq / 44100 * FFTLen);
