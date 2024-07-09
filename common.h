@@ -14,15 +14,6 @@ extern gboolean   ManualResync;
 extern guchar    *StoredLum;
 extern pthread_t  thread1;
 
-typedef struct _FFTStuff FFTStuff;
-struct _FFTStuff {
-  double       *in;
-  fftw_complex *out;
-  fftw_plan     Plan1024;
-  fftw_plan     Plan2048;
-};
-extern FFTStuff fft;
-
 extern GdkPixbuf *pixbuf_PWR;
 extern GdkPixbuf *pixbuf_SNR;
 extern GdkPixbuf *pixbuf_rx;

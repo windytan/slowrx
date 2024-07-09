@@ -19,6 +19,7 @@
 #include <fftw3.h>
 
 #include "common.h"
+#include "fft.h"
 #include "fsk.h"
 #include "gui.h"
 #include "modespec.h"

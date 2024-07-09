@@ -8,6 +8,7 @@
 #include <fftw3.h>
 
 #include "common.h"
+#include "fft.h"
 #include "gui.h"
 #include "modespec.h"
 #include "pcm.h"

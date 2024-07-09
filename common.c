@@ -23,7 +23,6 @@ guchar      *StoredLum       = NULL;
 
 pthread_t    thread1;
 
-FFTStuff     fft;
 PicMeta      CurrentPic;
 
 GdkPixbuf   *pixbuf_rx       = NULL;
