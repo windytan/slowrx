@@ -10,6 +10,7 @@
 #include "common.h"
 #include "gui.h"
 #include "modespec.h"
+#include "pcm.h"
 #include "video.h"
 
 /* Demodulate the video signal & store all kinds of stuff for later stages

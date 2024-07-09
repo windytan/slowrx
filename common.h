@@ -23,15 +23,6 @@ struct _FFTStuff {
 };
 extern FFTStuff fft;
 
-typedef struct _PcmData PcmData;
-struct _PcmData {
-  snd_pcm_t *handle;
-  gint16    *Buffer;
-  int        WindowPtr;
-  gboolean   BufferDrop;
-};
-extern PcmData pcm;
-
 typedef struct _GuiObjs GuiObjs;
 struct _GuiObjs {
   GtkWidget *button_abort;
@@ -111,10 +102,7 @@ double   deg2rad       (double Deg);
 double   FindSync      (guchar Mode, double Rate, int *Skip);
 guchar   GetVIS        ();
 guint    GetBin        (double Freq, guint FFTLen);
-int      initPcmDevice ();
 void     *Listen       ();
-void     populateDeviceList ();
-void     readPcm       (gint numsamples);
 void     saveCurrentPic();
 
 void     evt_AbortRx       ();

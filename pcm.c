@@ -9,6 +9,7 @@
 #include <fftw3.h>
 
 #include "common.h"
+#include "pcm.h"
 
 /*
  * Stuff related to sound card capture

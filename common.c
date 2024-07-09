@@ -11,6 +11,7 @@
 
 #include "common.h"
 #include "modespec.h"
+#include "pcm.h"
 
 gboolean     Abort           = FALSE;
 gboolean     Adaptive        = TRUE;

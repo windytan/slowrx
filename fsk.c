@@ -7,6 +7,7 @@
 
 #include "common.h"
 #include "fsk.h"
+#include "pcm.h"
 
 /* 
  *
