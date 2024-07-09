@@ -34,7 +34,7 @@ uint8_t GetVIS () {
   int32_t    Parity = 0, HedrPtr = 0;
   uint32_t   i=0, j=0, k=0, MaxBin = 0;
   double     HedrBuf[100] = {0}, tone[100] = {0}, Hann[882] = {0};
-  _Bool      gotvis = FALSE;
+  _Bool      gotvis = false;
   uint8_t     Bit[8] = {0}, ParityBit = 0;
 
   for (i = 0; i < VIS_FFT_LEN; i++) fft.in[i]    = 0;
@@ -42,7 +42,7 @@ uint8_t GetVIS () {
   // Create 20ms Hann window
   for (i = 0; i < 882; i++) Hann[i] = 0.5 * (1 - cos( (2 * M_PI * (double)i) / 881 ) );
 
-  ManualActivated = FALSE;
+  ManualActivated = false;
   
   printf("Waiting for header\n");
 
@@ -50,7 +50,7 @@ uint8_t GetVIS () {
     OnVisStatusChange("Listening");
   }
 
-  while ( TRUE ) {
+  while ( true ) {
 
     if (Abort || ManualResync) return(0);
 
@@ -91,7 +91,7 @@ uint8_t GetVIS () {
     // Is there a pattern that looks like (the end of) a calibration header + VIS?
     // Tolerance ±25 Hz
     CurrentPic.HedrShift = 0;
-    gotvis    = FALSE;
+    gotvis    = false;
     for (i = 0; i < 3; i++) {
       if (CurrentPic.HedrShift != 0) break;
       for (j = 0; j < 3; j++) {
@@ -106,12 +106,12 @@ uint8_t GetVIS () {
 
           // Attempt to read VIS
 
-          gotvis = TRUE;
+          gotvis = true;
           for (k = 0; k < 8; k++) {
             if      (tone[6*3+i+3*k] > tone[0+j] - 625 && tone[6*3+i+3*k] < tone[0+j] - 575) Bit[k] = 0;
             else if (tone[6*3+i+3*k] > tone[0+j] - 825 && tone[6*3+i+3*k] < tone[0+j] - 775) Bit[k] = 1;
             else { // erroneous bit
-              gotvis = FALSE;
+              gotvis = false;
               break;
             }
           }
@@ -130,10 +130,10 @@ uint8_t GetVIS () {
 
             if (Parity != ParityBit) {
               printf("  Parity fail\n");
-              gotvis = FALSE;
+              gotvis = false;
             } else if (VISmap[VIS] == UNKNOWN) {
               printf("  Unknown VIS\n");
-              gotvis = FALSE;
+              gotvis = false;
             } else {
               break;
             }
