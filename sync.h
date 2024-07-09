@@ -1,9 +1,8 @@
 #ifndef _SYNC_H_
 #define _SYNC_H_
 
-#include <glib.h>
-#include <glib/gtypes.h>
+#include <stdint.h>
 
-double   FindSync      (guchar Mode, double Rate, int *Skip);
+double   FindSync      (uint8_t Mode, double Rate, int32_t *Skip);
 
 #endif
