@@ -13,8 +13,6 @@ extern gboolean   ManualActivated;
 extern gboolean   ManualResync;
 extern guchar    *StoredLum;
 
-extern GKeyFile  *config;
-
 
 typedef struct _PicMeta PicMeta;
 struct _PicMeta {

@@ -6,6 +6,7 @@
 #include <fftw3.h>
 
 #include "common.h"
+#include "config.h"
 #include "gui.h"
 #include "gui_events.h"
 #include "modespec.h"
