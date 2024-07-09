@@ -53,14 +53,4 @@ void     saveCurrentPic();
 
 void     showStatusbarMessage(const char* message);
 
-void     evt_chooseDir     ();
-void     evt_show_about    ();
-void     evt_AbortRx       ();
-void     evt_changeDevices ();
-void     evt_clearPix      ();
-void     evt_clickimg      ();
-void     evt_deletewindow  ();
-void     evt_GetAdaptive   ();
-void     evt_ManualStart   ();
-
 #endif

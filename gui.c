@@ -13,6 +13,16 @@
 #include "pcm.h"
 #include "pic.h"
 
+static void     evt_chooseDir     ();
+static void     evt_show_about    ();
+static void     evt_AbortRx       ();
+static void     evt_changeDevices ();
+static void     evt_clearPix      ();
+static void     evt_clickimg      ();
+static void     evt_deletewindow  ();
+static void     evt_GetAdaptive   ();
+static void     evt_ManualStart   ();
+
 GuiObjs      gui;
 
 GdkPixbuf   *pixbuf_rx       = NULL;
@@ -239,7 +249,7 @@ void populateDeviceList() {
   }
 }
 
-void evt_chooseDir() {
+static void evt_chooseDir() {
   GtkWidget *dialog;
   dialog = gtk_file_chooser_dialog_new ("Select folder",
                                       GTK_WINDOW(gui.window_main),
@@ -256,33 +266,33 @@ void evt_chooseDir() {
   gtk_widget_destroy (dialog);
 }
 
-void evt_show_about() {
+static void evt_show_about() {
   gtk_dialog_run(GTK_DIALOG(gui.window_about));
   gtk_widget_hide(gui.window_about);
 }
 
 // Quit
-void evt_deletewindow() {
+static void evt_deletewindow() {
   gtk_main_quit ();
 }
 
 // Transform the NoiseAdapt toggle state into a variable
-void evt_GetAdaptive() {
+static void evt_GetAdaptive() {
   Adaptive = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON(gui.tog_adapt));
 }
 
 // Manual Start clicked
-void evt_ManualStart() {
+static void evt_ManualStart() {
   ManualActivated = TRUE;
 }
 
 // Abort clicked during rx
-void evt_AbortRx() {
+static void evt_AbortRx() {
   Abort = TRUE;
 }
 
 // Another device selected from list
-void evt_changeDevices() {
+static void evt_changeDevices() {
 
   int status;
 
@@ -321,7 +331,7 @@ void evt_changeDevices() {
 }
 
 // Clear received picture & metadata
-void evt_clearPix() {
+static void evt_clearPix() {
   gdk_pixbuf_fill (pixbuf_disp, 0);
   gtk_image_set_from_pixbuf(GTK_IMAGE(gui.image_rx), pixbuf_disp);
   gtk_label_set_markup (GTK_LABEL(gui.label_fskid), "");
@@ -330,7 +340,7 @@ void evt_clearPix() {
 }
 
 // Manual slant adjust
-void evt_clickimg(GtkWidget *widget, GdkEventButton* event, GdkWindowEdge edge) {
+static void evt_clickimg(GtkWidget *widget, GdkEventButton* event, GdkWindowEdge edge) {
   static double prevx=0,prevy=0,newrate;
   static gboolean   secondpress=FALSE;
   double        x,y,dx,dy,xic;
