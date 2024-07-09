@@ -6,7 +6,8 @@ GTKLIBS   = $(shell pkg-config --libs gtk+-3.0)
 
 OFLAGS = -O3
 
-OBJECTS = common.o modespec.o gui.o video.o vis.o sync.o pcm.o fsk.o slowrx.o
+SOURCES = common.c modespec.c gui.c video.c vis.c sync.c pcm.c fsk.c slowrx.c
+OBJECTS = $(patsubst %.c,%.o,$(SOURCES))
 
 all: slowrx
 
