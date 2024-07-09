@@ -19,7 +19,7 @@ all: $(TARGETS)
 $(GUI_BIN): $(OBJECTS)
 	$(CC) $(CFLAGS) -o $@ $(OBJECTS) $(GTKLIBS) -lfftw3 -lgthread-2.0 -lasound -lm -lpthread
 
-%.o: %.c common.h
+%.o: %.c
 	$(CC) -MM -MF $(*F).d $(CFLAGS) $(GTKCFLAGS) $(OFLAGS) $<
 	$(CC) $(CFLAGS) $(GTKCFLAGS) $(OFLAGS) -c -o $@ $<
 
