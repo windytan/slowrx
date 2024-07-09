@@ -454,7 +454,7 @@ gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
             }
 
             if (OnVideoWritePixel) {
-              OnVideoWritePixel(x, y, r, g, b);
+              OnVideoWritePixel(tx, y, r, g, b);
             }
           }
 
