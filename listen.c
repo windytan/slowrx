@@ -11,7 +11,8 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#include <gtk/gtk.h>
+#include <glib.h>
+#include <glib/gtypes.h>
 #include <pthread.h>
 
 #include <alsa/asoundlib.h>
@@ -20,7 +21,6 @@
 
 #include "common.h"
 #include "fsk.h"
-#include "gui.h"
 #include "listen.h"
 #include "modespec.h"
 #include "pcm.h"
@@ -31,6 +31,16 @@
 
 static pthread_t listener_thread;
 TextStatusCallback OnListenerStatusChange;
+EventCallback OnListenerWaiting;
+EventCallback OnListenerReceivedManual;
+EventCallback OnListenerReceiveStarted;
+EventCallback OnListenerReceiveFSK;
+EventCallback OnListenerAutoSlantCorrect;
+EventCallback OnListenerReceiveFinished;
+TextStatusCallback OnListenerReceivedFSKID;
+gboolean ListenerAutoSlantCorrect;
+gboolean ListenerEnableFSKID;
+struct tm *ListenerReceiveStartTime = NULL;
 
 void StartListener(void) {
   pthread_create(&listener_thread, NULL, Listen, NULL);
@@ -43,22 +53,15 @@ void WaitForListenerStop(void) {
 // The thread that listens to VIS headers and calls decoders etc
 void *Listen() {
 
-  char        rctime[8];
-
   guchar      Mode=0;
-  struct tm  *timeptr = NULL;
   time_t      timet;
   gboolean    Finished;
   char        id[20];
-  GtkTreeIter iter;
 
   while (TRUE) {
-
-    gdk_threads_enter        ();
-    gtk_widget_set_sensitive (gui.grid_vu,      TRUE);
-    gtk_widget_set_sensitive (gui.button_abort, FALSE);
-    gtk_widget_set_sensitive (gui.button_clear, TRUE);
-    gdk_threads_leave        ();
+    if (OnListenerWaiting) {
+      OnListenerWaiting();
+    }
 
     pcm.WindowPtr = 0;
     snd_pcm_prepare(pcm.handle);
@@ -79,8 +82,9 @@ void *Listen() {
         snd_pcm_drop(pcm.handle);
         printf("getvideo at %.2f skip %d\n",CurrentPic.Rate,CurrentPic.Skip);
         GetVideo(CurrentPic.Mode, CurrentPic.Rate, CurrentPic.Skip, TRUE);
-        if (gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON(gui.tog_save)))
-          saveCurrentPic();
+        if (OnListenerReceivedManual) {
+          OnListenerReceivedManual();
+        }
         pcm.WindowPtr = 0;
         snd_pcm_prepare(pcm.handle);
         snd_pcm_start  (pcm.handle);
@@ -97,8 +101,8 @@ void *Listen() {
 
     // Store time of reception
     timet = time(NULL);
-    timeptr = gmtime(&timet);
-    strftime(CurrentPic.timestr, sizeof(CurrentPic.timestr)-1,"%Y%m%d-%H%M%Sz", timeptr);
+    ListenerReceiveStartTime = gmtime(&timet);
+    strftime(CurrentPic.timestr, sizeof(CurrentPic.timestr)-1,"%Y%m%d-%H%M%Sz", ListenerReceiveStartTime);
     
 
     // Allocate space for cached Lum
@@ -117,54 +121,43 @@ void *Listen() {
     }
   
     // Get video
-    strftime(rctime,  sizeof(rctime)-1, "%H:%Mz", timeptr);
     if (OnListenerStatusChange) {
       OnListenerStatusChange("Receiving video...");
     }
-    gdk_threads_enter        ();
-    gtk_label_set_text       (GTK_LABEL(gui.label_fskid), "");
-    gtk_widget_set_sensitive (gui.frame_manual, FALSE);
-    gtk_widget_set_sensitive (gui.frame_slant,  FALSE);
-    gtk_widget_set_sensitive (gui.combo_card,   FALSE);
-    gtk_widget_set_sensitive (gui.button_abort, TRUE);
-    gtk_widget_set_sensitive (gui.button_clear, FALSE);
-    gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON(gui.tog_setedge), FALSE);
-    gtk_label_set_markup     (GTK_LABEL(gui.label_lastmode), ModeSpec[CurrentPic.Mode].Name);
-    gtk_label_set_markup     (GTK_LABEL(gui.label_utc), rctime);
-    gdk_threads_leave        ();
+    if (OnListenerReceiveStarted) {
+      OnListenerReceiveStarted();
+    }
     printf("  getvideo @ %.1f Hz, Skip %d, HedrShift %+d Hz\n", 44100.0, 0, CurrentPic.HedrShift);
 
     Finished = GetVideo(CurrentPic.Mode, 44100, 0, FALSE);
 
-    gdk_threads_enter        ();
-    gtk_widget_set_sensitive (gui.button_abort, FALSE);
-    gdk_threads_leave        ();
-    
+    if (OnListenerReceiveFSK) {
+      OnListenerReceiveFSK();
+    }
+
     id[0] = '\0';
 
-    if (Finished && gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(gui.tog_fsk))) {
+    if (Finished && ListenerEnableFSKID && OnListenerReceivedFSKID) {
       if (OnListenerStatusChange) {
         OnListenerStatusChange("Receiving FSK ID...");
       }
       GetFSK(id);
       printf("  FSKID \"%s\"\n",id);
-      gdk_threads_enter  ();
-      gtk_label_set_text (GTK_LABEL(gui.label_fskid), id);
-      gdk_threads_leave  ();
+      OnListenerReceivedFSKID(id);
     }
 
     snd_pcm_drop(pcm.handle);
 
-    if (Finished && gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(gui.tog_slant))) {
+    if (Finished && ListenerAutoSlantCorrect) {
 
       // Fix slant
       //setVU(0,6);
       if (OnListenerStatusChange) {
         OnListenerStatusChange("Calculating slant...");
       }
-      gdk_threads_enter        ();
-      gtk_widget_set_sensitive (gui.grid_vu, FALSE);
-      gdk_threads_leave        ();
+      if (OnListenerAutoSlantCorrect) {
+        OnListenerAutoSlantCorrect();
+      }
       printf("  FindSync @ %.1f Hz\n",CurrentPic.Rate);
       CurrentPic.Rate = FindSync(CurrentPic.Mode, CurrentPic.Rate, &CurrentPic.Skip);
    
@@ -176,34 +169,9 @@ void *Listen() {
     free (HasSync);
     HasSync = NULL;
 
-    // Add thumbnail to iconview
-    CurrentPic.thumbbuf = gdk_pixbuf_scale_simple (pixbuf_rx, 100,
-        100.0/ModeSpec[CurrentPic.Mode].ImgWidth * ModeSpec[CurrentPic.Mode].NumLines * ModeSpec[CurrentPic.Mode].LineHeight, GDK_INTERP_HYPER);
-    gdk_threads_enter                  ();
-    gtk_list_store_prepend             (savedstore, &iter);
-    gtk_list_store_set                 (savedstore, &iter, 0, CurrentPic.thumbbuf, 1, id, -1);
-    gdk_threads_leave                  ();
-    
-    // Save PNG
-    if (gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON(gui.tog_save))) {
-    
-      //setVU(0,6);
-
-      /*ensure_dir_exists("rx-lum");
-      LumFile = fopen(lumfilename,"w");
-      if (LumFile == NULL)
-        perror("Unable to open luma file for writing");
-      fwrite(StoredLum,1,(ModeSpec[Mode].LineTime * ModeSpec[Mode].NumLines) * 44100,LumFile);
-      fclose(LumFile);*/
-
-      saveCurrentPic();
+    if (OnListenerReceiveFinished) {
+      OnListenerReceiveFinished();
     }
-       
-    gdk_threads_enter        ();
-    gtk_widget_set_sensitive (gui.frame_slant,  TRUE);
-    gtk_widget_set_sensitive (gui.frame_manual, TRUE);
-    gtk_widget_set_sensitive (gui.combo_card,   TRUE);
-    gdk_threads_leave        ();
     
   }
 }
