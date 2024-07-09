@@ -1,4 +1,3 @@
-#include "common.h"
 #include "modespec.h"
 
 /*
