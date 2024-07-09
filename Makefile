@@ -1,8 +1,8 @@
 CC = gcc
 
 CFLAGS    = -Wall -Wextra -std=gnu99 -pedantic -g -DGDK_VERSION_MIN_REQUIRED=GDK_VERSION_3_4
-GTKCFLAGS = `pkg-config --cflags gtk+-3.0`
-GTKLIBS   = `pkg-config --libs gtk+-3.0`
+GTKCFLAGS = $(shell pkg-config --cflags gtk+-3.0)
+GTKLIBS   = $(shell pkg-config --libs gtk+-3.0)
 
 OFLAGS = -O3
 
