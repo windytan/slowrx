@@ -1,6 +1,5 @@
 #ifndef _FFT_H_
 #define _FFT_H_
-
 typedef struct _FFTStuff FFTStuff;
 struct _FFTStuff {
   double       *in;
@@ -10,4 +9,5 @@ struct _FFTStuff {
 };
 extern FFTStuff fft;
 
+int fft_init(void);
 #endif
