@@ -33,7 +33,8 @@ gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
   int        SampleNum, Length, NumChans;
   int        x = 0, y = 0, tx=0, k=0;
   double     Hann[7][1024] = {{0}};
-  double     Freq = 0, PrevFreq = 0, InterpFreq = 0;
+  double     Freq = 0;
+  //double     PrevFreq = 0, InterpFreq = 0;
   int        NextSNRtime = 0, NextSyncTime = 0;
   double     Praw, Psync;
   double     Power[1024] = {0};
@@ -354,7 +355,7 @@ gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
 
       if (SampleNum % 6 == 0) { // Take FFT every 6 samples
 
-        PrevFreq = Freq;
+        //PrevFreq = Freq;
 
         // Adapt window size to SNR
 
