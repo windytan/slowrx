@@ -65,10 +65,6 @@ static void onVisIdentified(void) {
   gdk_threads_leave();
 }
 
-static void onVisPowerComputed(void) {
-  setVU(VisPower, VIS_POWER_SZ, 6);
-}
-
 static void onVideoInitBuffer(guchar mode) {
   Mode = mode;
   g_object_unref(pixbuf_rx);
@@ -223,7 +219,7 @@ int main(int argc, char *argv[]) {
   OnVideoWritePixel = onVideoWritePixel;
   OnVideoPowerCalculated = setVU;
   OnVisIdentified = onVisIdentified;
-  OnVisPowerComputed = onVisPowerComputed;
+  OnVisPowerComputed = setVU;
   OnListenerStatusChange = showStatusbarMessage;
   OnListenerWaiting = onListenerWaiting;
   OnListenerReceivedManual = onListenerReceivedManual;
