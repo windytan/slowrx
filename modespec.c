@@ -1,10 +1,3 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <gtk/gtk.h>
-#include <alsa/asoundlib.h>
-
-#include <fftw3.h>
-
 #include "common.h"
 #include "modespec.h"
 
