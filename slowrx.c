@@ -63,7 +63,7 @@ static void onVisIdentified(void) {
 }
 
 static void onVisPowerComputed(void) {
-  setVU(VisPower, 2048, 6);
+  setVU(VisPower, VIS_POWER_SZ, 6);
 }
 
 static void onListenerWaiting(void) {
