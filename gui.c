@@ -8,8 +8,16 @@
 #include "common.h"
 #include "gui.h"
 #include "gui_events.h"
+#include "modespec.h"
 
 GuiObjs      gui;
+
+GdkPixbuf   *pixbuf_rx       = NULL;
+GdkPixbuf   *pixbuf_disp     = NULL;
+GdkPixbuf   *pixbuf_PWR      = NULL;
+GdkPixbuf   *pixbuf_SNR      = NULL;
+
+GtkListStore *savedstore     = NULL;
 
 void createGUI() {
 
@@ -155,6 +163,24 @@ void setVU (double *Power, int FFTLen, int WinIdx, gboolean ShowWin) {
   gtk_image_set_from_pixbuf(GTK_IMAGE(gui.image_snr), pixbuf_SNR);
   gdk_threads_leave();
 
+}
+
+// Save current picture as PNG
+void saveCurrentPic() {
+  GdkPixbuf *scaledpb;
+  GString   *pngfilename;
+
+  pngfilename = g_string_new(g_key_file_get_string(config,"slowrx","rxdir",NULL));
+  g_string_append_printf(pngfilename, "/%s_%s.png", CurrentPic.timestr, ModeSpec[CurrentPic.Mode].ShortName);
+  printf("  Saving to %s\n", pngfilename->str);
+
+  scaledpb = gdk_pixbuf_scale_simple (pixbuf_rx, ModeSpec[CurrentPic.Mode].ImgWidth,
+    ModeSpec[CurrentPic.Mode].NumLines * ModeSpec[CurrentPic.Mode].LineHeight, GDK_INTERP_HYPER);
+
+  ensure_dir_exists(g_key_file_get_string(config,"slowrx","rxdir",NULL));
+  gdk_pixbuf_savev(scaledpb, pngfilename->str, "png", NULL, NULL, NULL);
+  g_object_unref(scaledpb);
+  g_string_free(pngfilename, TRUE);
 }
 
 void evt_chooseDir() {

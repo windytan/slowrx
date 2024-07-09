@@ -25,13 +25,6 @@ pthread_t    thread1;
 
 PicMeta      CurrentPic;
 
-GdkPixbuf   *pixbuf_rx       = NULL;
-GdkPixbuf   *pixbuf_disp     = NULL;
-GdkPixbuf   *pixbuf_PWR      = NULL;
-GdkPixbuf   *pixbuf_SNR      = NULL;
-
-GtkListStore *savedstore     = NULL;
-
 GKeyFile    *config          = NULL;
 
 // Return the FFT bin index matching the given frequency
@@ -71,22 +64,4 @@ void ensure_dir_exists(const char *dir) {
       exit(EXIT_FAILURE);
     }
   }
-}
-
-// Save current picture as PNG
-void saveCurrentPic() {
-  GdkPixbuf *scaledpb;
-  GString   *pngfilename;
-
-  pngfilename = g_string_new(g_key_file_get_string(config,"slowrx","rxdir",NULL));
-  g_string_append_printf(pngfilename, "/%s_%s.png", CurrentPic.timestr, ModeSpec[CurrentPic.Mode].ShortName);
-  printf("  Saving to %s\n", pngfilename->str);
-
-  scaledpb = gdk_pixbuf_scale_simple (pixbuf_rx, ModeSpec[CurrentPic.Mode].ImgWidth,
-    ModeSpec[CurrentPic.Mode].NumLines * ModeSpec[CurrentPic.Mode].LineHeight, GDK_INTERP_HYPER);
-
-  ensure_dir_exists(g_key_file_get_string(config,"slowrx","rxdir",NULL));
-  gdk_pixbuf_savev(scaledpb, pngfilename->str, "png", NULL, NULL, NULL);
-  g_object_unref(scaledpb);
-  g_string_free(pngfilename, TRUE);
 }

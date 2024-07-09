@@ -1,6 +1,13 @@
 #ifndef _GUI_H_
 #define _GUI_H_
 
+extern GdkPixbuf *pixbuf_PWR;
+extern GdkPixbuf *pixbuf_SNR;
+extern GdkPixbuf *pixbuf_rx;
+extern GdkPixbuf *pixbuf_disp;
+
+extern GtkListStore *savedstore;
+
 typedef struct _GuiObjs GuiObjs;
 struct _GuiObjs {
   GtkWidget *button_abort;
@@ -39,6 +46,7 @@ extern GuiObjs   gui;
 
 void     createGUI     ();
 void     setVU         (double *Power, int FFTLen, int WinIdx, gboolean ShowWin);
+void     saveCurrentPic();
 
 void     evt_chooseDir     ();
 void     evt_show_about    ();

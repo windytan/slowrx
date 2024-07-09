@@ -14,13 +14,6 @@ extern gboolean   ManualResync;
 extern guchar    *StoredLum;
 extern pthread_t  thread1;
 
-extern GdkPixbuf *pixbuf_PWR;
-extern GdkPixbuf *pixbuf_SNR;
-extern GdkPixbuf *pixbuf_rx;
-extern GdkPixbuf *pixbuf_disp;
-
-extern GtkListStore *savedstore;
-
 extern GKeyFile  *config;
 
 
@@ -55,6 +48,7 @@ double   power     (fftw_complex coeff);
 guchar   clip          (double a);
 double   deg2rad       (double Deg);
 guint    GetBin        (double Freq, guint FFTLen);
-void     saveCurrentPic();
+
+void     ensure_dir_exists(const char *dir);
 
 #endif
