@@ -1,9 +1,9 @@
 #include <stdlib.h>
 #include <complex.h>
 #include <math.h>
-#include <glib.h>
-#include <glib/gtypes.h>
 #include <alsa/asoundlib.h>
+
+#include <stdbool.h>
 
 #include <fftw3.h>
 
@@ -14,21 +14,19 @@
 #include "pic.h"
 
 /* 
- *
  * Decode FSK ID
  *
- * * The FSK IDs are 6-bit bytes, LSB first, 45.45 baud (22 ms/bit), 1900 Hz = 1, 2100 Hz = 0
- * * Text data starts with 20 2A and ends in 01
- * * Add 0x20 and the data becomes ASCII
- *
+ * - The FSK IDs are 6-bit bytes, LSB first, 45.45 baud (22 ms/bit), 1900 Hz = 1, 2100 Hz = 0
+ * - Text data starts with 20 2A and ends in 01
+ * - Add 0x20 and the data becomes ASCII
  */
 
 void GetFSK (char* const dest, uint8_t dest_sz) {
 
-  guint      FFTLen = 2048, i=0, LoBin, HiBin, MidBin, TestNum=0, TestPtr=0;
-  guchar     Bit = 0, AsciiByte = 0, BytePtr = 0, TestBits[24] = {0}, BitPtr=0;
+  uint32_t   FFTLen = 2048, i=0, LoBin, HiBin, MidBin, TestNum=0, TestPtr=0;
+  uint8_t    Bit = 0, AsciiByte = 0, BytePtr = 0, TestBits[24] = {0}, BitPtr=0;
   double     HiPow,LoPow,Hann[970];
-  gboolean   InSync = FALSE;
+  _Bool      InSync = FALSE;
 
   // Bit-reversion lookup table
   static const guchar BitRev[] = {
