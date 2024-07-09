@@ -6,11 +6,11 @@
 #include "modespec.h"
 #include "pcm.h"
 
-_Bool     Abort           = FALSE;
-_Bool     Adaptive        = TRUE;
+_Bool     Abort           = false;
+_Bool     Adaptive        = true;
 _Bool    *HasSync         = NULL;
-_Bool     ManualActivated = FALSE;
-_Bool     ManualResync    = FALSE;
+_Bool     ManualActivated = false;
+_Bool     ManualResync    = false;
 uint8_t   *StoredLum       = NULL;
 
 // Return the FFT bin index matching the given frequency
