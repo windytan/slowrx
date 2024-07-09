@@ -124,7 +124,6 @@ extern _ModeSpec ModeSpec[];
 
 double   power     (fftw_complex coeff);
 guchar   clip          (double a);
-void     createGUI     ();
 double   deg2rad       (double Deg);
 double   FindSync      (guchar Mode, double Rate, int *Skip);
 void     GetFSK        (char *dest);
@@ -136,16 +135,13 @@ void     *Listen       ();
 void     populateDeviceList ();
 void     readPcm       (gint numsamples);
 void     saveCurrentPic();
-void     setVU         (double *Power, int FFTLen, int WinIdx, gboolean ShowWin);
 
 void     evt_AbortRx       ();
 void     evt_changeDevices ();
-void     evt_chooseDir     ();
 void     evt_clearPix      ();
 void     evt_clickimg      ();
 void     evt_deletewindow  ();
 void     evt_GetAdaptive   ();
 void     evt_ManualStart   ();
-void     evt_show_about    ();
 
 #endif

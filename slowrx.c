@@ -19,6 +19,7 @@
 #include <fftw3.h>
 
 #include "common.h"
+#include "gui.h"
 
 // The thread that listens to VIS headers and calls decoders etc
 void *Listen() {
