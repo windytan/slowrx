@@ -51,6 +51,8 @@ void     showPCMDropWarning(void);
 void     populateDeviceList ();
 void     saveCurrentPic();
 
+void     showStatusbarMessage(const char* message);
+
 void     evt_chooseDir     ();
 void     evt_show_about    ();
 void     evt_AbortRx       ();

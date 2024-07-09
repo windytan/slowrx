@@ -97,6 +97,12 @@ void createGUI() {
 
 }
 
+void showStatusbarMessage(const char* message) {
+  gdk_threads_enter();
+  gtk_statusbar_push( GTK_STATUSBAR(gui.statusbar), 0, message );
+  gdk_threads_leave();
+}
+
 void showPCMError(const char *error) {
   gtk_widget_set_tooltip_text(gui.image_devstatus, error);
 }
