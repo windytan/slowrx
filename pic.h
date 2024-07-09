@@ -1,8 +1,6 @@
 #ifndef _PIC_H_
 #define _PIC_H_
 
-#include <gtk/gtk.h>
-
 #include <glib.h>
 #include <glib/gtypes.h>
 
@@ -12,7 +10,6 @@ struct _PicMeta {
   guchar Mode;
   double Rate;
   int    Skip;
-  GdkPixbuf *thumbbuf;
   char   timestr[40];
 };
 extern PicMeta CurrentPic;

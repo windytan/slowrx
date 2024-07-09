@@ -29,6 +29,7 @@
 #include "vis.h"
 
 static const char *fsk_id;
+static GdkPixbuf *thumbbuf;
 
 static void onListenerWaiting(void) {
   gdk_threads_enter        ();
@@ -88,11 +89,11 @@ static void onListenerReceiveFinished(void) {
   GtkTreeIter iter;
 
   // Add thumbnail to iconview
-  CurrentPic.thumbbuf = gdk_pixbuf_scale_simple (pixbuf_rx, 100,
+  thumbbuf = gdk_pixbuf_scale_simple (pixbuf_rx, 100,
       100.0/ModeSpec[CurrentPic.Mode].ImgWidth * ModeSpec[CurrentPic.Mode].NumLines * ModeSpec[CurrentPic.Mode].LineHeight, GDK_INTERP_HYPER);
   gdk_threads_enter                  ();
   gtk_list_store_prepend             (savedstore, &iter);
-  gtk_list_store_set                 (savedstore, &iter, 0, CurrentPic.thumbbuf, 1, fsk_id, -1);
+  gtk_list_store_set                 (savedstore, &iter, 0, thumbbuf, 1, fsk_id, -1);
   gdk_threads_leave                  ();
 
 
