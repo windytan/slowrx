@@ -19,6 +19,8 @@
  *
  */
 
+TextStatusCallback OnVisStatusChange;
+
 guchar GetVIS () {
 
   int        selmode, ptr=0;
@@ -37,9 +39,9 @@ guchar GetVIS () {
   
   printf("Waiting for header\n");
 
-  gdk_threads_enter();
-  gtk_statusbar_push( GTK_STATUSBAR(gui.statusbar), 0, "Listening" );
-  gdk_threads_leave();
+  if (OnVisStatusChange) {
+    OnVisStatusChange("Listening");
+  }
 
   while ( TRUE ) {
 

@@ -24,6 +24,7 @@
 #include "gui.h"
 #include "listen.h"
 #include "pcm.h"
+#include "vis.h"
 
 
 /*
@@ -46,6 +47,8 @@ int main(int argc, char *argv[]) {
   }
 
   createGUI();
+  OnListenerStatusChange = showStatusbarMessage;
+  OnVisStatusChange = showStatusbarMessage;
   pcm.OnPCMAbort = showPCMError;
   pcm.OnPCMDrop = showPCMDropWarning;
   populateDeviceList();

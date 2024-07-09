@@ -29,6 +29,7 @@
 #include "vis.h"
 
 static pthread_t listener_thread;
+TextStatusCallback OnListenerStatusChange;
 
 void StartListener(void) {
   pthread_create(&listener_thread, NULL, Listen, NULL);
@@ -116,6 +117,9 @@ void *Listen() {
   
     // Get video
     strftime(rctime,  sizeof(rctime)-1, "%H:%Mz", timeptr);
+    if (OnListenerStatusChange) {
+      OnListenerStatusChange("Receiving video...");
+    }
     gdk_threads_enter        ();
     gtk_label_set_text       (GTK_LABEL(gui.label_fskid), "");
     gtk_widget_set_sensitive (gui.frame_manual, FALSE);
@@ -124,7 +128,6 @@ void *Listen() {
     gtk_widget_set_sensitive (gui.button_abort, TRUE);
     gtk_widget_set_sensitive (gui.button_clear, FALSE);
     gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON(gui.tog_setedge), FALSE);
-    gtk_statusbar_push       (GTK_STATUSBAR(gui.statusbar), 0, "Receiving video..." );
     gtk_label_set_markup     (GTK_LABEL(gui.label_lastmode), ModeSpec[CurrentPic.Mode].Name);
     gtk_label_set_markup     (GTK_LABEL(gui.label_utc), rctime);
     gdk_threads_leave        ();
@@ -139,9 +142,9 @@ void *Listen() {
     id[0] = '\0';
 
     if (Finished && gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(gui.tog_fsk))) {
-      gdk_threads_enter  ();
-      gtk_statusbar_push (GTK_STATUSBAR(gui.statusbar), 0, "Receiving FSK ID..." );
-      gdk_threads_leave  ();
+      if (OnListenerStatusChange) {
+        OnListenerStatusChange("Receiving FSK ID...");
+      }
       GetFSK(id);
       printf("  FSKID \"%s\"\n",id);
       gdk_threads_enter  ();
@@ -155,8 +158,10 @@ void *Listen() {
 
       // Fix slant
       //setVU(0,6);
+      if (OnListenerStatusChange) {
+        OnListenerStatusChange("Calculating slant...");
+      }
       gdk_threads_enter        ();
-      gtk_statusbar_push       (GTK_STATUSBAR(gui.statusbar), 0, "Calculating slant..." );
       gtk_widget_set_sensitive (gui.grid_vu, FALSE);
       gdk_threads_leave        ();
       printf("  FindSync @ %.1f Hz\n",CurrentPic.Rate);
