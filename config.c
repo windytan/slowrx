@@ -1,4 +1,5 @@
-#include <gtk/gtk.h>
+#include <stdio.h>
+#include <glib.h>
 #include "config.h"
 
 GKeyFile    *config          = NULL;
