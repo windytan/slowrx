@@ -1,8 +1,7 @@
 #ifndef _MODESPEC_H_
 #define _MODESPEC_H_
 
-#include <glib.h>
-#include <glib/gtypes.h>
+#include <stdint.h>
 
 // SSTV modes
 enum {
@@ -20,22 +19,22 @@ enum {
   GBR, RGB, YUV, BW
 };
 
-extern guchar     VISmap[];
+extern const uint8_t VISmap[];
 
 typedef struct ModeSpec {
-  char   *Name;
-  char   *ShortName;
-  double  SyncTime;
-  double  PorchTime;
-  double  SeptrTime;
-  double  PixelTime;
-  double  LineTime;
-  gushort ImgWidth;
-  gushort NumLines;
-  guchar  LineHeight;
-  guchar  ColorEnc;
+  char    *Name;
+  char    *ShortName;
+  double   SyncTime;
+  double   PorchTime;
+  double   SeptrTime;
+  double   PixelTime;
+  double   LineTime;
+  uint16_t ImgWidth;
+  uint16_t NumLines;
+  uint8_t  LineHeight;
+  uint8_t  ColorEnc;
 } _ModeSpec;
 
-extern _ModeSpec ModeSpec[];
+extern const _ModeSpec ModeSpec[];
 
 #endif

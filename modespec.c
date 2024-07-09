@@ -27,7 +27,7 @@
  *             <http://www.tima.com/~djones/line.txt>
  */
 
-_ModeSpec ModeSpec[] = {
+const _ModeSpec ModeSpec[] = {
 
   [M1] = {  // N7CXI, 2000
     .Name         = "Martin M1",
@@ -366,7 +366,8 @@ _ModeSpec ModeSpec[] = {
 
 //                  0     1     2     3    4     5     6     7     8     9     A     B    C    D    E     F
 
-guchar VISmap[] = { 0,    0,    R8BW, 0,   R24,  0,    R12BW,0,    R36,  0,    R24BW,0,   R72, 0,   0,    0,     // 0
+const uint8_t VISmap[] = {
+	            0,    0,    R8BW, 0,   R24,  0,    R12BW,0,    R36,  0,    R24BW,0,   R72, 0,   0,    0,     // 0
                     0,    0,    0,    0,   0,    0,    0,    0,    0,    0,    0,    0,   0,   0,   0,    0,     // 1
                     M4,   0,    0,    0,   M3,   0,    0,    0,    M2,   0,    0,    0,   M1,  0,   0,    0,     // 2
                     0,    0,    0,    0,   0,    0,    0,    W2180,S2,   0,    0,    0,   S1,  0,   0,    W2120, // 3
