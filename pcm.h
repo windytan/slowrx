@@ -1,6 +1,8 @@
 #ifndef _PCM_H
 #define _PCM_H
 
+#include <alsa/asoundlib.h>
+
 #include <glib.h>
 #include <glib/gtypes.h>
 
