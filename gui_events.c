@@ -9,6 +9,7 @@
 
 #include "common.h"
 #include "gui.h"
+#include "listen.h"
 #include "modespec.h"
 #include "pcm.h"
 

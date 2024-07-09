@@ -55,7 +55,6 @@ double   power     (fftw_complex coeff);
 guchar   clip          (double a);
 double   deg2rad       (double Deg);
 guint    GetBin        (double Freq, guint FFTLen);
-void     *Listen       ();
 void     saveCurrentPic();
 
 #endif
