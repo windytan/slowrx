@@ -1,3 +1,6 @@
 slowrx
 rx
 rx-lum
+
+*.d
+*.o
