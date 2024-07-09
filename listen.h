@@ -3,4 +3,7 @@
 
 void     *Listen       ();
 
+void StartListener(void);
+void WaitForListenerStop(void);
+
 #endif

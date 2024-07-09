@@ -47,7 +47,7 @@ void evt_changeDevices() {
 
   static int init;
   if (init)
-    pthread_join(thread1, NULL);
+    WaitForListenerStop();
   init = 1;
 
   if (pcm.handle != NULL) snd_pcm_close(pcm.handle);
@@ -72,7 +72,7 @@ void evt_changeDevices() {
 
   g_key_file_set_string(config,"slowrx","device",gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(gui.combo_card)));
 
-  pthread_create (&thread1, NULL, Listen, NULL);
+  StartListener();
 
 }
 

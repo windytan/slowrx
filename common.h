@@ -12,7 +12,6 @@ extern gboolean  *HasSync;
 extern gboolean   ManualActivated;
 extern gboolean   ManualResync;
 extern guchar    *StoredLum;
-extern pthread_t  thread1;
 
 extern GKeyFile  *config;
 

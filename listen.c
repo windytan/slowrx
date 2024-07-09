@@ -28,6 +28,16 @@
 #include "video.h"
 #include "vis.h"
 
+static pthread_t listener_thread;
+
+void StartListener(void) {
+  pthread_create(&listener_thread, NULL, Listen, NULL);
+}
+
+void WaitForListenerStop(void) {
+  pthread_join(listener_thread, NULL);
+}
+
 // The thread that listens to VIS headers and calls decoders etc
 void *Listen() {
 
