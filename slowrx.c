@@ -46,6 +46,8 @@ int main(int argc, char *argv[]) {
   }
 
   createGUI();
+  pcm.OnPCMAbort = showPCMError;
+  pcm.OnPCMDrop = showPCMDropWarning;
   populateDeviceList();
 
   gtk_main();

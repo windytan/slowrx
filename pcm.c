@@ -10,7 +10,6 @@
 
 #include "common.h"
 #include "config.h"
-#include "gui.h"
 #include "pcm.h"
 
 /*
@@ -34,7 +33,9 @@ void readPcm(gint numsamples) {
       printf("ALSA: buffer overrun\n");
     else if (samplesread < 0) {
       printf("ALSA error %d (%s)\n", samplesread, snd_strerror(samplesread));
-      showPCMError("ALSA error");
+      if (pcm.OnPCMAbort) {
+        pcm.OnPCMAbort("ALSA Error");
+      }
       Abort = TRUE;
       pthread_exit(NULL);
     }
@@ -43,7 +44,9 @@ void readPcm(gint numsamples) {
     
     // On first appearance of error, update the status icon
     if (!pcm.BufferDrop) {
-      showPCMDropWarning();
+      if (pcm.OnPCMDrop) {
+        pcm.OnPCMDrop();
+      }
       pcm.BufferDrop = TRUE;
     }
 
