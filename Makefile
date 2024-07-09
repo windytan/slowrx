@@ -28,4 +28,4 @@ clean:
 
 -include $(DEPENDS)
 
-gui.c: aboutdialog.ui
+gui.c: aboutdialog.ui slowrx.ui
