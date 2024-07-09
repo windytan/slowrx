@@ -25,6 +25,7 @@
 #include "pcm.h"
 #include "sync.h"
 #include "video.h"
+#include "vis.h"
 
 // The thread that listens to VIS headers and calls decoders etc
 void *Listen() {
