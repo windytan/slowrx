@@ -1,6 +1,9 @@
 #ifndef _PCM_H
 #define _PCM_H
 
+#include <glib.h>
+#include <glib/gtypes.h>
+
 typedef struct _PcmData PcmData;
 struct _PcmData {
   snd_pcm_t *handle;
