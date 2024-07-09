@@ -19,12 +19,12 @@ TARGETS = $(GUI_BIN)
 COMMON_CFLAGS  = $(CFLAGS) $(OFLAGS)
 COMMON_LDFLAGS = -lfftw3 -lasound -lm -lpthread
 
-LIB_SOURCES = common.c fft.c fsk.c listen.c modespec.c sync.c pic.c pcm.c config.c vis.c video.c
+LIB_SOURCES = common.c fft.c fsk.c listen.c modespec.c sync.c pic.c pcm.c vis.c video.c
 LIB_OBJECTS = $(patsubst %.c,%.o,$(LIB_SOURCES))
 LIB_DEPENDS = $(patsubst %.c,%.d,$(LIB_SOURCES))
 LIB_CFLAGS  = $(COMMON_CFLAGS) $(GLIBCFLAGS)
 
-GUI_SOURCES = gui.c slowrx.c
+GUI_SOURCES = config.c gui.c slowrx.c
 GUI_OBJECTS = $(patsubst %.c,%.o,$(GUI_SOURCES))
 GUI_DEPENDS = $(patsubst %.c,%.d,$(GUI_SOURCES))
 GUI_CFLAGS  = $(COMMON_CFLAGS) $(GTKCFLAGS) -DGDK_VERSION_MIN_REQUIRED=GDK_VERSION_3_4
