@@ -11,7 +11,6 @@ struct _PcmData {
 extern PcmData pcm;
 
 int      initPcmDevice ();
-void     populateDeviceList ();
 void     readPcm       (gint numsamples);
 
 #endif

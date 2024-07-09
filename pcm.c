@@ -65,40 +65,6 @@ void readPcm(gint numsamples) {
 
 }
 
-void populateDeviceList() {
-  int                  card;
-  char                *cardname;
-  int                  numcards, row;
-
-  gdk_threads_enter();
-  gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(gui.combo_card), "default");
-  gdk_threads_leave();
-
-  numcards = 0;
-  card     = -1;
-  row      = 0;
-  do {
-    snd_card_next(&card);
-    if (card != -1) {
-      row++;
-      snd_card_get_name(card,&cardname);
-      gdk_threads_enter();
-      gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(gui.combo_card), cardname);
-      char *dev = g_key_file_get_string(config,"slowrx","device",NULL);
-      if (dev == NULL || strcmp(cardname, dev) == 0)
-        gtk_combo_box_set_active(GTK_COMBO_BOX(gui.combo_card), row);
-
-      gdk_threads_leave();
-      numcards++;
-    }
-  } while (card != -1);
-
-  if (numcards == 0) {
-    perror("No sound devices found!\n");
-    exit(EXIT_FAILURE);
-  }
-  
-}
 
 // Initialize sound card
 // Return value:
