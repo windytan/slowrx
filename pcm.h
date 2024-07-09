@@ -3,21 +3,21 @@
 
 #include <alsa/asoundlib.h>
 
-#include <glib.h>
-#include <glib/gtypes.h>
+#include <stdbool.h>
+#include <stdint.h>
 
 typedef struct _PcmData PcmData;
 struct _PcmData {
   snd_pcm_t *handle;
-  gint16    *Buffer;
+  int16_t   *Buffer;
   TextStatusCallback OnPCMAbort;
   EventCallback OnPCMDrop;
-  int        WindowPtr;
-  gboolean   BufferDrop;
+  int32_t    WindowPtr;
+  _Bool      BufferDrop;
 };
 extern PcmData pcm;
 
-int      initPcmDevice (char *wanteddevname);
-void     readPcm       (gint numsamples);
+int32_t  initPcmDevice (char *wanteddevname);
+void     readPcm       (int32_t numsamples);
 
 #endif

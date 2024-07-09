@@ -18,10 +18,10 @@
 PcmData      pcm;
 
 // Capture fresh PCM data to buffer
-void readPcm(gint numsamples) {
+void readPcm(int32_t numsamples) {
 
-  int    samplesread, i;
-  gint32 tmp[BUFLEN];  // Holds one or two 16-bit channels, will be ANDed to single channel
+  int32_t samplesread, i;
+  int32_t tmp[BUFLEN];  // Holds one or two 16-bit channels, will be ANDed to single channel
 
   samplesread = snd_pcm_readi(pcm.handle, tmp, (pcm.WindowPtr == 0 ? BUFLEN : numsamples));
 
@@ -34,7 +34,7 @@ void readPcm(gint numsamples) {
       if (pcm.OnPCMAbort) {
         pcm.OnPCMAbort("ALSA Error");
       }
-      Abort = TRUE;
+      Abort = true;
       pthread_exit(NULL);
     }
     else
@@ -45,7 +45,7 @@ void readPcm(gint numsamples) {
       if (pcm.OnPCMDrop) {
         pcm.OnPCMDrop();
       }
-      pcm.BufferDrop = TRUE;
+      pcm.BufferDrop = true;
     }
 
   }
@@ -72,30 +72,30 @@ void readPcm(gint numsamples) {
 //   0 = opened ok
 //  -1 = opened, but suboptimal
 //  -2 = couldn't be opened
-int initPcmDevice(char *wanteddevname) {
+int32_t initPcmDevice(char *wanteddevname) {
 
   snd_pcm_hw_params_t *hwparams;
   char                 pcm_name[30];
   unsigned int         exact_rate = 44100;
   int                  card;
-  gboolean             found;
+  _Bool                found;
   char                *cardname;
 
-  pcm.BufferDrop = FALSE;
+  pcm.BufferDrop = false;
 
   snd_pcm_hw_params_alloca(&hwparams);
 
   card  = -1;
-  found = FALSE;
+  found = false;
   if (strcmp(wanteddevname,"default") == 0) {
-    found=TRUE;
+    found=true;
   } else {
     do {
       snd_card_next(&card);
       if (card != -1) {
         snd_card_get_name(card,&cardname);
         if (strcmp(cardname, wanteddevname) == 0) {
-          found=TRUE;
+          found=true;
           break;
         }
       }
@@ -150,7 +150,7 @@ int initPcmDevice(char *wanteddevname) {
     return(-2);
   }
 
-  pcm.Buffer = calloc( BUFLEN, sizeof(gint16));
+  pcm.Buffer = calloc( BUFLEN, sizeof(int16_t));
   memset(pcm.Buffer, 0, BUFLEN);
   
   if (exact_rate != 44100) {
