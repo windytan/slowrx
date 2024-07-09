@@ -10,6 +10,7 @@
 #include <fftw3.h>
 
 #include "common.h"
+#include "modespec.h"
 
 gboolean     Abort           = FALSE;
 gboolean     Adaptive        = TRUE;

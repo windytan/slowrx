@@ -6,6 +6,7 @@
 #include <fftw3.h>
 
 #include "common.h"
+#include "modespec.h"
 
 /*
  * Mode specifications

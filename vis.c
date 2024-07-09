@@ -7,6 +7,7 @@
 
 #include "common.h"
 #include "gui.h"
+#include "modespec.h"
 
 /* 
  *

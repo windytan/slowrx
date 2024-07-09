@@ -21,6 +21,7 @@
 #include "common.h"
 #include "fsk.h"
 #include "gui.h"
+#include "modespec.h"
 #include "video.h"
 
 // The thread that listens to VIS headers and calls decoders etc

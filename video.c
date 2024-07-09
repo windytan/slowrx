@@ -8,6 +8,7 @@
 #include <fftw3.h>
 
 #include "common.h"
+#include "modespec.h"
 #include "video.h"
 
 /* Demodulate the video signal & store all kinds of stuff for later stages

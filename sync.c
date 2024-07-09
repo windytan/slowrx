@@ -6,6 +6,7 @@
 #include <alsa/asoundlib.h>
 
 #include "common.h"
+#include "modespec.h"
 
 /* Find the slant angle of the sync singnal and adjust sample rate to cancel it out
  *   Length:  number of PCM samples to process
