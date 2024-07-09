@@ -5,8 +5,8 @@ typedef struct _PcmData PcmData;
 struct _PcmData {
   snd_pcm_t *handle;
   gint16    *Buffer;
-  void	   (*OnPCMAbort)(const char* reason);
-  void	   (*OnPCMDrop)(void);
+  TextStatusCallback OnPCMAbort;
+  EventCallback OnPCMDrop;
   int        WindowPtr;
   gboolean   BufferDrop;
 };

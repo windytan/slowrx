@@ -13,6 +13,9 @@ extern gboolean   ManualActivated;
 extern gboolean   ManualResync;
 extern guchar    *StoredLum;
 
+// Various callback function types for various events.
+typedef void (*EventCallback)(void);
+typedef void (*TextStatusCallback)(const char* status);
 
 typedef struct _PicMeta PicMeta;
 struct _PicMeta {
