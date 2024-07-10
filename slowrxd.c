@@ -463,14 +463,19 @@ static void onVideoWritePixel(uint16_t x, uint16_t y, uint8_t r, uint8_t g, uint
   if (x >= rxmode->ImgWidth)
     return;
 
-  if (y >= (rxmode->NumLines * rxmode->LineHeight))
+  if (y >= rxmode->NumLines)
     return;
 
   if (!rximg)
     return;
 
-  /* Draw pixel */
-  gdImageSetPixel(rximg, x, y, gdImageColorResolve(rximg, r, g, b));
+  /* Handle line height */
+  y *= rxmode->LineHeight;
+
+  /* Draw pixel or line */
+  for (uint16_t yo = 0; yo < rxmode->LineHeight; yo++) {
+    gdImageSetPixel(rximg, x, y + yo, gdImageColorResolve(rximg, r, g, b));
+  }
 }
 
 static int refreshImage(_Bool force) {
