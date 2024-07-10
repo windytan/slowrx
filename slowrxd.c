@@ -13,6 +13,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/time.h>
+#include <inttypes.h>
 
 #include <pthread.h>
 
@@ -282,7 +283,7 @@ static int beginReceiveLogRecord(const char* type, const char* msg) {
     time_msec = (uint16_t)(tv.tv_usec / 1000);
   }
 
-  res = fprintf(rxlog, "{\"timestamp\": %ld%03u, \"type\": ", time_sec, time_msec);
+  res = fprintf(rxlog, "{\"timestamp\": %" PRId64 "%03u, \"type\": ", time_sec, time_msec);
   if (res < 0) {
     perror("Failed to emit record timestamp or type key");
     return -errno;
