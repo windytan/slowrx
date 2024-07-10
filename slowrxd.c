@@ -507,8 +507,14 @@ static void onListenerReceiveFSK(void) {
 }
 
 static void onListenerReceivedFSKID(const char *id) {
-  printf("Listener got FSK %s", id);
-  fsk_id = id;
+  if (strlen(id)) {
+    printf("Listener got FSK %s", id);
+    fsk_id = id;
+  } else {
+    printf("No FSK received\n");
+    fsk_id = NULL;
+    return;
+  }
 
   int res = beginReceiveLogRecord(logmsg_fsk_received, NULL);
   if (res < 0) {
