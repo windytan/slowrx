@@ -702,7 +702,7 @@ int main(int argc, char *argv[]) {
 
   {
     int opt;
-    while ((opt = getopt(argc, argv, "FI:L:Sd:hi:l:p:")) != -1) {
+    while ((opt = getopt(argc, argv, "FISh:L:d:i:l:p:")) != -1) {
       switch (opt) {
         case 'F': // Disable FSKID
           ListenerEnableFSKID = false;
@@ -715,6 +715,9 @@ int main(int argc, char *argv[]) {
           break;
         case 'S': // Disable slant correction
           ListenerAutoSlantCorrect = false;
+          break;
+        case 'd':
+          path_dir = optarg;
           break;
         case 'h':
           printf("Usage: %s [-h] [-F] [-S] [-I inprogress.png]\n"
@@ -735,7 +738,7 @@ int main(int argc, char *argv[]) {
           exit(DAEMON_EXIT_SUCCESS);
           break;
         default:
-          printf("Unrecognised: %s", optarg);
+          printf("Unrecognised: %s\n", optarg);
           exit(DAEMON_EXIT_INVALID_ARG);
           break;
       }
