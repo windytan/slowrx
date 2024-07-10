@@ -72,7 +72,7 @@ void readPcm(int32_t numsamples) {
 //   0 = opened ok
 //  -1 = opened, but suboptimal
 //  -2 = couldn't be opened
-int32_t initPcmDevice(char *wanteddevname) {
+int32_t initPcmDevice(const char *wanteddevname) {
 
   snd_pcm_hw_params_t *hwparams;
   char                 pcm_name[30];

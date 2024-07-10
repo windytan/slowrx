@@ -17,7 +17,7 @@ struct _PcmData {
 };
 extern PcmData pcm;
 
-int32_t  initPcmDevice (char *wanteddevname);
+int32_t  initPcmDevice (const char *wanteddevname);
 void     readPcm       (int32_t numsamples);
 
 #endif
