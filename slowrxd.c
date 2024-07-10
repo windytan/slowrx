@@ -639,6 +639,12 @@ static void onListenerReceiveFinished(void) {
   }
   strncat(output_path_img, ".png", sizeof(output_path_img) - strlen(output_path_img) - 1);
 
+  if (output_path_rem < 7) {
+    /* Truncate to make room for ".ndjson\0" */
+    output_path_log[sizeof(output_path_log) - 5] = 0;
+  }
+  strncat(output_path_log, ".ndjson", sizeof(output_path_log) - strlen(output_path_log));
+
   printf("Output files will be %s (image) and %s (log)\n",
       output_path_img, output_path_log);
 
@@ -649,12 +655,6 @@ static void onListenerReceiveFinished(void) {
   /* Release the image buffer */
   gdImageDestroy(rximg);
   rximg = NULL;
-
-  if (output_path_rem < 7) {
-    /* Truncate to make room for ".ndjson\0" */
-    output_path_log[sizeof(output_path_log) - 5] = 0;
-  }
-  strncat(output_path_log, ".ndjson", sizeof(output_path_log) - strlen(output_path_log));
 
   res = emitSimpleReceiveLogRecord(logmsg_receive_end, NULL);
   if (res == 0)
