@@ -36,6 +36,7 @@
 #define DAEMON_EXIT_INVALID_ARG (1)
 #define DAEMON_EXIT_INIT_FFT_ERR (2)
 #define DAEMON_EXIT_INIT_PCM_ERR (3)
+#define DAEMON_EXIT_INIT_PATH (4)
 
 /* Receive refresh interval */
 #define REFRESH_INTERVAL (5)
@@ -55,16 +56,16 @@ const char* logmsg_status = "STATUS";
 const char* logmsg_warning = "WARNING";
 
 /* The name of the image-in-progress being received */
-static const char* path_inprogress_img = "inprogress.png";
+static char* path_inprogress_img = "inprogress.png";
 
 /* The name of the receive log */
-static const char* path_inprogress_log = "inprogress.ndjson";
+static char* path_inprogress_log = "inprogress.ndjson";
 
 /* The name of the latest receive log */
-static const char* path_latest_log = "latest.ndjson";
+static char* path_latest_log = "latest.ndjson";
 
 /* The name of the latest received image */
-static const char* path_latest_img = "latest.png";
+static char* path_latest_img = "latest.png";
 
 /* The name of the directory where all images will be kept */
 static const char* path_dir = NULL;
@@ -83,6 +84,43 @@ const _ModeSpec* rxmode = NULL;
 
 /* Pointer to the raw image data being received */
 static gdImagePtr rximg;
+
+/* Safely concatenate two strings */
+static int safe_strncat(char* dest, const char* src, size_t* dest_rem) {
+  size_t src_len = strlen(src);
+  if (src_len <= *dest_rem) {
+    strncat(dest, src, *dest_rem);
+    *dest_rem -= src_len;
+
+    return src_len;
+  } else {
+    errno = E2BIG;
+    return -errno;
+  }
+}
+
+/* Append a path segment */
+static int path_append(char* path, const char* filename, size_t* path_rem) {
+  char* path_end = &path[strlen(path)];
+  int res;
+
+  if ((path_end > path) && (path_end[-1] != '/')) {
+    /* Path does not end in a slash, so append one now */
+    res = safe_strncat(path, "/", path_rem);
+    if (res < 0) {
+      return res;
+    }
+  }
+
+  res = safe_strncat(path, filename, path_rem);
+  if (res < 0) {
+    /* Wind back concatenations */
+    path_end = 0;
+    return res;
+  }
+
+  return res;
+}
 
 /* Rename and symlink a file */
 static int renameAndSymlink(const char* existing_path, const char* new_path, const char* symlink_path) {
@@ -566,38 +604,26 @@ static void onListenerReceiveFinished(void) {
   char output_path_log[128];
   char output_path_img[128];
   size_t output_path_rem = sizeof(output_path_log) - 1;
-  size_t next_len;
 
   if (path_dir) {
-    next_len = strlen(path_dir) + 1;
-    if (next_len <= output_path_rem) {
-      strncpy(output_path_log, path_dir, output_path_rem);
-      strncpy(output_path_log, "/", output_path_rem - 1);
-      output_path_rem -= next_len;
-    }
+    strncpy(output_path_log, path_dir, output_path_rem);
+    output_path_rem -= strlen(path_dir);
   } else {
     output_path_log[0] = 0;
   }
 
-  next_len = strlen(timestamp);
-  if (next_len <= output_path_rem) {
-    strncat(output_path_log, timestamp, output_path_rem);
-    output_path_rem -= next_len;
+  int res = path_append(output_path_log, timestamp, &output_path_rem);
+  if (res >= 0) {
+    res = safe_strncat(output_path_log, "-", &output_path_rem);
+    if (res >= 0) {
+      res = safe_strncat(output_path_log, ModeSpec[CurrentPic.Mode].ShortName, &output_path_rem);
+    }
   }
 
-  next_len = strlen(ModeSpec[CurrentPic.Mode].ShortName) + 1;
-  if (next_len <= output_path_rem) {
-    strncat(output_path_log, "-", output_path_rem);
-    strncat(output_path_log, ModeSpec[CurrentPic.Mode].ShortName, output_path_rem);
-    output_path_rem -= next_len;
-  }
-
-  if (fsk_id && output_path_rem) {
-    next_len = strlen(fsk_id) + 1;
-    if (next_len <= output_path_rem) {
-      strncat(output_path_log, "-", output_path_rem);
-      strncat(output_path_log, fsk_id, output_path_rem);
-      output_path_rem -= next_len;
+  if (fsk_id && output_path_rem && (res >= 0)) {
+    res = safe_strncat(output_path_log, "-", &output_path_rem);
+    if (res >= 0) {
+      res = safe_strncat(output_path_log, fsk_id, &output_path_rem);
     }
   }
 
@@ -606,7 +632,10 @@ static void onListenerReceiveFinished(void) {
     /* Truncate to make room for ".png\0" */
     output_path_img[sizeof(output_path_img) - 5] = 0;
   }
-  strncat(output_path_img, ".png", sizeof(output_path_img) - strlen(output_path_img));
+  strncat(output_path_img, ".png", sizeof(output_path_img) - strlen(output_path_img) - 1);
+
+  printf("Output files will be %s (image) and %s (log)\n",
+      output_path_img, output_path_log);
 
   /* Refresh one more time, then rename the file */
   refreshImage(true);
@@ -622,7 +651,7 @@ static void onListenerReceiveFinished(void) {
   }
   strncat(output_path_log, ".ndjson", sizeof(output_path_log) - strlen(output_path_log));
 
-  int res = emitSimpleReceiveLogRecord(logmsg_receive_end, NULL);
+  res = emitSimpleReceiveLogRecord(logmsg_receive_end, NULL);
   if (res == 0)
     res = closeReceiveLog(output_path_log);
   if (res < 0) {
@@ -699,7 +728,27 @@ static void showPCMDropWarning(void) {
  * main
  */
 
+char* path_append_dir_dup(const char* filename) {
+  char path[128] = {0};
+  size_t path_rem = sizeof(path) - 1;
+
+  if (path_dir) {
+    strncpy(path, path_dir, path_rem);
+    path_rem -= strlen(path_dir);
+
+    int res = path_append(path, filename, &path_rem);
+    if (res < 0) {
+      return NULL;
+    }
+  } else {
+    strncpy(path, filename, path_rem);
+  }
+
+  return strdup(path);
+}
+
 int main(int argc, char *argv[]) {
+
   // Set up defaults
   const char* pcm_device = "default";
   ListenerAutoSlantCorrect = true;
@@ -707,46 +756,117 @@ int main(int argc, char *argv[]) {
   VisAutoStart = true;
 
   {
+    _Bool path_inprogress_img_set = false;
+    _Bool path_inprogress_log_set = false;
+    _Bool path_latest_img_set = false;
+    _Bool path_latest_log_set = false;
     int opt;
+
     while ((opt = getopt(argc, argv, "FISh:L:d:i:l:p:")) != -1) {
       switch (opt) {
         case 'F': // Disable FSKID
           ListenerEnableFSKID = false;
           break;
         case 'I': // In-progress image path
-          path_inprogress_img = optarg;
+          if (path_inprogress_img_set) {
+            free(path_inprogress_img);
+          }
+          path_inprogress_img = path_append_dir_dup(optarg);
+          if (!path_inprogress_img) {
+            perror("Failed to compute full in-progress image path");
+            exit(DAEMON_EXIT_INIT_PATH);
+          }
           break;
         case 'L': // In-progress receive log path
-          path_inprogress_log = optarg;
+          if (path_inprogress_log_set) {
+            free(path_inprogress_log);
+          }
+          path_inprogress_log = path_append_dir_dup(optarg);
+          if (!path_inprogress_log) {
+            perror("Failed to compute full in-progress log path");
+            exit(DAEMON_EXIT_INIT_PATH);
+          }
           break;
         case 'S': // Disable slant correction
           ListenerAutoSlantCorrect = false;
           break;
-        case 'd':
-          path_dir = optarg;
+        case 'd': // Set the output directory
+          path_dir = strdup(optarg);
           break;
         case 'h':
           printf("Usage: %s [-h] [-F] [-S] [-I inprogress.png]\n"
-                 "[-L inprogress.ndjson] [-d directory] [-i latest.png]\n"
-                 "[-l latest.ndjson] [-p pcmdevice]\n"
-                 "\n"
-                 "where:\n"
-                 "  -F : disable FSK ID detection\n"
-                 "  -S : disable slant correction\n"
-                 "  -h : display this help and exit\n"
-                 "  -d : set the directory where images are kept\n"
-                 "  -I : set the in-progress image path\n"
-                 "  -L : set the in-progress receive log path\n"
-                 "  -i : set the latest image path\n"
-                 "  -l : set the latest receive log path\n"
-                 "  -p : set the ALSA PCM capture device\n",
-                 argv[0]);
+              "[-L inprogress.ndjson] [-d directory] [-i latest.png]\n"
+              "[-l latest.ndjson] [-p pcmdevice]\n"
+              "\n"
+              "where:\n"
+              "  -F : disable FSK ID detection\n"
+              "  -S : disable slant correction\n"
+              "  -h : display this help and exit\n"
+              "  -d : set the directory where images are kept\n"
+              "  -I : set the in-progress image path\n"
+              "  -L : set the in-progress receive log path\n"
+              "  -i : set the latest image path\n"
+              "  -l : set the latest receive log path\n"
+              "  -p : set the ALSA PCM capture device\n",
+              argv[0]);
           exit(DAEMON_EXIT_SUCCESS);
+          break;
+        case 'i': // Latest image path
+          if (path_latest_img_set) {
+            free(path_latest_img);
+          }
+          path_latest_img = path_append_dir_dup(optarg);
+          if (!path_latest_img) {
+            perror("Failed to compute full latest image path");
+            exit(DAEMON_EXIT_INIT_PATH);
+          }
+          break;
+        case 'l': // Latest receive log path
+          if (path_latest_log_set) {
+            free(path_latest_log);
+          }
+          path_latest_log = path_append_dir_dup(optarg);
+          if (!path_latest_log) {
+            perror("Failed to compute full latest log path");
+            exit(DAEMON_EXIT_INIT_PATH);
+          }
           break;
         default:
           printf("Unrecognised: %s\n", optarg);
           exit(DAEMON_EXIT_INVALID_ARG);
           break;
+      }
+    }
+
+    if (!path_inprogress_img_set) {
+      path_inprogress_img = path_append_dir_dup(path_inprogress_img);
+      if (!path_inprogress_img) {
+        perror("Failed to compute full in-progress image path");
+        exit(DAEMON_EXIT_INIT_PATH);
+      }
+    }
+
+    if (!path_inprogress_log_set) {
+      path_inprogress_log = path_append_dir_dup(path_inprogress_log);
+      if (!path_inprogress_log) {
+        perror("Failed to compute full in-progress log path");
+        exit(DAEMON_EXIT_INIT_PATH);
+      }
+    }
+
+    if (!path_latest_img_set) {
+      path_latest_img = path_append_dir_dup(path_latest_img);
+      if (!path_latest_img) {
+        perror("Failed to compute full latest image path");
+        exit(DAEMON_EXIT_INIT_PATH);
+      }
+    }
+
+    if (!path_latest_log_set) {
+      path_latest_log = path_append_dir_dup(path_latest_log);
+      if (!path_latest_log) {
+        perror("Failed to compute full latest log path");
+        exit(DAEMON_EXIT_INIT_PATH);
       }
     }
   }
