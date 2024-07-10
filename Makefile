@@ -7,6 +7,9 @@ CFLAGS    = -Wall -Wextra -std=gnu99 -pedantic -g
 GTKCFLAGS = $(shell pkg-config --cflags gtk+-3.0)
 GTKLIBS   = $(shell pkg-config --libs gtk+-3.0)
 
+GDCFLAGS = $(shell pkg-config --cflags gdlib)
+GDLIBS   = $(shell pkg-config --libs gdlib)
+
 OFLAGS = -O3
 
 GUI_BIN = slowrx
@@ -32,8 +35,8 @@ GUI_LDFLAGS = $(COMMON_LDFLAGS) -lgthread-2.0 $(GTKLIBS)
 DAEMON_SOURCES = slowrxd.c
 DAEMON_OBJECTS = $(patsubst %.c,%.o,$(DAEMON_SOURCES))
 DAEMON_DEPENDS = $(patsubst %.c,%.d,$(DAEMON_SOURCES))
-DAEMON_CFLAGS  = $(COMMON_CFLAGS) $(LIB_CFLAGS)
-DAEMON_LDFLAGS = $(COMMON_LDFLAGS)
+DAEMON_CFLAGS  = $(COMMON_CFLAGS) $(LIB_CFLAGS) $(GDCFLAGS)
+DAEMON_LDFLAGS = $(COMMON_LDFLAGS) $(GDLIBS)
 
 OBJECTS = $(GUI_OBJECTS) $(LIB_OBJECTS) $(DAEMON_OBJECTS)
 DEPENDS = $(GUI_DEPENDS) $(LIB_DEPENDS) $(DAEMON_DEPENDS)
