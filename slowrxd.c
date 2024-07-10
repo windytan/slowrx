@@ -19,6 +19,7 @@
 #include <alsa/asoundlib.h>
 
 #include <fftw3.h>
+#include <gd.h>
 
 #include "common.h"
 #include "fft.h"
@@ -34,6 +35,9 @@
 #define DAEMON_EXIT_INIT_FFT_ERR (1)
 #define DAEMON_EXIT_INIT_PCM_ERR (2)
 
+/* Receive refresh interval */
+#define REFRESH_INTERVAL (5)
+
 /* Exit status to use when exiting */
 static int daemon_exit_status = DAEMON_EXIT_SUCCESS;
 
@@ -48,10 +52,8 @@ const char* logmsg_receive_end = "RECEIVE_END";
 const char* logmsg_status = "STATUS";
 const char* logmsg_warning = "WARNING";
 
-#if 0
 /* The name of the image-in-progress being received */
 static const char* path_inprogress_img = "inprogress.png";
-#endif
 
 /* The name of the receive log */
 static const char* path_inprogress_log = "inprogress.ndjson";
@@ -59,16 +61,23 @@ static const char* path_inprogress_log = "inprogress.ndjson";
 /* The name of the latest receive log */
 static const char* path_latest_log = "latest.ndjson";
 
+/* The name of the latest received image */
+static const char* path_latest_img = "latest.png";
+
+/* Time the image was last written to */
+static time_t last_refresh = 0;
+
 /* The FSK ID detected after image transmission */
 static const char *fsk_id = NULL;
 
 /* Pointer to the receive log (NDJSON format) */
 static FILE* rxlog = NULL;
 
+/* The currently selected mode */
+const _ModeSpec* rxmode = NULL;
+
 /* Pointer to the raw image data being received */
-#if 0
 static gdImagePtr rximg;
-#endif
 
 /* Rename and symlink a file */
 static int renameAndSymlink(const char* existing_path, const char* new_path, const char* symlink_path) {
@@ -347,6 +356,7 @@ static void onVisIdentified(void) {
     return;
   }
 
+  last_refresh = 0;
   snprintf(buffer, sizeof(buffer), "Detected mode %s (VIS code 0x%02x)", ModeSpec[idx].Name, VIS);
   puts(buffer);
   res = beginReceiveLogRecord(logmsg_vis_detect, buffer);
@@ -389,7 +399,16 @@ static void onVisIdentified(void) {
 }
 
 static void onVideoInitBuffer(uint8_t mode) {
-  printf("Init buffer for mode %d", mode);
+  rxmode = &ModeSpec[mode];
+
+  printf("Init buffer for mode %s\n", rxmode->Name);
+
+  /* Allocate the image */
+  rximg = gdImageCreateTrueColor(rxmode->ImgWidth, rxmode->NumLines * rxmode->LineHeight);
+  if (!rximg) {
+    perror("Failed to allocate image buffer");
+    Abort = true;
+  }
 }
 
 static void onVideoStartRedraw(void) {
@@ -397,33 +416,73 @@ static void onVideoStartRedraw(void) {
 }
 
 static void onVideoWritePixel(uint16_t x, uint16_t y, uint8_t r, uint8_t g, uint8_t b) {
-  printf("(%d, %d) = #%02x%02x%02x\n", x, y, r, g, b);
-
-  /* For now, emit the pixel data in the receive log */
-
-  int res = beginReceiveLogRecord("PIXELDATA", NULL);
-  if (res < 0) {
-    Abort = true;
+  /* Check bounds */
+  if (x >= rxmode->ImgWidth)
     return;
+
+  if (y >= (rxmode->NumLines * rxmode->LineHeight))
+    return;
+
+  if (!rximg)
+    return;
+
+  /* Draw pixel */
+  gdImageSetPixel(rximg, x, y, gdImageColorResolve(rximg, r, g, b));
+}
+
+static int refreshImage(_Bool force) {
+  int res;
+
+  if (!force && last_refresh) {
+    struct timeval tv;
+    res = gettimeofday(&tv, NULL);
+    if (res >= 0) {
+      uint16_t age = (uint16_t)(tv.tv_sec - last_refresh);
+
+      if (age < REFRESH_INTERVAL) {
+        /* Hasn't been long enough, don't bother */
+        return 0;
+      }
+    }
+  } else if (force) {
+    printf("Forced refresh\n");
+  } else if (!last_refresh) {
+    printf("First refresh\n");
   }
 
-  res = fprintf(rxlog, ", \"x\": %d, \"y\": %d, \"r\": %d, \"g\": %d, \"b\": %d",
-      x, y, r, g, b);
-  if (res < 0) {
-    perror("Failed to write pixel data");
-    Abort = true;
-    return;
+  /* Open a file for writing. "wb" means "write binary", important
+     under MSDOS, harmless under Unix. */
+  FILE* pngout = fopen(path_inprogress_img, "wb");
+  if (pngout) {
+    /* Output the image to the disk file in PNG format. */
+    gdImagePng(rximg, pngout);
+
+    /* Close the files. */
+    res = fclose(pngout);
+    if (res < 0) {
+      perror("Failed to write in-progress image");
+      return -errno;
+    } else {
+      struct timeval tv;
+      res = gettimeofday(&tv, NULL);
+      if (res >= 0) {
+        /* Mark refresh time */
+        last_refresh = tv.tv_sec;
+      }
+      printf("Image refreshed\n");
+    }
+  } else {
+    perror("Failed to open in-progress image for writing");
+    return -errno;
   }
 
-  res = finishReceiveLogRecord(NULL);
-  if (res < 0) {
-    Abort = true;
-    return;
-  }
+  return 0;
 }
 
 static void onVideoRefresh(void) {
-  printf("\n\nREFRESH\n\n");
+  if (refreshImage(false) < 0) {
+    Abort = true;
+  }
 }
 
 static void onListenerWaiting(void) {
@@ -494,9 +553,7 @@ static void onListenerReceiveFinished(void) {
   strftime(timestamp,  sizeof(timestamp)-1, "%Y-%m-%dT%H-%MZ", ListenerReceiveStartTime);
 
   char output_path_log[128];
-#if 0
   char output_path_img[128];
-#endif
   size_t output_path_rem = sizeof(output_path_log);
   size_t next_len;
 
@@ -522,14 +579,20 @@ static void onListenerReceiveFinished(void) {
     }
   }
 
-#if 0
   strncpy(output_path_img, output_path_log, sizeof(output_path_img));
   if (output_path_rem < 5) {
     /* Truncate to make room for ".png\0" */
     output_path_img[sizeof(output_path_img) - 5] = 0;
   }
   strncat(output_path_img, ".png", sizeof(output_path_img) - strlen(output_path_img));
-#endif
+
+  /* Refresh one more time, then rename the file */
+  refreshImage(true);
+  renameAndSymlink(path_inprogress_img, output_path_img, path_latest_img);
+
+  /* Release the image buffer */
+  gdImageDestroy(rximg);
+  rximg = NULL;
 
   if (output_path_rem < 7) {
     /* Truncate to make room for ".ndjson\0" */
