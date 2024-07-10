@@ -538,7 +538,7 @@ static void onListenerReceivedFSKID(const char *id) {
 static void onListenerReceiveStarted(void) {
   static char rctime[8];
   strftime(rctime,  sizeof(rctime)-1, "%H:%Mz", ListenerReceiveStartTime);
-  printf("Receive started at %s", rctime);
+  printf("Receive started at %s\n", rctime);
   if (emitSimpleReceiveLogRecord(logmsg_receive_start, "Receive started") < 0) {
     // Bail here!
     Abort = true;
@@ -546,7 +546,7 @@ static void onListenerReceiveStarted(void) {
 }
 
 static void onListenerAutoSlantCorrect(void) {
-  printf("Performing slant correction");
+  printf("Performing slant correction\n");
   if (emitSimpleReceiveLogRecord(logmsg_status, "Performing slant correction") < 0) {
     // Bail here!
     Abort = true;
