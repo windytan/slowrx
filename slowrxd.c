@@ -56,6 +56,9 @@ static const char* path_inprogress_img = "inprogress.png";
 /* The name of the receive log */
 static const char* path_inprogress_log = "inprogress.ndjson";
 
+/* The name of the latest receive log */
+static const char* path_latest_log = "latest.ndjson";
+
 /* The FSK ID detected after image transmission */
 static const char *fsk_id = NULL;
 
@@ -66,6 +69,37 @@ static FILE* rxlog = NULL;
 #if 0
 static gdImagePtr rximg;
 #endif
+
+/* Rename and symlink a file */
+static int renameAndSymlink(const char* existing_path, const char* new_path, const char* symlink_path) {
+  int res = rename(existing_path, new_path);
+  if (res < 0) {
+    perror("Failed to rename receive log");
+    return -errno;
+  }
+  printf("Renamed %s to %s\n", existing_path, new_path);
+
+  if (symlink_path) {
+    res = unlink(symlink_path);
+    if (res < 0) {
+      /* ENOENT is okay */
+      if (errno != ENOENT) {
+        perror("Failed to remove old 'latest' symlink");
+        return -errno;
+      }
+    }
+    printf("Removed old symlink %s\n", symlink_path);
+
+    res = symlink(new_path, symlink_path);
+    if (res < 0) {
+      perror("Failed to symlink receive log");
+      return -errno;
+    }
+    printf("Symlinked %s to %s\n", new_path, symlink_path);
+  }
+
+  return 0;
+}
 
 /* Open the receive log ready for traffic */
 static int openReceiveLog(void) {
@@ -86,22 +120,20 @@ static int closeReceiveLog(const char* new_path) {
 
   assert(rxlog != NULL);
   res = fclose(rxlog);
+  rxlog = NULL;
   if (res < 0) {
-    perror("Failed to close receive log");
+    perror("Failed to close receive log cleanly");
     return -errno;
   }
 
   printf("Closed log file: %s\n", path_inprogress_log);
   if (new_path) {
-    res = rename(path_inprogress_log, new_path);
+    res = renameAndSymlink(path_inprogress_log, new_path, path_latest_log);
     if (res < 0) {
-      perror("Failed to rename receive log");
-      return -errno;
+      return res;
     }
-    printf("Renamed %s to %s", path_inprogress_log, new_path);
   }
 
-  rxlog = NULL;
   return 0;
 }
 
@@ -352,6 +384,8 @@ static void onVisIdentified(void) {
   if (res < 0) {
     Abort = true;
   }
+
+  fsk_id = NULL;
 }
 
 static void onVideoInitBuffer(uint8_t mode) {
@@ -456,9 +490,56 @@ static void onListenerAutoSlantCorrect(void) {
 }
 
 static void onListenerReceiveFinished(void) {
+  char timestamp[20];
+  strftime(timestamp,  sizeof(timestamp)-1, "%Y-%m-%dT%H-%MZ", ListenerReceiveStartTime);
+
+  char output_path_log[128];
+#if 0
+  char output_path_img[128];
+#endif
+  size_t output_path_rem = sizeof(output_path_log);
+  size_t next_len;
+
+  next_len = strlen(timestamp);
+  if (next_len <= output_path_rem) {
+    strncpy(output_path_log, timestamp, output_path_rem);
+    output_path_rem -= next_len;
+  }
+
+  next_len = strlen(ModeSpec[CurrentPic.Mode].ShortName) + 1;
+  if (next_len <= output_path_rem) {
+    strncat(output_path_log, "-", output_path_rem);
+    strncat(output_path_log, ModeSpec[CurrentPic.Mode].ShortName, output_path_rem);
+    output_path_rem -= next_len;
+  }
+
+  if (fsk_id && output_path_rem) {
+    next_len = strlen(fsk_id) + 1;
+    if (next_len <= output_path_rem) {
+      strncat(output_path_log, "-", output_path_rem);
+      strncat(output_path_log, fsk_id, output_path_rem);
+      output_path_rem -= next_len;
+    }
+  }
+
+#if 0
+  strncpy(output_path_img, output_path_log, sizeof(output_path_img));
+  if (output_path_rem < 5) {
+    /* Truncate to make room for ".png\0" */
+    output_path_img[sizeof(output_path_img) - 5] = 0;
+  }
+  strncat(output_path_img, ".png", sizeof(output_path_img) - strlen(output_path_img));
+#endif
+
+  if (output_path_rem < 7) {
+    /* Truncate to make room for ".ndjson\0" */
+    output_path_log[sizeof(output_path_log) - 5] = 0;
+  }
+  strncat(output_path_log, ".ndjson", sizeof(output_path_log) - strlen(output_path_log));
+
   int res = emitSimpleReceiveLogRecord(logmsg_receive_end, NULL);
   if (res == 0)
-    res = closeReceiveLog(NULL);
+    res = closeReceiveLog(output_path_log);
   if (res < 0) {
     Abort = true;
     return;
