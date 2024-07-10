@@ -32,8 +32,9 @@
 
 /* Exit status codes */
 #define DAEMON_EXIT_SUCCESS (0)
-#define DAEMON_EXIT_INIT_FFT_ERR (1)
-#define DAEMON_EXIT_INIT_PCM_ERR (2)
+#define DAEMON_EXIT_INVALID_ARG (1)
+#define DAEMON_EXIT_INIT_FFT_ERR (2)
+#define DAEMON_EXIT_INIT_PCM_ERR (3)
 
 /* Receive refresh interval */
 #define REFRESH_INTERVAL (5)
@@ -63,6 +64,9 @@ static const char* path_latest_log = "latest.ndjson";
 
 /* The name of the latest received image */
 static const char* path_latest_img = "latest.png";
+
+/* The name of the directory where all images will be kept */
+static const char* path_dir = NULL;
 
 /* Time the image was last written to */
 static time_t last_refresh = 0;
@@ -554,12 +558,23 @@ static void onListenerReceiveFinished(void) {
 
   char output_path_log[128];
   char output_path_img[128];
-  size_t output_path_rem = sizeof(output_path_log);
+  size_t output_path_rem = sizeof(output_path_log) - 1;
   size_t next_len;
+
+  if (path_dir) {
+    next_len = strlen(path_dir) + 1;
+    if (next_len <= output_path_rem) {
+      strncpy(output_path_log, path_dir, output_path_rem);
+      strncpy(output_path_log, "/", output_path_rem - 1);
+      output_path_rem -= next_len;
+    }
+  } else {
+    output_path_log[0] = 0;
+  }
 
   next_len = strlen(timestamp);
   if (next_len <= output_path_rem) {
-    strncpy(output_path_log, timestamp, output_path_rem);
+    strncat(output_path_log, timestamp, output_path_rem);
     output_path_rem -= next_len;
   }
 
@@ -678,21 +693,62 @@ static void showPCMDropWarning(void) {
  */
 
 int main(int argc, char *argv[]) {
-  (void)argc;
-  (void)argv;
+  // Set up defaults
+  const char* pcm_device = "default";
+  ListenerAutoSlantCorrect = true;
+  ListenerEnableFSKID = true;
+  VisAutoStart = true;
+
+  {
+    int opt;
+    while ((opt = getopt(argc, argv, "FI:L:Sd:hi:l:p:")) != -1) {
+      switch (opt) {
+        case 'F': // Disable FSKID
+          ListenerEnableFSKID = false;
+          break;
+        case 'I': // In-progress image path
+          path_inprogress_img = optarg;
+          break;
+        case 'L': // In-progress receive log path
+          path_inprogress_log = optarg;
+          break;
+        case 'S': // Disable slant correction
+          ListenerAutoSlantCorrect = false;
+          break;
+        case 'h':
+          printf("Usage: %s [-h] [-F] [-S] [-I inprogress.png]\n"
+                 "[-L inprogress.ndjson] [-d directory] [-i latest.png]\n"
+                 "[-l latest.ndjson] [-p pcmdevice]\n"
+                 "\n"
+                 "where:\n"
+                 "  -F : disable FSK ID detection\n"
+                 "  -S : disable slant correction\n"
+                 "  -h : display this help and exit\n"
+                 "  -d : set the directory where images are kept\n"
+                 "  -I : set the in-progress image path\n"
+                 "  -L : set the in-progress receive log path\n"
+                 "  -i : set the latest image path\n"
+                 "  -l : set the latest receive log path\n"
+                 "  -p : set the ALSA PCM capture device\n",
+                 argv[0]);
+          exit(DAEMON_EXIT_SUCCESS);
+          break;
+        default:
+          printf("Unrecognised: %s", optarg);
+          exit(DAEMON_EXIT_INVALID_ARG);
+          break;
+      }
+    }
+  }
 
   // Prepare FFT
   if (fft_init() < 0) {
     exit(DAEMON_EXIT_INIT_FFT_ERR);
   }
 
-  if (initPcmDevice("default") < 0) {
+  if (initPcmDevice(pcm_device) < 0) {
     exit(DAEMON_EXIT_INIT_PCM_ERR);
   }
-
-  ListenerAutoSlantCorrect = true;
-  ListenerEnableFSKID = true;
-  VisAutoStart = true;
 
   OnVideoInitBuffer = onVideoInitBuffer;
   OnVideoStartRedraw = onVideoStartRedraw;
