@@ -4,12 +4,15 @@
  * 
  */
 
+#include <assert.h>
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
 #include <time.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/time.h>
 
 #include <pthread.h>
 
@@ -26,15 +29,329 @@
 #include "video.h"
 #include "vis.h"
 
-static const char *fsk_id;
+/* Exit status codes */
+#define DAEMON_EXIT_SUCCESS (0)
+#define DAEMON_EXIT_INIT_FFT_ERR (1)
+#define DAEMON_EXIT_INIT_PCM_ERR (2)
+
+/* Exit status to use when exiting */
+static int daemon_exit_status = DAEMON_EXIT_SUCCESS;
+
+/* Common log message types */
+const char* logmsg_receive_start = "RECEIVE_START";
+const char* logmsg_vis_detect = "VIS_DETECT";
+const char* logmsg_sig_strength = "SIG_STRENGTH";
+const char* logmsg_image_finish = "IMAGE_FINISHED";
+const char* logmsg_fsk_detect = "FSK_DETECT";
+const char* logmsg_fsk_received = "FSK_RECEIVED";
+const char* logmsg_receive_end = "RECEIVE_END";
+const char* logmsg_status = "STATUS";
+const char* logmsg_warning = "WARNING";
+
+#if 0
+/* The name of the image-in-progress being received */
+static const char* path_inprogress_img = "inprogress.png";
+#endif
+
+/* The name of the receive log */
+static const char* path_inprogress_log = "inprogress.ndjson";
+
+/* The FSK ID detected after image transmission */
+static const char *fsk_id = NULL;
+
+/* Pointer to the receive log (NDJSON format) */
+static FILE* rxlog = NULL;
+
+/* Pointer to the raw image data being received */
+#if 0
+static gdImagePtr rximg;
+#endif
+
+/* Open the receive log ready for traffic */
+static int openReceiveLog(void) {
+  assert(rxlog == NULL);
+  rxlog = fopen(path_inprogress_log, "w+");
+  if (rxlog == NULL) {
+    perror("Failed to open receive log");
+    return -errno;
+  }
+
+  printf("Opened log file: %s\n", path_inprogress_log);
+  return 0;
+}
+
+/* Close and rename the receive log */
+static int closeReceiveLog(const char* new_path) {
+  int res;
+
+  assert(rxlog != NULL);
+  res = fclose(rxlog);
+  if (res < 0) {
+    perror("Failed to close receive log");
+    return -errno;
+  }
+
+  printf("Closed log file: %s\n", path_inprogress_log);
+  if (new_path) {
+    res = rename(path_inprogress_log, new_path);
+    if (res < 0) {
+      perror("Failed to rename receive log");
+      return -errno;
+    }
+    printf("Renamed %s to %s", path_inprogress_log, new_path);
+  }
+
+  rxlog = NULL;
+  return 0;
+}
+
+/* Write a (null-terminated!) raw string to the file */
+static int emitLogRecordRaw(const char* str) {
+  assert(rxlog != NULL);
+  int res = fputs(str, rxlog);
+  if (res < 0) {
+    perror("Failed to write to receive log");
+    return -errno;
+  }
+  return 0;
+}
+
+/* Log buffer flusher helper */
+static int emitLogBufferContent(char* buffer, char** const ptr, uint8_t* rem, uint8_t sz) {
+  /* NB: buffer is not necessarily zero terminated! */
+  const uint8_t write_sz = sz - *rem;
+  assert(rxlog != NULL);
+
+  size_t written = fwrite((void*)buffer, 1, write_sz, rxlog);
+  if (written < write_sz) {
+    perror("Truncated write whilst emitting to receive log");
+    return -errno;
+  }
+
+  /* Success, reset the remaining space pointer */
+  *ptr = buffer;
+  *rem = sz;
+  return 0;
+}
+
+/* Emit a string */
+static int emitLogRecordString(const char* str) {
+  int res;
+  char buffer[128];
+  char* ptr = buffer;
+  uint8_t rem = (uint8_t)sizeof(buffer);
+
+  assert(rxlog != NULL);
+
+  // Begin with '"'
+  *(ptr++) = '"';
+  rem--;
+
+  while (*str) {
+    switch (*str) {
+      case '\\':
+      case '"':
+        // Escape with '\' character
+        if (!rem) {
+          res = emitLogBufferContent(buffer, &ptr, &rem, (uint8_t)sizeof(buffer));
+          if (res < 0)
+            return res;
+        }
+        *(ptr++) = '\\';
+        rem--;
+        if (!rem) {
+          res = emitLogBufferContent(buffer, &ptr, &rem, (uint8_t)sizeof(buffer));
+          if (res < 0)
+            return res;
+        }
+        *(ptr++) = *str;
+        rem--;
+        break;
+      case '\n':
+        /* Emit '\n' */
+        if (!rem) {
+          res = emitLogBufferContent(buffer, &ptr, &rem, (uint8_t)sizeof(buffer));
+          if (res < 0)
+            return res;
+        }
+        *(ptr++) = '\\';
+        rem--;
+        if (!rem) {
+          res = emitLogBufferContent(buffer, &ptr, &rem, (uint8_t)sizeof(buffer));
+          if (res < 0)
+            return res;
+        }
+        *(ptr++) = 'n';
+        rem--;
+        break;
+       default:
+        /* Pass through "safe" ranges */
+        if ((*str) < ' ')
+          break;
+
+        if ((*str) > '~')
+          break;
+
+        if (!rem) {
+          res = emitLogBufferContent(buffer, &ptr, &rem, (uint8_t)sizeof(buffer));
+          if (res < 0)
+            return res;
+        }
+        *(ptr++) = *str;
+        rem--;
+        break;
+    }
+
+    str++;
+  }
+
+  // End with '"'
+  if (!rem) {
+    res = emitLogBufferContent(buffer, &ptr, &rem, (uint8_t)sizeof(buffer));
+    if (res < 0)
+      return res;
+  }
+  *(ptr++) = '"';
+  rem--;
+
+  return emitLogBufferContent(buffer, &ptr, &rem, (uint8_t)sizeof(buffer));
+}
+
+/* Begin a log record in the log file */
+static int beginReceiveLogRecord(const char* type, const char* msg) {
+  int res;
+  int64_t time_sec;
+  int16_t time_msec;
+
+  assert(rxlog != NULL);
+  assert(type != NULL);
+
+  {
+    struct timeval tv;
+    res = gettimeofday(&tv, NULL);
+    if (res < 0) {
+      perror("Failed to retrieve current time");
+      return -errno;
+    }
+    time_sec = (int64_t)tv.tv_sec;
+    time_msec = (uint16_t)(tv.tv_usec / 1000);
+  }
+
+  res = fprintf(rxlog, "{\"timestamp\": %ld%03u, \"type\": ", time_sec, time_msec);
+  if (res < 0) {
+    perror("Failed to emit record timestamp or type key");
+    return -errno;
+  }
+
+  res = emitLogRecordString(type);
+  if (res < 0) {
+    return res;
+  }
+
+  if (msg) {
+    res = emitLogRecordRaw(", \"msg\": ");
+    if (res < 0) {
+      return -errno;
+    }
+
+    res = emitLogRecordString(msg);
+    if (res < 0) {
+      return res;
+    }
+  }
+
+  return 0;
+}
+
+/* Finish a log record */
+static int finishReceiveLogRecord(const char* endstr) {
+  int res;
+
+  if (endstr) {
+    res = emitLogRecordRaw(endstr);
+    if (res < 0) {
+      return res;
+    }
+  }
+
+  res = emitLogRecordRaw("}\n");
+  if (res < 0) {
+    return res;
+  }
+
+  res = fflush(rxlog);
+  if (res < 0) {
+    perror("Failed to flush log record");
+    return -errno;
+  }
+
+  return 0;
+}
+
+/* Emit a complete simple log message with no keys. */
+static int emitSimpleReceiveLogRecord(const char* type, const char* msg) {
+  int res = beginReceiveLogRecord(type, msg);
+  if (res < 0)
+    return res;
+  return finishReceiveLogRecord(NULL);
+}
 
 static void showStatusbarMessage(const char* msg) {
   printf("Status: %s\n", msg);
+  if (rxlog) {
+    if (emitSimpleReceiveLogRecord(logmsg_status, msg) < 0) {
+      // Bail here!
+      Abort = true;
+    }
+  }
 }
 
 static void onVisIdentified(void) {
-  int idx = VISmap[VIS];
-  printf("Detected mode %s (%d)", ModeSpec[idx].Name, VIS);
+  char buffer[128];
+  const int idx = VISmap[VIS];
+  int res = openReceiveLog();
+  if (res < 0) {
+    Abort = true;
+    return;
+  }
+
+  snprintf(buffer, sizeof(buffer), "Detected mode %s (VIS code 0x%02x)", ModeSpec[idx].Name, VIS);
+  puts(buffer);
+  res = beginReceiveLogRecord(logmsg_vis_detect, buffer);
+  if (res < 0) {
+    Abort = true;
+    return;
+  }
+
+  res = fprintf(rxlog, ", \"code\": %d, \"mode\": ", VIS);
+  if (res < 0) {
+    perror("Failed to write VIS code or mode key");
+    Abort = true;
+    return;
+  }
+
+  res = emitLogRecordString(ModeSpec[idx].ShortName);
+  if (res < 0) {
+    Abort = true;
+    return;
+  }
+
+  res = emitLogRecordRaw(", \"desc\": ");
+  if (res < 0) {
+    Abort = true;
+    return;
+  }
+
+  res = emitLogRecordString(ModeSpec[idx].Name);
+  if (res < 0) {
+    Abort = true;
+    return;
+  }
+
+  res = finishReceiveLogRecord(NULL);
+  if (res < 0) {
+    Abort = true;
+  }
 }
 
 static void onVideoInitBuffer(uint8_t mode) {
@@ -47,6 +364,28 @@ static void onVideoStartRedraw(void) {
 
 static void onVideoWritePixel(uint16_t x, uint16_t y, uint8_t r, uint8_t g, uint8_t b) {
   printf("(%d, %d) = #%02x%02x%02x\n", x, y, r, g, b);
+
+  /* For now, emit the pixel data in the receive log */
+
+  int res = beginReceiveLogRecord("PIXELDATA", NULL);
+  if (res < 0) {
+    Abort = true;
+    return;
+  }
+
+  res = fprintf(rxlog, ", \"x\": %d, \"y\": %d, \"r\": %d, \"g\": %d, \"b\": %d",
+      x, y, r, g, b);
+  if (res < 0) {
+    perror("Failed to write pixel data");
+    Abort = true;
+    return;
+  }
+
+  res = finishReceiveLogRecord(NULL);
+  if (res < 0) {
+    Abort = true;
+    return;
+  }
 }
 
 static void onVideoRefresh(void) {
@@ -54,56 +393,139 @@ static void onVideoRefresh(void) {
 }
 
 static void onListenerWaiting(void) {
-  printf("Listener is waiting");
+  printf("Listener is waiting\n");
 }
 
 static void onListenerReceivedManual(void) {
-  printf("Listener received something in manual mode");
+  printf("Listener received something in manual mode\n");
 }
 
 static void onListenerReceiveFSK(void) {
   printf("Listener is now receiving FSK");
+  if (emitSimpleReceiveLogRecord(logmsg_fsk_detect, NULL) < 0) {
+    // Bail here!
+    Abort = true;
+  }
 }
 
 static void onListenerReceivedFSKID(const char *id) {
   printf("Listener got FSK %s", id);
   fsk_id = id;
+
+  int res = beginReceiveLogRecord(logmsg_fsk_received, NULL);
+  if (res < 0) {
+    Abort = true;
+    return;
+  }
+
+  res = emitLogRecordRaw(", \"id\": ");
+  if (res < 0) {
+    Abort = true;
+    return;
+  }
+
+  res = emitLogRecordString(id);
+  if (res < 0) {
+    Abort = true;
+    return;
+  }
+
+  res = finishReceiveLogRecord(NULL);
+  if (res < 0) {
+    Abort = true;
+    return;
+  }
 }
 
 static void onListenerReceiveStarted(void) {
   static char rctime[8];
-
   strftime(rctime,  sizeof(rctime)-1, "%H:%Mz", ListenerReceiveStartTime);
   printf("Receive started at %s", rctime);
+  if (emitSimpleReceiveLogRecord(logmsg_receive_start, "Receive started") < 0) {
+    // Bail here!
+    Abort = true;
+  }
 }
 
 static void onListenerAutoSlantCorrect(void) {
-  printf("Starting slant correction");
+  printf("Performing slant correction");
+  if (emitSimpleReceiveLogRecord(logmsg_status, "Performing slant correction") < 0) {
+    // Bail here!
+    Abort = true;
+  }
 }
 
 static void onListenerReceiveFinished(void) {
+  int res = emitSimpleReceiveLogRecord(logmsg_receive_end, NULL);
+  if (res == 0)
+    res = closeReceiveLog(NULL);
+  if (res < 0) {
+    Abort = true;
+    return;
+  }
+
   printf("Received %d × %d pixel image\n",
       ModeSpec[CurrentPic.Mode].ImgWidth,
       ModeSpec[CurrentPic.Mode].NumLines * ModeSpec[CurrentPic.Mode].LineHeight);
 }
 
 static void showVU(double *Power, int FFTLen, int WinIdx) {
-  printf("VU Power data: WinIdx=%d\n", WinIdx);
-#if 0
-  for (int i = 0; i < FFTLen; i++) {
-    printf("[%4d] = %f\n", i, Power[i]);
+  if (!rxlog) {
+    /* No log, so do nothing */
+    return;
   }
-#else
-  (void)Power;
-  (void)FFTLen;
-#endif
+
+  int res = beginReceiveLogRecord(logmsg_sig_strength, NULL);
+  if (res < 0) {
+    Abort = true;
+    return;
+  }
+
+  res = fprintf(rxlog, ", \"win\": %d, \"fft\": [", WinIdx);
+  if (res < 0) {
+    perror("Failed to write window index or start of FFT array");
+    Abort = true;
+    return;
+  }
+
+  for (int i = 0; i < FFTLen; i++) {
+    if (i > 0) {
+      res = emitLogRecordRaw(", ");
+      if (res < 0) {
+        Abort = true;
+        return;
+      }
+    }
+
+    res = fprintf(rxlog, "%f", Power[i]);
+    if (res < 0) {
+      Abort = true;
+      return;
+    }
+  }
+
+  res = finishReceiveLogRecord("]");
 }
 
 static void showPCMError(const char* error) {
+  if (rxlog) {
+    if (emitSimpleReceiveLogRecord(logmsg_warning, error) < 0) {
+      // Bail here!
+      Abort = true;
+    }
+  }
+
   printf("\n\nPCM Error: %s\n\n", error);
 }
 
 static void showPCMDropWarning(void) {
+  if (rxlog) {
+    if (emitSimpleReceiveLogRecord(logmsg_warning, "PCM frames dropped") < 0) {
+      // Bail here!
+      Abort = true;
+    }
+  }
+
   printf("\n\nPCM DROP Warning!!!\n\n");
 }
 
@@ -117,11 +539,11 @@ int main(int argc, char *argv[]) {
 
   // Prepare FFT
   if (fft_init() < 0) {
-    exit(0);
+    exit(DAEMON_EXIT_INIT_FFT_ERR);
   }
 
   if (initPcmDevice("default") < 0) {
-    exit(1);
+    exit(DAEMON_EXIT_INIT_PCM_ERR);
   }
 
   ListenerAutoSlantCorrect = true;
@@ -150,5 +572,5 @@ int main(int argc, char *argv[]) {
   StartListener();
   WaitForListenerStop();
 
-  return (0);
+  return (daemon_exit_status);
 }
