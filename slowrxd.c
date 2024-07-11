@@ -912,6 +912,7 @@ int main(int argc, char *argv[]) {
           printf("Usage: %s [-h] [-F] [-S] [-I inprogress.png]\n"
               "[-L inprogress.ndjson] [-d directory] [-i latest.png]\n"
               "[-l latest.ndjson] [-p pcmdevice] [-r samplerate]\n"
+              "[-x script]\n"
               "\n"
               "where:\n"
               "  -F : disable FSK ID detection\n"
@@ -924,6 +925,7 @@ int main(int argc, char *argv[]) {
               "  -l : set the latest receive log path\n"
               "  -r : set the ALSA PCM sample rate\n",
               "  -p : set the ALSA PCM capture device\n",
+              "  -x : specify a script to run on receive events\n",
               argv[0]);
           exit(DAEMON_EXIT_SUCCESS);
           break;
