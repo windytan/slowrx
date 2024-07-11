@@ -44,6 +44,9 @@
 /* Receive refresh interval */
 #define REFRESH_INTERVAL (5)
 
+/* Receive execute run interval */
+#define RX_EXEC_INTERVAL (30)
+
 /* Exit status to use when exiting */
 static int daemon_exit_status = DAEMON_EXIT_SUCCESS;
 
@@ -79,6 +82,9 @@ static const char* rx_exec = NULL;
 
 /* Time the image was last written to */
 static time_t last_refresh = 0;
+
+/* Time the script was last run */
+static time_t last_rx_exec = 0;
 
 /* The FSK ID detected after image transmission */
 static const char *fsk_id = NULL;
@@ -581,7 +587,9 @@ static int refreshImage(_Bool force) {
     return -errno;
   }
 
-  exec_rx_cmd(logmsg_image_refreshed, path_inprogress_img, path_inprogress_log);
+  if (force || ((last_refresh - last_rx_exec) > RX_EXEC_INTERVAL)) {
+    exec_rx_cmd(logmsg_image_refreshed, path_inprogress_img, path_inprogress_log);
+  }
   return 0;
 }
 
