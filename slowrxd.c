@@ -923,8 +923,8 @@ int main(int argc, char *argv[]) {
               "  -L : set the in-progress receive log path\n"
               "  -i : set the latest image path\n"
               "  -l : set the latest receive log path\n"
-              "  -r : set the ALSA PCM sample rate\n",
-              "  -p : set the ALSA PCM capture device\n",
+              "  -r : set the ALSA PCM sample rate\n"
+              "  -p : set the ALSA PCM capture device\n"
               "  -x : specify a script to run on receive events\n",
               argv[0]);
           exit(DAEMON_EXIT_SUCCESS);
