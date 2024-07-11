@@ -97,7 +97,9 @@ static void exec_rx_cmd(const char* event, const char* img_path, const char* log
   if (rx_exec) {
     printf("Running %s %s %s %s\n", rx_exec, event, img_path, log_path);
     pid_t child_pid = fork();
-    if (child_pid == 0) {
+    if (child_pid >= 0) {
+      waitpid(child_pid, NULL, WNOHANG);
+    } else if (child_pid == 0) {
       char* _rx_exec = strdup(rx_exec);
       if (!_rx_exec) {
         perror("Failed to strdup process name");
@@ -579,14 +581,13 @@ static int refreshImage(_Bool force) {
     return -errno;
   }
 
+  exec_rx_cmd(logmsg_image_refreshed, path_inprogress_img, path_inprogress_log);
   return 0;
 }
 
 static void onVideoRefresh(void) {
   if (refreshImage(false) < 0) {
     Abort = true;
-  } else {
-    exec_rx_cmd(logmsg_image_refreshed, path_inprogress_img, path_inprogress_log);
   }
 }
 
