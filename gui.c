@@ -162,8 +162,8 @@ void setVU (double *Power, int FFTLen, int WinIdx) {
         }
       }
 
-      LoBin = (int)((W-1-x)*(6000/W)/44100.0 * FFTLen);
-      HiBin = (int)((W  -x)*(6000/W)/44100.0 * FFTLen);
+      LoBin = (int)((W-1-x)*(6000/W)/((double)pcm.SampleRate) * FFTLen);
+      HiBin = (int)((W  -x)*(6000/W)/((double)pcm.SampleRate) * FFTLen);
 
       logpow = 0;
       for (i=LoBin; i<HiBin; i++) logpow += log(850*Power[i]) / 2;
@@ -306,7 +306,7 @@ static void evt_changeDevices() {
 
   if (pcm.handle != NULL) snd_pcm_close(pcm.handle);
 
-  status = initPcmDevice(gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(gui.combo_card)));
+  status = initPcmDevice(gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(gui.combo_card)), 44100);
 
 
   switch(status) {

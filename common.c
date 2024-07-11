@@ -15,7 +15,7 @@ uint8_t   *StoredLum       = NULL;
 
 // Return the FFT bin index matching the given frequency
 uint32_t GetBin (double Freq, uint32_t FFTLen) {
-  return (Freq / 44100 * FFTLen);
+  return (Freq / pcm.SampleRate * FFTLen);
 }
 
 // Sinusoid power from complex DFT coefficients

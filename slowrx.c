@@ -179,7 +179,7 @@ static void onListenerReceiveFinished(void) {
       LumFile = fopen(lumfilename,"w");
       if (LumFile == NULL)
       perror("Unable to open luma file for writing");
-      fwrite(StoredLum,1,(ModeSpec[Mode].LineTime * ModeSpec[Mode].NumLines) * 44100,LumFile);
+      fwrite(StoredLum,1,(ModeSpec[Mode].LineTime * ModeSpec[Mode].NumLines) * pcm.SampleRate,LumFile);
       fclose(LumFile);*/
 
     saveCurrentPic();

@@ -80,7 +80,7 @@ uint8_t GetVIS () {
     else HedrBuf[HedrPtr] = HedrBuf[(HedrPtr-1) % 45];
 
     // In Hertz
-    HedrBuf[HedrPtr] = HedrBuf[HedrPtr] / VIS_FFT_LEN * 44100;
+    HedrBuf[HedrPtr] = HedrBuf[HedrPtr] / VIS_FFT_LEN * pcm.SampleRate;
 
     // Header buffer holds 45 * 10 msec = 450 msec
     HedrPtr = (HedrPtr + 1) % 45;
@@ -165,8 +165,8 @@ uint8_t GetVIS () {
   }
 
   // Skip the rest of the stop bit
-  readPcm(20e-3 * 44100);
-  pcm.WindowPtr += 20e-3 * 44100;
+  readPcm(20e-3 * pcm.SampleRate);
+  pcm.WindowPtr += 20e-3 * pcm.SampleRate;
 
   if (VISmap[VIS] != UNKNOWN) return VISmap[VIS];
   else                        printf("  No VIS found\n");

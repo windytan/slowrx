@@ -13,6 +13,7 @@ struct _PcmData {
   TextStatusCallback OnPCMAbort;
   EventCallback OnPCMDrop;
   int32_t    WindowPtr;
+  uint16_t   SampleRate;
   _Bool      BufferDrop;
 };
 extern PcmData pcm;
@@ -21,7 +22,7 @@ extern PcmData pcm;
 #define PCM_RES_SUBOPTIMAL	(-1)
 #define PCM_RES_FAILURE		(-2)
 
-int32_t  initPcmDevice (const char *wanteddevname);
+int32_t  initPcmDevice (const char *wanteddevname, uint16_t samplerate);
 void     readPcm       (int32_t numsamples);
 
 #endif

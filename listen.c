@@ -92,7 +92,7 @@ void *Listen() {
 
     // Start reception
     
-    CurrentPic.Rate = 44100;
+    CurrentPic.Rate = (double)pcm.SampleRate;
     CurrentPic.Mode = Mode;
 
     printf("  ==== %s ====\n", ModeSpec[CurrentPic.Mode].Name);
@@ -105,14 +105,14 @@ void *Listen() {
 
     // Allocate space for cached Lum
     free(StoredLum);
-    StoredLum = calloc( (int)((ModeSpec[CurrentPic.Mode].LineTime * ModeSpec[CurrentPic.Mode].NumLines + 1) * 44100), sizeof(uint8_t));
+    StoredLum = calloc( (int)((ModeSpec[CurrentPic.Mode].LineTime * ModeSpec[CurrentPic.Mode].NumLines + 1) * pcm.SampleRate), sizeof(uint8_t));
     if (StoredLum == NULL) {
       perror("Listen: Unable to allocate memory for Lum");
       exit(EXIT_FAILURE);
     }
 
     // Allocate space for sync signal
-    HasSync = calloc((int)(ModeSpec[CurrentPic.Mode].LineTime * ModeSpec[CurrentPic.Mode].NumLines / (13.0/44100) +1), sizeof(_Bool));
+    HasSync = calloc((int)(ModeSpec[CurrentPic.Mode].LineTime * ModeSpec[CurrentPic.Mode].NumLines / (13.0/pcm.SampleRate) +1), sizeof(_Bool));
     if (HasSync == NULL) {
       perror("Listen: Unable to allocate memory for sync signal");
       exit(EXIT_FAILURE);
@@ -125,9 +125,9 @@ void *Listen() {
     if (OnListenerReceiveStarted) {
       OnListenerReceiveStarted();
     }
-    printf("  getvideo @ %.1f Hz, Skip %d, HedrShift %+d Hz\n", 44100.0, 0, CurrentPic.HedrShift);
+    printf("  getvideo @ %.1f Hz, Skip %d, HedrShift %+d Hz\n", (double)pcm.SampleRate, 0, CurrentPic.HedrShift);
 
-    Finished = GetVideo(CurrentPic.Mode, 44100, 0, false);
+    Finished = GetVideo(CurrentPic.Mode, pcm.SampleRate, 0, false);
 
     if (OnListenerReceiveFSK) {
       OnListenerReceiveFSK();

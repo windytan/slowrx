@@ -253,9 +253,9 @@ _Bool GetVideo(uint8_t Mode, double Rate, int32_t Skip, _Bool Redraw) {
   }
 
   if(NumChans == 4) //In PD* modes, each radio frame encodes two image lines
-    Length = ModeSpec[Mode].LineTime * ModeSpec[Mode].NumLines/2 * 44100;
+    Length = ModeSpec[Mode].LineTime * ModeSpec[Mode].NumLines/2 * pcm.SampleRate;
   else
-    Length = ModeSpec[Mode].LineTime * ModeSpec[Mode].NumLines * 44100;
+    Length = ModeSpec[Mode].LineTime * ModeSpec[Mode].NumLines * pcm.SampleRate;
   SyncTargetBin = GetBin(1200 + CurrentPic.HedrShift, VIDEO_FFT_LEN);
   Abort = false;
   SyncSampleNum = 0;
@@ -395,7 +395,7 @@ _Bool GetVideo(uint8_t Mode, double Rate, int32_t Skip, _Bool Redraw) {
           Freq = MaxBin +            (log( Power[MaxBin + 1] / Power[MaxBin - 1] )) /
                            (2 * log( pow(Power[MaxBin], 2) / (Power[MaxBin + 1] * Power[MaxBin - 1])));
           // In Hertz
-          Freq = Freq / VIDEO_FFT_LEN * 44100;
+          Freq = Freq / VIDEO_FFT_LEN * pcm.SampleRate;
         } else {
           // Clip if out of bounds
           Freq = ( (MaxBin > GetBin(1900 + CurrentPic.HedrShift, VIDEO_FFT_LEN)) ? 2300 : 1500 ) + CurrentPic.HedrShift;

@@ -72,11 +72,11 @@ void readPcm(int32_t numsamples) {
 //  PCM_RES_SUCCESS = opened ok
 //  PCM_RES_SUBOPTIMAL = opened, but suboptimal
 //  PCM_RES_FAILURE = couldn't be opened
-int32_t initPcmDevice(const char *wanteddevname) {
+int32_t initPcmDevice(const char *wanteddevname, uint16_t samplerate) {
 
   snd_pcm_hw_params_t *hwparams;
   char                 pcm_name[30];
-  unsigned int         exact_rate = 44100;
+  unsigned int         exact_rate = samplerate;
   int                  card;
   _Bool                found;
   char                *cardname;
@@ -151,10 +151,12 @@ int32_t initPcmDevice(const char *wanteddevname) {
   }
 
   pcm.Buffer = calloc( BUFLEN, sizeof(int16_t));
+  pcm.SampleRate = exact_rate;
   memset(pcm.Buffer, 0, BUFLEN);
   
-  if (exact_rate != 44100) {
-    fprintf(stderr, "ALSA: Got %d Hz instead of 44100. Expect artifacts.\n", exact_rate);
+  if (exact_rate != samplerate) {
+    fprintf(stderr, "ALSA: Got %u Hz instead of %u. Expect artifacts.\n",
+		    exact_rate, samplerate);
     return(PCM_RES_SUBOPTIMAL);
   }
 

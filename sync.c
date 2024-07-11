@@ -85,8 +85,8 @@ double FindSync (uint8_t Mode, double Rate, int32_t *Skip) {
       break;
     } else if (Retries == 3) {
       printf("            still slanted; giving up\n");
-      Rate = 44100;
-      printf("    -> 44100\n");
+      Rate = pcm.SampleRate;
+      printf("    -> %u\n", pcm.SampleRate);
       break;
     }
     printf(" -> %.1f    recalculating\n", Rate);
@@ -98,7 +98,7 @@ double FindSync (uint8_t Mode, double Rate, int32_t *Skip) {
   for (y=0; y<ModeSpec[Mode].NumLines; y++) {
     for (x=0; x<700; x++) { 
       t = y * ModeSpec[Mode].LineTime + x/700.0 * ModeSpec[Mode].LineTime;
-      xAcc[x] += HasSync[ (int32_t)(t / (13.0/44100) * Rate/44100) ];
+      xAcc[x] += HasSync[ (int32_t)(t / (13.0/pcm.SampleRate) * Rate/pcm.SampleRate) ];
     }
   }
 
