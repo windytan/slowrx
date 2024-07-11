@@ -14,6 +14,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/time.h>
+#include <sys/wait.h>
 #include <inttypes.h>
 #include <libgen.h>
 
@@ -50,6 +51,7 @@ static int daemon_exit_status = DAEMON_EXIT_SUCCESS;
 const char* logmsg_receive_start = "RECEIVE_START";
 const char* logmsg_vis_detect = "VIS_DETECT";
 const char* logmsg_sig_strength = "SIG_STRENGTH";
+const char* logmsg_image_refreshed = "IMAGE_REFRESHED";
 const char* logmsg_image_finish = "IMAGE_FINISHED";
 const char* logmsg_fsk_detect = "FSK_DETECT";
 const char* logmsg_fsk_received = "FSK_RECEIVED";
@@ -72,6 +74,9 @@ static char* path_latest_img = "latest.png";
 /* The name of the directory where all images will be kept */
 static const char* path_dir = NULL;
 
+/* The path to an executable to run when an event happens */
+static const char* rx_exec = NULL;
+
 /* Time the image was last written to */
 static time_t last_refresh = 0;
 
@@ -86,6 +91,47 @@ const _ModeSpec* rxmode = NULL;
 
 /* Pointer to the raw image data being received */
 static gdImagePtr rximg;
+
+/* Execute a script, passing in the image file and receive log */
+static void exec_rx_cmd(const char* event, const char* img_path, const char* log_path) {
+  if (rx_exec) {
+    printf("Running %s %s %s %s\n", rx_exec, event, img_path, log_path);
+    pid_t child_pid = fork();
+    if (child_pid == 0) {
+      char* _rx_exec = strdup(rx_exec);
+      if (!_rx_exec) {
+        perror("Failed to strdup process name");
+        return;
+      }
+
+      char* _event = strdup(event);
+      if (!_event) {
+        perror("Failed to strdup event");
+        return;
+      }
+
+      char* _img_path = strdup(img_path);
+      if (!_img_path) {
+        perror("Failed to strdup image path");
+        return;
+      }
+
+      char* _log_path = strdup(log_path);
+      if (!_log_path) {
+        perror("Failed to strdup log path");
+        return;
+      }
+
+      char* argv[] = { _rx_exec, _event, _img_path, _log_path, NULL };
+      int res = execve(rx_exec, argv, NULL);
+      if (res < 0) {
+        perror("Failed to exec() receive command");
+      }
+    } else if (child_pid < 0) {
+      perror("Failed to fork() for exec");
+    }
+  }
+}
 
 /* Safely concatenate two strings */
 static int safe_strncat(char* dest, const char* src, size_t* dest_rem) {
@@ -447,6 +493,7 @@ static void onVisIdentified(void) {
   }
 
   fsk_id = NULL;
+  exec_rx_cmd(logmsg_vis_detect, path_inprogress_img, path_inprogress_log);
 }
 
 static void onVideoInitBuffer(uint8_t mode) {
@@ -538,6 +585,8 @@ static int refreshImage(_Bool force) {
 static void onVideoRefresh(void) {
   if (refreshImage(false) < 0) {
     Abort = true;
+  } else {
+    exec_rx_cmd(logmsg_image_refreshed, path_inprogress_img, path_inprogress_log);
   }
 }
 
@@ -675,6 +724,10 @@ static void onListenerReceiveFinished(void) {
   printf("Received %d × %d pixel image\n",
       ModeSpec[CurrentPic.Mode].ImgWidth,
       ModeSpec[CurrentPic.Mode].NumLines * ModeSpec[CurrentPic.Mode].LineHeight);
+  exec_rx_cmd(logmsg_receive_end, output_path_img, output_path_log);
+
+  /* Wait for all children to exit */
+  wait(NULL);
 }
 
 static void showVU(double *Power, int FFTLen, int WinIdx) {
@@ -775,7 +828,7 @@ int main(int argc, char *argv[]) {
     _Bool path_latest_log_set = false;
     int opt;
 
-    while ((opt = getopt(argc, argv, "FISh:L:d:i:l:p:")) != -1) {
+    while ((opt = getopt(argc, argv, "FISh:L:d:i:l:p:x:")) != -1) {
       switch (opt) {
         case 'F': // Disable FSKID
           ListenerEnableFSKID = false;
@@ -851,6 +904,9 @@ int main(int argc, char *argv[]) {
             perror("Failed to compute full latest log path");
             exit(DAEMON_EXIT_INIT_PATH);
           }
+          break;
+        case 'x': // Execute script on event
+          rx_exec = strdup(optarg);
           break;
         default:
           printf("Unrecognised: %s\n", optarg);
