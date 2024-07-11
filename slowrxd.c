@@ -1004,8 +1004,17 @@ int main(int argc, char *argv[]) {
     exit(DAEMON_EXIT_INIT_FFT_ERR);
   }
 
-  if (initPcmDevice(pcm_device) < 0) {
-    exit(DAEMON_EXIT_INIT_PCM_ERR);
+  int res = initPcmDevice(pcm_device);
+  switch (res) {
+  case PCM_RES_SUCCESS:
+    break;
+  case PCM_RES_SUBOPTIMAL:
+    printf("PCM setup is sub-optimal, doing the best we can.\n");
+    break;
+  default:
+    if (res < 0) {
+      exit(DAEMON_EXIT_INIT_PCM_ERR);
+    }
   }
 
   OnVideoInitBuffer = onVideoInitBuffer;
