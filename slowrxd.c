@@ -1018,7 +1018,7 @@ int main(int argc, char *argv[]) {
     exit(DAEMON_EXIT_INIT_FFT_ERR);
   }
 
-  int res = initPcmDevice(pcm_device, sample_rate);
+  res = initPcmDevice(pcm_device, sample_rate);
   switch (res) {
   case PCM_RES_SUCCESS:
     break;
