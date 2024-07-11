@@ -973,7 +973,7 @@ int main(int argc, char *argv[]) {
       /* Figure out the current working directory */
       char cwd[PATH_MAX];
       if (getcwd(cwd, sizeof(cwd)) == cwd) {
-        path_dir = strdup(path_dir);
+        path_dir = strdup(cwd);
       } else {
         perror("Failed to determine current working directory");
         exit(DAEMON_EXIT_INIT_PATH);
