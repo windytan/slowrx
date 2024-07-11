@@ -41,6 +41,7 @@
 #define DAEMON_EXIT_INIT_PCM_ERR (3)
 #define DAEMON_EXIT_INIT_PATH (4)
 #define DAEMON_EXIT_INIT_MUTEX (5)
+#define DAEMON_EXIT_FORK_FAILURE (6)
 
 /* Receive refresh interval */
 #define REFRESH_INTERVAL (5)
@@ -105,8 +106,9 @@ static void exec_rx_cmd(const char* event, const char* img_path, const char* log
   if (rx_exec) {
     printf("Running %s %s %s %s\n", rx_exec, event, img_path, log_path);
     pid_t child_pid = fork();
-    if (child_pid >= 0) {
-      waitpid(child_pid, NULL, WNOHANG);
+    if (child_pid > 0) {
+      printf("Waiting for PID %d\n", child_pid);
+      waitpid(child_pid, NULL, 0);
     } else if (child_pid == 0) {
       char* _rx_exec = strdup(rx_exec);
       if (!_rx_exec) {
@@ -133,10 +135,12 @@ static void exec_rx_cmd(const char* event, const char* img_path, const char* log
       }
 
       char* argv[] = { _rx_exec, _event, _img_path, _log_path, NULL };
+      printf("Executing script\n");
       int res = execve(rx_exec, argv, NULL);
       if (res < 0) {
         perror("Failed to exec() receive command");
       }
+      exit(DAEMON_EXIT_FORK_FAILURE);
     } else if (child_pid < 0) {
       perror("Failed to fork() for exec");
     }
