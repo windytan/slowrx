@@ -958,6 +958,7 @@ int main(int argc, char *argv[]) {
               exit(DAEMON_EXIT_INVALID_ARG);
             }
           }
+          break;
         case 'x': // Execute script on event
           rx_exec = strdup(optarg);
           break;
