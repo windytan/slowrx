@@ -15,6 +15,7 @@
 #include <sys/types.h>
 #include <sys/time.h>
 #include <inttypes.h>
+#include <libgen.h>
 
 #include <pthread.h>
 
@@ -133,6 +134,12 @@ static int renameAndSymlink(const char* existing_path, const char* new_path, con
   printf("Renamed %s to %s\n", existing_path, new_path);
 
   if (symlink_path) {
+    /* Figure out the target */
+    char target[PATH_MAX];
+    const char* symlink_target;
+    strncpy(target, new_path, sizeof(target) - 1);
+    symlink_target = basename(target);
+
     res = unlink(symlink_path);
     if (res < 0) {
       /* ENOENT is okay */
@@ -143,12 +150,12 @@ static int renameAndSymlink(const char* existing_path, const char* new_path, con
     }
     printf("Removed old symlink %s\n", symlink_path);
 
-    res = symlink(new_path, symlink_path);
+    res = symlink(symlink_target, symlink_path);
     if (res < 0) {
       perror("Failed to symlink receive log");
       return -errno;
     }
-    printf("Symlinked %s to %s\n", new_path, symlink_path);
+    printf("Symlinked %s to %s\n", symlink_target, symlink_path);
   }
 
   return 0;
