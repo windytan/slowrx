@@ -860,6 +860,7 @@ int main(int argc, char *argv[]) {
   ListenerAutoSlantCorrect = true;
   ListenerEnableFSKID = true;
   VisAutoStart = true;
+  uint16_t sample_rate = 44100;
 
   {
     _Bool path_inprogress_img_set = false;
@@ -868,7 +869,7 @@ int main(int argc, char *argv[]) {
     _Bool path_latest_log_set = false;
     int opt;
 
-    while ((opt = getopt(argc, argv, "FISh:L:d:i:l:p:x:")) != -1) {
+    while ((opt = getopt(argc, argv, "FISh:L:d:i:l:p:r:x:")) != -1) {
       switch (opt) {
         case 'F': // Disable FSKID
           ListenerEnableFSKID = false;
@@ -910,7 +911,7 @@ int main(int argc, char *argv[]) {
         case 'h':
           printf("Usage: %s [-h] [-F] [-S] [-I inprogress.png]\n"
               "[-L inprogress.ndjson] [-d directory] [-i latest.png]\n"
-              "[-l latest.ndjson] [-p pcmdevice]\n"
+              "[-l latest.ndjson] [-p pcmdevice] [-r samplerate]\n"
               "\n"
               "where:\n"
               "  -F : disable FSK ID detection\n"
@@ -921,6 +922,7 @@ int main(int argc, char *argv[]) {
               "  -L : set the in-progress receive log path\n"
               "  -i : set the latest image path\n"
               "  -l : set the latest receive log path\n"
+              "  -r : set the ALSA PCM sample rate\n",
               "  -p : set the ALSA PCM capture device\n",
               argv[0]);
           exit(DAEMON_EXIT_SUCCESS);
@@ -945,6 +947,15 @@ int main(int argc, char *argv[]) {
             exit(DAEMON_EXIT_INIT_PATH);
           }
           break;
+        case 'r': // Sample rate
+          {
+            char* endptr = NULL;
+            sample_rate = strtoul(optarg, &endptr, 10);
+            if (endptr) {
+              printf("Invalid sample rate: %s", optarg);
+              exit(DAEMON_EXIT_INVALID_ARG);
+            }
+          }
         case 'x': // Execute script on event
           rx_exec = strdup(optarg);
           break;
@@ -1004,7 +1015,7 @@ int main(int argc, char *argv[]) {
     exit(DAEMON_EXIT_INIT_FFT_ERR);
   }
 
-  int res = initPcmDevice(pcm_device, 44100);
+  int res = initPcmDevice(pcm_device, sample_rate);
   switch (res) {
   case PCM_RES_SUCCESS:
     break;
