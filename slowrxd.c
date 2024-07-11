@@ -797,7 +797,15 @@ int main(int argc, char *argv[]) {
           ListenerAutoSlantCorrect = false;
           break;
         case 'd': // Set the output directory
-          path_dir = strdup(optarg);
+          {
+            char abs_dir[PATH_MAX];
+            if (realpath(optarg, abs_dir) == abs_dir) {
+              path_dir = strdup(abs_dir);
+            } else {
+              perror("Failed to determine absolute directory");
+              exit(DAEMON_EXIT_INIT_PATH);
+            }
+          }
           break;
         case 'h':
           printf("Usage: %s [-h] [-F] [-S] [-I inprogress.png]\n"
@@ -841,6 +849,17 @@ int main(int argc, char *argv[]) {
           printf("Unrecognised: %s\n", optarg);
           exit(DAEMON_EXIT_INVALID_ARG);
           break;
+      }
+    }
+
+    if (!path_dir) {
+      /* Figure out the current working directory */
+      char cwd[PATH_MAX];
+      if (getcwd(cwd, sizeof(cwd)) == cwd) {
+        path_dir = strdup(path_dir);
+      } else {
+        perror("Failed to determine current working directory");
+        exit(DAEMON_EXIT_INIT_PATH);
       }
     }
 
