@@ -953,8 +953,8 @@ int main(int argc, char *argv[]) {
           {
             char* endptr = NULL;
             sample_rate = strtoul(optarg, &endptr, 10);
-            if (endptr) {
-              printf("Invalid sample rate: %s", optarg);
+            if (*endptr) {
+              printf("Invalid sample rate: %s\n", endptr);
               exit(DAEMON_EXIT_INVALID_ARG);
             }
           }
