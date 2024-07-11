@@ -40,6 +40,7 @@
 #define DAEMON_EXIT_INIT_FFT_ERR (2)
 #define DAEMON_EXIT_INIT_PCM_ERR (3)
 #define DAEMON_EXIT_INIT_PATH (4)
+#define DAEMON_EXIT_INIT_MUTEX (5)
 
 /* Receive refresh interval */
 #define REFRESH_INTERVAL (5)
@@ -91,6 +92,7 @@ static const char *fsk_id = NULL;
 
 /* Pointer to the receive log (NDJSON format) */
 static FILE* rxlog = NULL;
+static pthread_mutex_t rxlog_mutex;
 
 /* The currently selected mode */
 const _ModeSpec* rxmode = NULL;
@@ -383,6 +385,12 @@ static int beginReceiveLogRecord(const char* type, const char* msg) {
     time_msec = (uint16_t)(tv.tv_usec / 1000);
   }
 
+  res = pthread_mutex_lock(&rxlog_mutex);
+  if (res < 0) {
+    perror("Failed to lock output log");
+    return -errno;
+  }
+
   res = fprintf(rxlog, "{\"timestamp\": %" PRId64 "%03u, \"type\": ", time_sec, time_msec);
   if (res < 0) {
     perror("Failed to emit record timestamp or type key");
@@ -411,27 +419,40 @@ static int beginReceiveLogRecord(const char* type, const char* msg) {
 
 /* Finish a log record */
 static int finishReceiveLogRecord(const char* endstr) {
-  int res;
+  int res, unlock_res;
 
   if (endstr) {
     res = emitLogRecordRaw(endstr);
     if (res < 0) {
-      return res;
+      goto unlock;
     }
   }
 
   res = emitLogRecordRaw("}\n");
   if (res < 0) {
-    return res;
+    goto unlock;
   }
 
   res = fflush(rxlog);
   if (res < 0) {
     perror("Failed to flush log record");
-    return -errno;
+    res = -errno;
+    goto unlock;
   }
 
-  return 0;
+  if (res < 0) {
+    perror("Failed to lock output log");
+    res = -errno;
+    goto unlock;
+  }
+
+unlock:
+  unlock_res = pthread_mutex_unlock(&rxlog_mutex);
+  if (unlock_res < 0) {
+    perror("FAILED TO UNLOCK OUTPUT LOG!!!");
+    assert(0);
+  }
+  return res;
 }
 
 /* Emit a complete simple log message with no keys. */
@@ -823,6 +844,12 @@ char* path_append_dir_dup(const char* filename) {
 }
 
 int main(int argc, char *argv[]) {
+  // Initialise mutex
+  int res = pthread_mutex_init(&rxlog_mutex, NULL);
+  if (res < 0) {
+    perror("Failed to create mutex");
+    exit(DAEMON_EXIT_INIT_MUTEX);
+  }
 
   // Set up defaults
   const char* pcm_device = "default";
