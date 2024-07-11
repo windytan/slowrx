@@ -69,9 +69,9 @@ void readPcm(int32_t numsamples) {
 
 // Initialize sound card
 // Return value:
-//   0 = opened ok
-//  -1 = opened, but suboptimal
-//  -2 = couldn't be opened
+//  PCM_RES_SUCCESS = opened ok
+//  PCM_RES_SUBOPTIMAL = opened, but suboptimal
+//  PCM_RES_FAILURE = couldn't be opened
 int32_t initPcmDevice(const char *wanteddevname) {
 
   snd_pcm_hw_params_t *hwparams;
@@ -104,7 +104,7 @@ int32_t initPcmDevice(const char *wanteddevname) {
 
   if (!found) {
     perror("Device disconnected?\n");
-    return(-2);
+    return(PCM_RES_FAILURE);
   }
 
   if (strcmp(wanteddevname,"default") == 0) {
@@ -115,26 +115,26 @@ int32_t initPcmDevice(const char *wanteddevname) {
   
   if (snd_pcm_open(&pcm.handle, pcm_name, SND_PCM_STREAM_CAPTURE, 0) < 0) {
     perror("ALSA: Error opening PCM device");
-    return(-2);
+    return(PCM_RES_FAILURE);
   }
 
   /* Init hwparams with full configuration space */
   if (snd_pcm_hw_params_any(pcm.handle, hwparams) < 0) {
     perror("ALSA: Can not configure this PCM device.");
-    return(-2);
+    return(PCM_RES_FAILURE);
   }
 
   if (snd_pcm_hw_params_set_access(pcm.handle, hwparams, SND_PCM_ACCESS_RW_INTERLEAVED) < 0) {
     perror("ALSA: Error setting interleaved access.");
-    return(-2);
+    return(PCM_RES_FAILURE);
   }
   if (snd_pcm_hw_params_set_format(pcm.handle, hwparams, SND_PCM_FORMAT_S16_LE) < 0) {
     perror("ALSA: Error setting format S16_LE.");
-    return(-2);
+    return(PCM_RES_FAILURE);
   }
   if (snd_pcm_hw_params_set_rate_near(pcm.handle, hwparams, &exact_rate, 0) < 0) {
     perror("ALSA: Error setting sample rate.");
-    return(-2);
+    return(PCM_RES_FAILURE);
   }
 
   // Try stereo first
@@ -142,12 +142,12 @@ int32_t initPcmDevice(const char *wanteddevname) {
     // Fall back to mono
     if (snd_pcm_hw_params_set_channels(pcm.handle, hwparams, 1) < 0) {
       perror("ALSA: Error setting channels.");
-      return(-2);
+      return(PCM_RES_FAILURE);
     }
   }
   if (snd_pcm_hw_params(pcm.handle, hwparams) < 0) {
     perror("ALSA: Error setting HW params.");
-    return(-2);
+    return(PCM_RES_FAILURE);
   }
 
   pcm.Buffer = calloc( BUFLEN, sizeof(int16_t));
@@ -155,9 +155,9 @@ int32_t initPcmDevice(const char *wanteddevname) {
   
   if (exact_rate != 44100) {
     fprintf(stderr, "ALSA: Got %d Hz instead of 44100. Expect artifacts.\n", exact_rate);
-    return(-1);
+    return(PCM_RES_SUBOPTIMAL);
   }
 
-  return(0);
+  return(PCM_RES_SUCCESS);
 
 }

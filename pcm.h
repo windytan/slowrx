@@ -17,6 +17,10 @@ struct _PcmData {
 };
 extern PcmData pcm;
 
+#define PCM_RES_SUCCESS		(0)
+#define PCM_RES_SUBOPTIMAL	(-1)
+#define PCM_RES_FAILURE		(-2)
+
 int32_t  initPcmDevice (const char *wanteddevname);
 void     readPcm       (int32_t numsamples);
 
