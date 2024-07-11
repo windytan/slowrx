@@ -5,6 +5,7 @@
  */
 
 #include <assert.h>
+#include <limits.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -606,8 +607,8 @@ static void onListenerReceiveFinished(void) {
   char timestamp[20];
   strftime(timestamp,  sizeof(timestamp)-1, "%Y-%m-%dT%H-%MZ", ListenerReceiveStartTime);
 
-  char output_path_log[128];
-  char output_path_img[128];
+  char output_path_log[PATH_MAX];
+  char output_path_img[PATH_MAX];
   size_t output_path_rem = sizeof(output_path_log) - 1;
 
   if (path_dir) {
@@ -734,7 +735,7 @@ static void showPCMDropWarning(void) {
  */
 
 char* path_append_dir_dup(const char* filename) {
-  char path[128] = {0};
+  char path[PATH_MAX] = {0};
   size_t path_rem = sizeof(path) - 1;
 
   if (path_dir) {
