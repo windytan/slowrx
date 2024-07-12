@@ -3,7 +3,7 @@
 
 #define MINSLANT 30
 #define MAXSLANT 150
-#define BUFLEN   4096
+#define BUFLEN   5120
 #define SYNCPIXLEN 1.5e-3
 
 #include <stdint.h>
