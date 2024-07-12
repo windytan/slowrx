@@ -19,8 +19,8 @@ int fft_init(void) {
   }
   memset(fft.in,  0, sizeof(double) * FFT_BUFFER_SZ);
 
-  fft.Plan1024 = fftw_plan_dft_r2c_1d(FFT_BUFFER_SZ/2, fft.in, fft.out, FFTW_ESTIMATE);
-  fft.Plan2048 = fftw_plan_dft_r2c_1d(FFT_BUFFER_SZ, fft.in, fft.out, FFTW_ESTIMATE);
+  fft.PlanHalf = fftw_plan_dft_r2c_1d(FFT_HALF_SZ, fft.in, fft.out, FFTW_ESTIMATE);
+  fft.PlanFull = fftw_plan_dft_r2c_1d(FFT_FULL_SZ, fft.in, fft.out, FFTW_ESTIMATE);
 
   return 0;
 }

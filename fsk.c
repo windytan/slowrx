@@ -13,7 +13,7 @@
 #include "pcm.h"
 #include "pic.h"
 
-#define FSK_FFT_LEN (2048)
+#define FSK_FFT_LEN (FFT_FULL_SZ)
 
 /* 11ms approximately in frames; half of 22ms bit period */
 #define FSK_11MS_FRAMES	PCM_MS_FRAMES(11)
@@ -92,7 +92,7 @@ void GetFSK (char* const dest, uint8_t dest_sz) {
     pcm.WindowPtr += read_sz;
 
     // FFT of last 22 ms
-    fftw_execute(fft.Plan2048);
+    fftw_execute(fft.PlanFull);
 
     LoBin  = GetBin(1900+CurrentPic.HedrShift, FSK_FFT_LEN)-1;
     MidBin = GetBin(2000+CurrentPic.HedrShift, FSK_FFT_LEN);

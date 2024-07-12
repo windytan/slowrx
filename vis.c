@@ -32,7 +32,7 @@ UpdateVUCallback OnVisPowerComputed;
 uint8_t VIS;
 _Bool VisAutoStart;
 
-#define VIS_FFT_LEN (2048)
+#define VIS_FFT_LEN (FFT_FULL_SZ)
 static double VisPower[VIS_FFT_LEN] = {0};
 
 uint8_t GetVIS () {
@@ -74,7 +74,7 @@ uint8_t GetVIS () {
     }
 
     // FFT of last 20 ms
-    fftw_execute(fft.Plan2048);
+    fftw_execute(fft.PlanFull);
 
     // Find the bin with most power
     MaxBin = 0;
@@ -169,7 +169,7 @@ uint8_t GetVIS () {
 
     if (++ptr == 10) {
       if (OnVisPowerComputed) {
-        OnVisPowerComputed(VisPower, 2048, 6);
+        OnVisPowerComputed(VisPower, VIS_FFT_LEN, 6);
       }
       ptr = 0;
     }

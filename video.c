@@ -17,7 +17,7 @@
 #define VIDEO_MAX_WIDTH (800)
 #define VIDEO_MAX_HEIGHT (616)
 #define VIDEO_MAX_CHANNELS (3)
-#define VIDEO_FFT_LEN (1024)
+#define VIDEO_FFT_LEN (FFT_HALF_SZ)
 
 static uint8_t VideoImage[VIDEO_MAX_WIDTH][VIDEO_MAX_HEIGHT][VIDEO_MAX_CHANNELS] = {{{0}}};
 void (*OnVideoInitBuffer)(uint8_t Mode);
@@ -267,7 +267,7 @@ _Bool GetVideo(uint8_t Mode, double Rate, int32_t Skip, _Bool Redraw) {
 
       /*** Read ahead from sound card ***/
 
-      if (pcm.WindowPtr == 0 || pcm.WindowPtr >= BUFLEN-1024) readPcm(2048);
+      if (pcm.WindowPtr == 0 || pcm.WindowPtr >= BUFLEN-FFT_HALF_SZ) readPcm(FFT_FULL_SZ);
      
 
       /*** Store the sync band for later adjustments ***/
@@ -281,7 +281,7 @@ _Bool GetVideo(uint8_t Mode, double Rate, int32_t Skip, _Bool Redraw) {
         // Hann window
         for (i = 0; i < 64; i++) fft.in[i] = pcm.Buffer[pcm.WindowPtr+i-32] / 32768.0 * Hann[1][i];
 
-        fftw_execute(fft.Plan1024);
+        fftw_execute(fft.PlanHalf);
 
         for (i=GetBin(1500+CurrentPic.HedrShift,VIDEO_FFT_LEN); i<=GetBin(2300+CurrentPic.HedrShift, VIDEO_FFT_LEN); i++)
           Praw += power(fft.out[i]);
@@ -312,7 +312,7 @@ _Bool GetVideo(uint8_t Mode, double Rate, int32_t Skip, _Bool Redraw) {
         // Apply Hann window
         for (i = 0; i < VIDEO_FFT_LEN; i++) fft.in[i] = pcm.Buffer[pcm.WindowPtr + i - VIDEO_FFT_LEN/2] / 32768.0 * Hann[6][i];
 
-        fftw_execute(fft.Plan1024);
+        fftw_execute(fft.PlanHalf);
 
         // Calculate video-plus-noise power (1500-2300 Hz)
 
@@ -371,14 +371,14 @@ _Bool GetVideo(uint8_t Mode, double Rate, int32_t Skip, _Bool Redraw) {
         if (Mode == SDX && WinIdx < 6) WinIdx++;
 
         memset(fft.in, 0, sizeof(double)*VIDEO_FFT_LEN);
-        memset(Power,  0, sizeof(double)*1024);
+        memset(Power,  0, sizeof(double)*VIDEO_FFT_LEN);
 
         // Apply window function
         
         WinLength = HannLens[WinIdx];
         for (i = 0; i < WinLength; i++) fft.in[i] = pcm.Buffer[pcm.WindowPtr + i - WinLength/2] / 32768.0 * Hann[WinIdx][i];
 
-        fftw_execute(fft.Plan1024);
+        fftw_execute(fft.PlanHalf);
 
         MaxBin = 0;
           
