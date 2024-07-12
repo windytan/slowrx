@@ -12,6 +12,7 @@ struct _PcmData {
   int16_t   *Buffer;
   TextStatusCallback OnPCMAbort;
   EventCallback OnPCMDrop;
+  void       (*PCMReadCallback)(int32_t numsamples, const int16_t* samples);
   int32_t    WindowPtr;
   uint16_t   SampleRate;
   _Bool      BufferDrop;

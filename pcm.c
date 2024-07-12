@@ -64,6 +64,9 @@ void readPcm(int32_t numsamples) {
     pcm.WindowPtr -= numsamples;
   }
 
+  if (pcm.PCMReadCallback) {
+    pcm.PCMReadCallback(numsamples, &pcm.Buffer[BUFLEN - numsamples]);
+  }
 }
 
 
