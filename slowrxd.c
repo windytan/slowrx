@@ -634,7 +634,7 @@ static void onListenerReceivedManual(void) {
 }
 
 static void onListenerReceiveFSK(void) {
-  printf("Listener is now receiving FSK");
+  printf("Listener is now receiving FSK\n");
   if (emitSimpleReceiveLogRecord(logmsg_fsk_detect, NULL) < 0) {
     // Bail here!
     Abort = true;
@@ -643,7 +643,7 @@ static void onListenerReceiveFSK(void) {
 
 static void onListenerReceivedFSKID(const char *id) {
   if (strlen(id)) {
-    printf("Listener got FSK %s", id);
+    printf("Listener got FSK %s\n", id);
     fsk_id = id;
   } else {
     printf("No FSK received\n");
