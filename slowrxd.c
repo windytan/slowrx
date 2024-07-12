@@ -147,7 +147,7 @@ static void exec_rx_cmd(const char* event, const char* img_path, const char* log
 
       char* _audio_path = NULL;
       if (audio_path) {
-        _audio_path = strdup(log_path);
+        _audio_path = strdup(audio_path);
         if (!_audio_path) {
           perror("Failed to strdup audio path");
           return;
