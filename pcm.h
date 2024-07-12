@@ -22,6 +22,9 @@ extern PcmData pcm;
 #define PCM_RES_SUBOPTIMAL	(-1)
 #define PCM_RES_FAILURE		(-2)
 
+/* Compute the number of frames for the given time in msec, rounded to the nearest frame */
+#define PCM_MS_FRAMES(ms)	(((((uint32_t)(ms)) * pcm.SampleRate) + 500) / 1000)
+
 int32_t  initPcmDevice (const char *wanteddevname, uint16_t samplerate);
 void     readPcm       (int32_t numsamples);
 

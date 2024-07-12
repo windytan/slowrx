@@ -11,6 +11,13 @@
 #include "pcm.h"
 #include "pic.h"
 
+/* Approximate number of frames / samples for 10ms: NB can change at runtime! */
+#define VIS_10MS_FRAMES	PCM_MS_FRAMES(10)
+#define VIS_10MS_SAMPLES (VIS_10MS_FRAMES*2)
+
+/* Ditto, for 20ms */
+#define VIS_20MS_FRAMES	PCM_MS_FRAMES(20)
+
 /* 
  *
  * Detect VIS & frequency shift
@@ -33,14 +40,18 @@ uint8_t GetVIS () {
   int32_t    ptr=0;
   int32_t    Parity = 0, HedrPtr = 0;
   uint32_t   i=0, j=0, k=0, MaxBin = 0;
-  double     HedrBuf[100] = {0}, tone[100] = {0}, Hann[882] = {0};
+  double     HedrBuf[100] = {0}, tone[100] = {0}, Hann[VIS_10MS_SAMPLES];
   _Bool      gotvis = false;
   uint8_t     Bit[8] = {0}, ParityBit = 0;
+
+  memset(Hann, 0, sizeof(double) * VIS_10MS_SAMPLES);
 
   for (i = 0; i < VIS_FFT_LEN; i++) fft.in[i]    = 0;
 
   // Create 20ms Hann window
-  for (i = 0; i < 882; i++) Hann[i] = 0.5 * (1 - cos( (2 * M_PI * (double)i) / 881 ) );
+  for (i = 0; i < VIS_10MS_SAMPLES; i++) {
+    Hann[i] = 0.5 * (1 - cos( (2 * M_PI * (double)i) / (VIS_10MS_SAMPLES-1) ) );
+  }
 
   ManualActivated = false;
   
@@ -55,10 +66,12 @@ uint8_t GetVIS () {
     if (Abort || ManualResync) return(0);
 
     // Read 10 ms from sound card
-    readPcm(441);
+    readPcm(VIS_10MS_FRAMES);
 
     // Apply Hann window
-    for (i = 0; i < 882; i++) fft.in[i] = pcm.Buffer[pcm.WindowPtr + i - 441] / 32768.0 * Hann[i];
+    for (i = 0; i < VIS_10MS_SAMPLES; i++) {
+      fft.in[i] = pcm.Buffer[pcm.WindowPtr + i - VIS_10MS_FRAMES] / 32768.0 * Hann[i];
+    }
 
     // FFT of last 20 ms
     fftw_execute(fft.Plan2048);
@@ -161,12 +174,12 @@ uint8_t GetVIS () {
       ptr = 0;
     }
 
-    pcm.WindowPtr += 441;
+    pcm.WindowPtr += VIS_10MS_FRAMES;
   }
 
   // Skip the rest of the stop bit
-  readPcm(20e-3 * pcm.SampleRate);
-  pcm.WindowPtr += 20e-3 * pcm.SampleRate;
+  readPcm(VIS_20MS_FRAMES);
+  pcm.WindowPtr += VIS_20MS_FRAMES;
 
   if (VISmap[VIS] != UNKNOWN) return VISmap[VIS];
   else                        printf("  No VIS found\n");
