@@ -5,6 +5,7 @@
  */
 
 #include <assert.h>
+#include <ctype.h>
 #include <limits.h>
 #include <errno.h>
 #include <stdio.h>
@@ -717,9 +718,25 @@ static void onListenerReceiveFinished(void) {
   }
 
   if (fsk_id && output_path_rem && (res >= 0)) {
+    /* fsk_id might contain characters that are unsafe! */
+    char fsk_safe[strlen(fsk_id) + 1];
+    char *c = fsk_safe;
+    strcpy(fsk_safe, fsk_id);
+
+    while (*c) {
+      if (isalpha(*c)) {
+        /* Upper-case letters */
+        *c = toupper(*c);
+      } else if (!isdigit(*c)) {
+        /* Convert non-digits to hypens */
+        *c = '-';
+      }
+      c++;
+    }
+
     res = safe_strncat(output_path_log, "-", &output_path_rem);
     if (res >= 0) {
-      res = safe_strncat(output_path_log, fsk_id, &output_path_rem);
+      res = safe_strncat(output_path_log, fsk_safe, &output_path_rem);
     }
   }
 
