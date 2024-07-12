@@ -952,11 +952,19 @@ int main(int argc, char *argv[]) {
         case 'r': // Sample rate
           {
             char* endptr = NULL;
-            sample_rate = strtoul(optarg, &endptr, 10);
+            uint32_t rate = strtoul(optarg, &endptr, 10);
             if (*endptr) {
               printf("Invalid sample rate: %s\n", endptr);
               exit(DAEMON_EXIT_INVALID_ARG);
             }
+            if (rate > 48000) {
+              printf(
+                  "Sample rate %" PRIu32 " out of range, "
+                  "Clamping to 48kHz.\n",
+                  rate);
+              rate = 48000;
+            }
+            sample_rate = rate;
           }
           break;
         case 'x': // Execute script on event
