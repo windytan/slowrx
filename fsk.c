@@ -15,6 +15,16 @@
 
 #define FSK_FFT_LEN (2048)
 
+/* 11ms approximately in frames; half of 22ms bit period */
+#define FSK_11MS_FRAMES	PCM_MS_FRAMES(11)
+#define FSK_11MS_SAMPLES (FSK_11MS_FRAMES*2)
+
+/*
+ * 5.5ms in samples; which is half FSK_11MS_SAMPLES.
+ * GCC should be smart enough to realise the *2 and /2 cancel.
+ */
+#define FSK_5M5S_SAMPLES (FSK_11MS_SAMPLES/2)
+
 /* 
  * Decode FSK ID
  *
@@ -27,7 +37,7 @@ void GetFSK (char* const dest, uint8_t dest_sz) {
 
   uint32_t   i=0, LoBin, HiBin, MidBin, TestNum=0, TestPtr=0;
   uint8_t    Bit = 0, AsciiByte = 0, BytePtr = 0, TestBits[24] = {0}, BitPtr=0;
-  double     HiPow,LoPow,Hann[970];
+  double     HiPow,LoPow,Hann[FSK_11MS_SAMPLES];
   _Bool      InSync = false;
 
   // Bit-reversion lookup table
@@ -44,22 +54,26 @@ void GetFSK (char* const dest, uint8_t dest_sz) {
   for (i = 0; i < FSK_FFT_LEN; i++) fft.in[i] = 0;
 
   // Create 22ms Hann window
-  for (i = 0; i < 970; i++) Hann[i] = 0.5 * (1 - cos( 2 * M_PI * i / 969.0 ) );
+  for (i = 0; i < FSK_11MS_SAMPLES; i++) {
+    Hann[i] = 0.5 * (1 - cos( 2 * M_PI * i / ((double)(FSK_11MS_SAMPLES-1)) ) );
+  }
 
   while ( true ) {
 
-    // Read data from DSP
-    readPcm(InSync ? 970: 485);
+    // Read data from DSP: half the number of samples if not in sync.
+    readPcm(InSync ? FSK_11MS_SAMPLES: FSK_5M5S_SAMPLES);
 
-    if (pcm.WindowPtr < 485) {
-      pcm.WindowPtr += (InSync ? 970 : 485);
+    if (pcm.WindowPtr < (int32_t)FSK_5M5S_SAMPLES) {
+      pcm.WindowPtr += (InSync ? FSK_11MS_SAMPLES: FSK_5M5S_SAMPLES);
       continue;
     }
 
     // Apply Hann window
-    for (i = 0; i < 970; i++) fft.in[i] = pcm.Buffer[pcm.WindowPtr+i- 485] * Hann[i];
+    for (i = 0; i < FSK_11MS_SAMPLES; i++) {
+      fft.in[i] = pcm.Buffer[pcm.WindowPtr+i- FSK_5M5S_SAMPLES] * Hann[i];
+    }
     
-    pcm.WindowPtr += (InSync ? 970 : 485);
+    pcm.WindowPtr += (InSync ? FSK_11MS_SAMPLES : FSK_5M5S_SAMPLES);
 
     // FFT of last 22 ms
     fftw_execute(fft.Plan2048);
