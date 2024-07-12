@@ -864,6 +864,10 @@ char* path_append_dir_dup(const char* filename) {
   return strdup(path);
 }
 
+static _Bool is_disabled_path(const char* path) {
+  return (path[0] == '-') && (path[1] == 0);
+}
+
 int main(int argc, char *argv[]) {
   // Initialise mutex
   int res = pthread_mutex_init(&rxlog_mutex, NULL);
@@ -894,21 +898,33 @@ int main(int argc, char *argv[]) {
         case 'I': // In-progress image path
           if (path_inprogress_img_set) {
             free(path_inprogress_img);
+          } else {
+            path_inprogress_img_set = true;
           }
-          path_inprogress_img = path_append_dir_dup(optarg);
-          if (!path_inprogress_img) {
-            perror("Failed to compute full in-progress image path");
-            exit(DAEMON_EXIT_INIT_PATH);
+          if (is_disabled_path(optarg)) {
+            path_inprogress_img = NULL;
+          } else {
+            path_inprogress_img = path_append_dir_dup(optarg);
+            if (!path_inprogress_img) {
+              perror("Failed to compute full in-progress image path");
+              exit(DAEMON_EXIT_INIT_PATH);
+            }
           }
           break;
         case 'L': // In-progress receive log path
           if (path_inprogress_log_set) {
             free(path_inprogress_log);
+          } else {
+            path_inprogress_log_set = true;
           }
-          path_inprogress_log = path_append_dir_dup(optarg);
-          if (!path_inprogress_log) {
-            perror("Failed to compute full in-progress log path");
-            exit(DAEMON_EXIT_INIT_PATH);
+          if (is_disabled_path(optarg)) {
+            path_inprogress_log = NULL;
+          } else {
+            path_inprogress_log = path_append_dir_dup(optarg);
+            if (!path_inprogress_log) {
+              perror("Failed to compute full in-progress log path");
+              exit(DAEMON_EXIT_INIT_PATH);
+            }
           }
           break;
         case 'S': // Disable slant correction
@@ -936,10 +952,10 @@ int main(int argc, char *argv[]) {
               "  -S : disable slant correction\n"
               "  -h : display this help and exit\n"
               "  -d : set the directory where images are kept\n"
-              "  -I : set the in-progress image path\n"
-              "  -L : set the in-progress receive log path\n"
-              "  -i : set the latest image path\n"
-              "  -l : set the latest receive log path\n"
+              "  -I : set the in-progress image path (- to disable)\n"
+              "  -L : set the in-progress receive log path (- to disable)\n"
+              "  -i : set the latest image path (- to disable)\n"
+              "  -l : set the latest receive log path (- to disable)\n"
               "  -r : set the ALSA PCM sample rate\n"
               "  -p : set the ALSA PCM capture device\n"
               "  -x : specify a script to run on receive events\n",
@@ -949,21 +965,33 @@ int main(int argc, char *argv[]) {
         case 'i': // Latest image path
           if (path_latest_img_set) {
             free(path_latest_img);
+          } else {
+            path_latest_img_set = true;
           }
-          path_latest_img = path_append_dir_dup(optarg);
-          if (!path_latest_img) {
-            perror("Failed to compute full latest image path");
-            exit(DAEMON_EXIT_INIT_PATH);
+          if (is_disabled_path(optarg)) {
+            path_latest_img = NULL;
+          } else {
+            path_latest_img = path_append_dir_dup(optarg);
+            if (!path_latest_img) {
+              perror("Failed to compute full latest image path");
+              exit(DAEMON_EXIT_INIT_PATH);
+            }
           }
           break;
         case 'l': // Latest receive log path
           if (path_latest_log_set) {
             free(path_latest_log);
+          } else {
+            path_latest_log_set = true;
           }
-          path_latest_log = path_append_dir_dup(optarg);
-          if (!path_latest_log) {
-            perror("Failed to compute full latest log path");
-            exit(DAEMON_EXIT_INIT_PATH);
+          if (is_disabled_path(optarg)) {
+            path_latest_log = NULL;
+          } else {
+            path_latest_log = path_append_dir_dup(optarg);
+            if (!path_latest_log) {
+              perror("Failed to compute full latest log path");
+              exit(DAEMON_EXIT_INIT_PATH);
+            }
           }
           break;
         case 'r': // Sample rate
@@ -1005,7 +1033,7 @@ int main(int argc, char *argv[]) {
       }
     }
 
-    if (!path_inprogress_img_set) {
+    if (!path_inprogress_img_set && path_inprogress_img) {
       path_inprogress_img = path_append_dir_dup(path_inprogress_img);
       if (!path_inprogress_img) {
         perror("Failed to compute full in-progress image path");
@@ -1013,7 +1041,7 @@ int main(int argc, char *argv[]) {
       }
     }
 
-    if (!path_inprogress_log_set) {
+    if (!path_inprogress_log_set && path_inprogress_log) {
       path_inprogress_log = path_append_dir_dup(path_inprogress_log);
       if (!path_inprogress_log) {
         perror("Failed to compute full in-progress log path");
@@ -1021,7 +1049,7 @@ int main(int argc, char *argv[]) {
       }
     }
 
-    if (!path_latest_img_set) {
+    if (!path_latest_img_set && path_latest_img) {
       path_latest_img = path_append_dir_dup(path_latest_img);
       if (!path_latest_img) {
         perror("Failed to compute full latest image path");
