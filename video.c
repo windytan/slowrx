@@ -19,6 +19,9 @@
 #define VIDEO_MAX_CHANNELS (3)
 #define VIDEO_FFT_LEN (FFT_HALF_SZ)
 
+// Perform FFT every 6 samples
+#define VIDEO_FFT_INTERVAL (6)
+
 static uint8_t VideoImage[VIDEO_MAX_WIDTH][VIDEO_MAX_HEIGHT][VIDEO_MAX_CHANNELS] = {{{0}}};
 void (*OnVideoInitBuffer)(uint8_t Mode);
 void (*OnVideoWritePixel)(uint16_t x, uint16_t y, uint8_t r, uint8_t g, uint8_t b);
@@ -61,7 +64,7 @@ _Bool GetVideo(uint8_t Mode, double Rate, int32_t Skip, _Bool Redraw) {
   double     Pvideo_plus_noise=0, Pnoise_only=0, Pnoise=0, Psignal=0;
   double     SNR = 0;
   double     ChanStart[4] = {0}, ChanLen[4] = {0};
-  uint8_t     Channel = 0, WinIdx = 0;
+  uint8_t    Channel = 0, WinIdx = 0;
 
   _PixelGrid  *PixelGrid = calloc( ModeSpec[Mode].ImgWidth * ModeSpec[Mode].NumLines * 3, sizeof(_PixelGrid) );
 
@@ -351,7 +354,7 @@ _Bool GetVideo(uint8_t Mode, double Rate, int32_t Skip, _Bool Redraw) {
 
       /*** FM demodulation ***/
 
-      if (SampleNum % 6 == 0) { // Take FFT every 6 samples
+      if (SampleNum % VIDEO_FFT_INTERVAL == 0) { // Take FFT every interval
 
         //PrevFreq = Freq;
 
