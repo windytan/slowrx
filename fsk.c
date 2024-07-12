@@ -25,6 +25,12 @@
  */
 #define FSK_5M5S_SAMPLES (FSK_11MS_SAMPLES/2)
 
+/*
+ * Set a limit of 5 seconds for a FSK.  That allows for ~227 bits of FSK
+ * data or approximately 34 characters for an ID.  That should be plenty!
+ */
+#define FSK_TIMEOUT     PCM_MS_FRAMES(5000)
+
 /* 
  * Decode FSK ID
  *
@@ -39,6 +45,8 @@ void GetFSK (char* const dest, uint8_t dest_sz) {
   uint8_t    Bit = 0, AsciiByte = 0, BytePtr = 0, TestBits[24] = {0}, BitPtr=0;
   double     HiPow,LoPow,Hann[FSK_11MS_SAMPLES];
   _Bool      InSync = false;
+
+  uint32_t   remain = FSK_TIMEOUT;
 
   // Bit-reversion lookup table
   static const uint8_t BitRev[] = {
@@ -58,13 +66,21 @@ void GetFSK (char* const dest, uint8_t dest_sz) {
     Hann[i] = 0.5 * (1 - cos( 2 * M_PI * i / ((double)(FSK_11MS_SAMPLES-1)) ) );
   }
 
-  while ( true ) {
+  while ( remain > 0 ) {
+    // Figure out how much data to read?  If not in sync, use 5.5ms steps.
+    uint32_t read_sz = (InSync ? FSK_11MS_SAMPLES: FSK_5M5S_SAMPLES);
 
     // Read data from DSP: half the number of samples if not in sync.
-    readPcm(InSync ? FSK_11MS_SAMPLES: FSK_5M5S_SAMPLES);
+    readPcm(read_sz);
+
+    if (remain > read_sz) {
+      remain -= read_sz;
+    } else {
+      remain = 0;
+    }
 
     if (pcm.WindowPtr < (int32_t)FSK_5M5S_SAMPLES) {
-      pcm.WindowPtr += (InSync ? FSK_11MS_SAMPLES: FSK_5M5S_SAMPLES);
+      pcm.WindowPtr += read_sz;
       continue;
     }
 
@@ -73,7 +89,7 @@ void GetFSK (char* const dest, uint8_t dest_sz) {
       fft.in[i] = pcm.Buffer[pcm.WindowPtr+i- FSK_5M5S_SAMPLES] * Hann[i];
     }
     
-    pcm.WindowPtr += (InSync ? FSK_11MS_SAMPLES : FSK_5M5S_SAMPLES);
+    pcm.WindowPtr += read_sz;
 
     // FFT of last 22 ms
     fftw_execute(fft.Plan2048);
@@ -124,7 +140,6 @@ void GetFSK (char* const dest, uint8_t dest_sz) {
         BytePtr ++;
       }
     }
-
   }
     
   if (BytePtr < dest_sz) {
