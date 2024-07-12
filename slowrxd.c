@@ -18,6 +18,7 @@
 #include <sys/wait.h>
 #include <inttypes.h>
 #include <libgen.h>
+#include <arpa/inet.h>
 
 #include <pthread.h>
 
@@ -71,11 +72,17 @@ static char* path_inprogress_img = "inprogress.png";
 /* The name of the receive log */
 static char* path_inprogress_log = "inprogress.ndjson";
 
+/* The name of the audio dump file */
+static char* path_inprogress_audio = "inprogress.au";
+
 /* The name of the latest receive log */
 static char* path_latest_log = "latest.ndjson";
 
 /* The name of the latest received image */
 static char* path_latest_img = "latest.png";
+
+/* The name of the latest received audio file */
+static char* path_latest_audio = "latest.au";
 
 /* The name of the directory where all images will be kept */
 static const char* path_dir = NULL;
@@ -96,6 +103,9 @@ static const char *fsk_id = NULL;
 static FILE* rxlog = NULL;
 static pthread_mutex_t rxlog_mutex;
 
+/* Pointer to the audio dump (Sun Audio format) */
+static FILE* audiofile = NULL;
+
 /* The currently selected mode */
 const _ModeSpec* rxmode = NULL;
 
@@ -103,9 +113,9 @@ const _ModeSpec* rxmode = NULL;
 static gdImagePtr rximg;
 
 /* Execute a script, passing in the image file and receive log */
-static void exec_rx_cmd(const char* event, const char* img_path, const char* log_path) {
+static void exec_rx_cmd(const char* event, const char* img_path, const char* log_path, const char* audio_path) {
   if (rx_exec) {
-    printf("Running %s %s %s %s\n", rx_exec, event, img_path, log_path);
+    printf("Running %s %s %s %s %s\n", rx_exec, event, img_path, log_path, (audio_path ? audio_path : ""));
     pid_t child_pid = fork();
     if (child_pid > 0) {
       printf("Waiting for PID %d\n", child_pid);
@@ -135,7 +145,16 @@ static void exec_rx_cmd(const char* event, const char* img_path, const char* log
         return;
       }
 
-      char* argv[] = { _rx_exec, _event, _img_path, _log_path, NULL };
+      char* _audio_path = NULL;
+      if (audio_path) {
+        _audio_path = strdup(log_path);
+        if (!_audio_path) {
+          perror("Failed to strdup audio path");
+          return;
+        }
+      }
+
+      char* argv[] = { _rx_exec, _event, _img_path, _log_path, _audio_path, NULL };
       printf("Executing script\n");
       int res = execve(rx_exec, argv, NULL);
       if (res < 0) {
@@ -220,6 +239,96 @@ static int renameAndSymlink(const char* existing_path, const char* new_path, con
   }
 
   return 0;
+}
+
+/* Open the receive log ready for traffic */
+static int openAudioDump(void) {
+  assert(audiofile == NULL);
+  audiofile = fopen(path_inprogress_audio, "wb+");
+  if (audiofile == NULL) {
+    perror("Failed to open audio dump file");
+    return -errno;
+  }
+
+  /* https://en.wikipedia.org/wiki/Au_file_format */
+  uint32_t hdr[7] = {
+    0x2e736e64,     // Magic ".snd"
+    28,             // Data offset: 28 bytes (7*4-bytes)
+    UINT32_MAX,     // Data size: unknown
+    3,              // Encoding: int16_t linear
+    pcm.SampleRate, // Sample rate
+    1,              // Channels
+    0,              // Annotation (unused)
+  };
+  for (int i = 0; i < 7; i++) {
+    // Byte swap to big-endian
+    hdr[i] = htonl(hdr[i]);
+  }
+
+  // Write the header
+  size_t sz = fwrite(hdr, sizeof(uint32_t), 7, audiofile);
+  if (sz < 7) {
+    perror("Failed to write audio file header");
+    int res = fclose(audiofile);
+    if (res < 0) {
+      perror("Also failed to close partial file");
+    }
+    return -errno;
+  }
+
+  printf("Opened audio dump file: %s\n", path_inprogress_audio);
+  return 0;
+}
+
+static int closeAudioDump(void) {
+  if (audiofile == NULL)
+    return 0;
+
+  pcm.PCMReadCallback = NULL;
+
+  int res = fclose(audiofile);
+  audiofile = NULL;
+  if (res < 0) {
+    perror("Failed to clse audio dump file");
+    return -errno;
+  }
+
+  return 0;
+}
+
+static void writeToAudioDump(int32_t numsamples, const int16_t* samples) {
+  if (audiofile) {
+    int16_t be_samples[512];
+    int res, i;
+    size_t sz;
+
+    while (numsamples) {
+      // Clamp at the block size
+      int32_t block_sz = (numsamples > 512) ? 512 : numsamples;
+      // Copy to temp buffer
+      memcpy(be_samples, samples, sizeof(int16_t)*block_sz);
+      // Byteswap buffer
+      for (i = 0; i < block_sz; i++) {
+        be_samples[i] = htons(be_samples[i]);
+      }
+      // Write buffer
+      sz = fwrite(be_samples, sizeof(int16_t), block_sz, audiofile);
+      if (sz < (size_t)block_sz) {
+        perror("Failed to write audio block");
+        closeAudioDump();
+        return;
+      }
+      // Advance
+      numsamples -= block_sz;
+      samples += block_sz;
+    }
+
+    res = fflush(audiofile);
+    if (res < 0) {
+      perror("Failed to flush audio file");
+      closeAudioDump();
+    }
+  }
 }
 
 /* Open the receive log ready for traffic */
@@ -527,7 +636,18 @@ static void onVisIdentified(void) {
   }
 
   fsk_id = NULL;
-  exec_rx_cmd(logmsg_vis_detect, path_inprogress_img, path_inprogress_log);
+  exec_rx_cmd(logmsg_vis_detect, path_inprogress_img, path_inprogress_log, path_inprogress_audio);
+
+  if (path_inprogress_audio) {
+    res = openAudioDump();
+    if (res == 0) {
+      // Fetch the initial part that triggered this recording.
+      writeToAudioDump(pcm.WindowPtr*2, pcm.Buffer);
+    }
+    if (res == 0) {
+      pcm.PCMReadCallback = writeToAudioDump;
+    }
+  }
 }
 
 static void onVideoInitBuffer(uint8_t mode) {
@@ -614,7 +734,7 @@ static int refreshImage(_Bool force) {
   }
 
   if (force || ((last_refresh - last_rx_exec) > RX_EXEC_INTERVAL)) {
-    exec_rx_cmd(logmsg_image_refreshed, path_inprogress_img, path_inprogress_log);
+    exec_rx_cmd(logmsg_image_refreshed, path_inprogress_img, path_inprogress_log, path_inprogress_audio);
   }
   return 0;
 }
@@ -700,6 +820,7 @@ static void onListenerReceiveFinished(void) {
 
   char output_path_log[PATH_MAX];
   char output_path_img[PATH_MAX];
+  char output_path_audio[PATH_MAX];
   size_t output_path_rem = sizeof(output_path_log) - 1;
 
   if (path_dir) {
@@ -740,6 +861,15 @@ static void onListenerReceiveFinished(void) {
     }
   }
 
+  if (path_inprogress_audio) {
+    strncpy(output_path_audio, output_path_log, sizeof(output_path_audio));
+    if (output_path_rem < 4) {
+      /* Truncate to make room for ".au\0" */
+      output_path_audio[sizeof(output_path_audio) - 4] = 0;
+    }
+    strncat(output_path_audio, ".au", sizeof(output_path_audio) - strlen(output_path_audio) - 1);
+  }
+
   strncpy(output_path_img, output_path_log, sizeof(output_path_img));
   if (output_path_rem < 5) {
     /* Truncate to make room for ".png\0" */
@@ -772,10 +902,17 @@ static void onListenerReceiveFinished(void) {
     return;
   }
 
+  if (path_inprogress_audio) {
+    res = closeAudioDump();
+    if (res == 0) {
+      res = renameAndSymlink(path_inprogress_audio, output_path_audio, path_latest_audio);
+    }
+  }
+
   printf("Received %d × %d pixel image\n",
       ModeSpec[CurrentPic.Mode].ImgWidth,
       ModeSpec[CurrentPic.Mode].NumLines * ModeSpec[CurrentPic.Mode].LineHeight);
-  exec_rx_cmd(logmsg_receive_end, output_path_img, output_path_log);
+  exec_rx_cmd(logmsg_receive_end, output_path_img, output_path_log, output_path_audio);
 
   /* Wait for all children to exit */
   wait(NULL);
@@ -886,12 +1023,30 @@ int main(int argc, char *argv[]) {
   {
     _Bool path_inprogress_img_set = false;
     _Bool path_inprogress_log_set = false;
+    _Bool path_inprogress_audio_set = false;
     _Bool path_latest_img_set = false;
     _Bool path_latest_log_set = false;
+    _Bool path_latest_audio_set = false;
     int opt;
 
     while ((opt = getopt(argc, argv, "FISh:L:d:i:l:p:r:x:")) != -1) {
       switch (opt) {
+        case 'A': // In-progress audio path
+          if (path_inprogress_audio_set) {
+            free(path_inprogress_audio);
+          } else {
+            path_inprogress_audio_set = true;
+          }
+          if (is_disabled_path(optarg)) {
+            path_inprogress_audio = NULL;
+          } else {
+            path_inprogress_audio = path_append_dir_dup(optarg);
+            if (!path_inprogress_audio) {
+              perror("Failed to compute full in-progress audio path");
+              exit(DAEMON_EXIT_INIT_PATH);
+            }
+          }
+          break;
         case 'F': // Disable FSKID
           ListenerEnableFSKID = false;
           break;
@@ -930,6 +1085,22 @@ int main(int argc, char *argv[]) {
         case 'S': // Disable slant correction
           ListenerAutoSlantCorrect = false;
           break;
+        case 'a': // Latest audio path
+          if (path_latest_audio_set) {
+            free(path_latest_audio);
+          } else {
+            path_latest_audio_set = true;
+          }
+          if (is_disabled_path(optarg)) {
+            path_latest_audio = NULL;
+          } else {
+            path_latest_audio = path_append_dir_dup(optarg);
+            if (!path_latest_audio) {
+              perror("Failed to compute full latest audio path");
+              exit(DAEMON_EXIT_INIT_PATH);
+            }
+          }
+          break;
         case 'd': // Set the output directory
           {
             char abs_dir[PATH_MAX];
@@ -942,18 +1113,20 @@ int main(int argc, char *argv[]) {
           }
           break;
         case 'h':
-          printf("Usage: %s [-h] [-F] [-S] [-I inprogress.png]\n"
-              "[-L inprogress.ndjson] [-d directory] [-i latest.png]\n"
-              "[-l latest.ndjson] [-p pcmdevice] [-r samplerate]\n"
-              "[-x script]\n"
+          printf("Usage: %s [-h] [-F] [-S] [-A inprogress.au]\n"
+              "[-I inprogress.png] [-L inprogress.ndjson] [-a latest.au]\n"
+              "[-d directory] [-i latest.png] [-l latest.ndjson]\n"
+              "[-p pcmdevice] [-r samplerate] [-x script]\n"
               "\n"
               "where:\n"
               "  -F : disable FSK ID detection\n"
               "  -S : disable slant correction\n"
               "  -h : display this help and exit\n"
               "  -d : set the directory where images are kept\n"
+              "  -A : set the in-progress audio dump path (- to disable)\n"
               "  -I : set the in-progress image path (- to disable)\n"
               "  -L : set the in-progress receive log path (- to disable)\n"
+              "  -a : set the latest audio dump path (- to disable)\n"
               "  -i : set the latest image path (- to disable)\n"
               "  -l : set the latest receive log path (- to disable)\n"
               "  -r : set the ALSA PCM sample rate\n"
@@ -1049,6 +1222,14 @@ int main(int argc, char *argv[]) {
       }
     }
 
+    if (!path_inprogress_audio_set && path_inprogress_audio) {
+      path_inprogress_audio = path_append_dir_dup(path_inprogress_audio);
+      if (!path_inprogress_audio) {
+        perror("Failed to compute full in-progress audio dump path");
+        exit(DAEMON_EXIT_INIT_PATH);
+      }
+    }
+
     if (!path_latest_img_set && path_latest_img) {
       path_latest_img = path_append_dir_dup(path_latest_img);
       if (!path_latest_img) {
@@ -1057,10 +1238,18 @@ int main(int argc, char *argv[]) {
       }
     }
 
-    if (!path_latest_log_set) {
+    if (!path_latest_log_set && path_latest_log) {
       path_latest_log = path_append_dir_dup(path_latest_log);
       if (!path_latest_log) {
         perror("Failed to compute full latest log path");
+        exit(DAEMON_EXIT_INIT_PATH);
+      }
+    }
+
+    if (!path_latest_audio_set) {
+      path_latest_audio = path_append_dir_dup(path_latest_audio);
+      if (!path_latest_audio) {
+        perror("Failed to compute full latest audio dump path");
         exit(DAEMON_EXIT_INIT_PATH);
       }
     }
