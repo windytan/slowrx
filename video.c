@@ -473,7 +473,7 @@ _Bool GetVideo(uint8_t Mode, double Rate, int32_t Skip, _Bool Redraw) {
       }
     } /* endif (SampleNum == PixelGrid[PixelIdx].Time) */
 
-    if (!Redraw && (SampleNum % 8820 == 0) && OnVideoPowerCalculated) {
+    if (!Redraw && (SampleNum % (2*PCM_MS_FRAMES(100)) == 0) && OnVideoPowerCalculated) {
       OnVideoPowerCalculated(Power, VIDEO_FFT_LEN, WinIdx);
     }
 
