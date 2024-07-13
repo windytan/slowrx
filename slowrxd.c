@@ -1166,7 +1166,7 @@ int main(int argc, char *argv[]) {
               "  -h : display this help and exit\n"
               "  -d : set the directory where images are kept\n"
               "  -A : set the in-progress audio dump path (- to disable)\n"
-              "  -I : set the in-progress image path (- to disable)\n"
+              "  -I : set the in-progress image path\n"
               "  -L : set the in-progress receive log path (- to disable)\n"
               "  -a : set the latest audio dump path (- to disable)\n"
               "  -c : set the audio channel to use, left, right or mono\n"
@@ -1296,6 +1296,12 @@ int main(int argc, char *argv[]) {
         exit(DAEMON_EXIT_INIT_PATH);
       }
     }
+  }
+
+  // Require an in-progress image file output be provided
+  if (!path_inprogress_img) {
+    printf("In-progress image path is required\n");
+    exit(DAEMON_EXIT_INVALID_ARG);
   }
 
   // Prepare FFT
