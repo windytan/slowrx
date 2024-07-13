@@ -924,21 +924,44 @@ static void showVU(double *Power, int FFTLen, int WinIdx) {
     return;
   }
 
+  /* Scan forwards, find the first non-zero record */
+  int first_bucket = 0;
+  for (int i = first_bucket; i < FFTLen; i++) {
+    if (Power[i] != 0.0) {
+      first_bucket = i;
+      break;
+    }
+  }
+
+  /* Scan backwards, find the first non-zero record */
+  int last_bucket = FFTLen-1;
+  for (int i = last_bucket; i >= first_bucket; i--) {
+    if (Power[i] != 0.0) {
+      last_bucket = i;
+      break;
+    }
+  }
+
   int res = beginReceiveLogRecord(logmsg_sig_strength, NULL);
   if (res < 0) {
     Abort = true;
     return;
   }
 
-  res = fprintf(rxlog, ", \"win\": %d, \"fft\": [", WinIdx);
+  res = fprintf(rxlog,
+      ", \"win\": %d, "
+      "\"num\": %d, "
+      "\"first\": %d, "
+      "\"last\": \"fft\": [",
+      WinIdx, FFTLen, first_bucket);
   if (res < 0) {
     perror("Failed to write window index or start of FFT array");
     Abort = true;
     return;
   }
 
-  for (int i = 0; i < FFTLen; i++) {
-    if (i > 0) {
+  for (int i = first_bucket; i <= last_bucket; i++) {
+    if (i > first_bucket) {
       res = emitLogRecordRaw(", ");
       if (res < 0) {
         Abort = true;
