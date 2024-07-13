@@ -1053,7 +1053,7 @@ int main(int argc, char *argv[]) {
     _Bool path_latest_audio_set = false;
     int opt;
 
-    while ((opt = getopt(argc, argv, "A:FI:Sh:L:a:c:d:i:l:p:r:x:")) != -1) {
+    while ((opt = getopt(argc, argv, "A:FI:SL:a:c:d:hi:l:p:r:x:")) != -1) {
       switch (opt) {
         case 'A': // In-progress audio path
           if (path_inprogress_audio_set) {
