@@ -1009,7 +1009,7 @@ char* path_append_dir_dup(const char* filename) {
   char path[PATH_MAX] = {0};
   size_t path_rem = sizeof(path) - 1;
 
-  if (path_dir) {
+  if (path_dir || (filename[0] == '/')) {
     strncpy(path, path_dir, path_rem);
     path_rem -= strlen(path_dir);
 
