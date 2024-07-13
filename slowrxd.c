@@ -1052,7 +1052,7 @@ int main(int argc, char *argv[]) {
     _Bool path_latest_audio_set = false;
     int opt;
 
-    while ((opt = getopt(argc, argv, "FISh:L:d:i:l:p:r:x:")) != -1) {
+    while ((opt = getopt(argc, argv, "A:FI:Sh:L:a:d:i:l:p:r:x:")) != -1) {
       switch (opt) {
         case 'A': // In-progress audio path
           if (path_inprogress_audio_set) {
@@ -1089,6 +1089,9 @@ int main(int argc, char *argv[]) {
             }
           }
           break;
+        case 'S': // Disable slant correction
+          ListenerAutoSlantCorrect = false;
+          break;
         case 'L': // In-progress receive log path
           if (path_inprogress_log_set) {
             free(path_inprogress_log);
@@ -1104,9 +1107,6 @@ int main(int argc, char *argv[]) {
               exit(DAEMON_EXIT_INIT_PATH);
             }
           }
-          break;
-        case 'S': // Disable slant correction
-          ListenerAutoSlantCorrect = false;
           break;
         case 'a': // Latest audio path
           if (path_latest_audio_set) {
