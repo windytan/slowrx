@@ -1155,10 +1155,10 @@ int main(int argc, char *argv[]) {
           break;
         case 'h':
           printf("Usage: %s [-h] [-F] [-S] [-A inprogress.au]\n"
-              "[-I inprogress.png] [-L inprogress.ndjson] [-a latest.au]\n"
-              "[-c channel] [-d directory] [-i latest.png]\n"
-              "[-l latest.ndjson] [-p pcmdevice] [-r samplerate]\n"
-              "[-x script]\n"
+              "\t[-I inprogress.png] [-L inprogress.ndjson] [-a latest.au]\n"
+              "\t[-c channel] [-d directory] [-i latest.png]\n"
+              "\t[-l latest.ndjson] [-p pcmdevice] [-r samplerate]\n"
+              "\t[-x script]\n"
               "\n"
               "where:\n"
               "  -F : disable FSK ID detection\n"
