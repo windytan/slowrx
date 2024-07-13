@@ -50,16 +50,51 @@ void readPcm(int32_t numsamples) {
 
   }
 
+  /*
+   * Channel selection:
+   * - For the left channel, we mask and sign-extend the lower 16-bits.
+   * - For the right channel, we arithmetically right-shift 16-bits.
+   * - For mono, we sum the left and right channels, divide by two then clamp.
+   */
+  for (i = 0; i < samplesread; i++) {
+    switch (pcm.Channel) {
+    case PCM_CH_LEFT:
+      tmp[i] &= 0x0000ffff;
+      // Sign-extend!
+      if (tmp[i] & 0x00008000) {
+        tmp[i] |= 0xffff0000;
+      }
+      break;
+    case PCM_CH_MONO:
+      tmp[i] >>= 16;
+      break;
+    default:
+      {
+        const int16_t right = (int16_t)(tmp[i] >> 16);
+        const int16_t left = (int16_t)(tmp[i] & 0x0000ffff);
+        int32_t mono = (left + right) / 2;
+        if (mono > INT16_MAX) {
+          tmp[i] = INT16_MAX;
+        } else if (mono < INT16_MIN) {
+          tmp[i] = INT16_MIN;
+        } else {
+          tmp[i] = mono;
+        }
+      }
+      break;
+    }
+  }
+
   if (pcm.WindowPtr == 0) {
     // Fill buffer on first run
     for (i=0; i<BUFLEN; i++)
-      pcm.Buffer[i] = tmp[i] & 0xffff;
+      pcm.Buffer[i] = tmp[i];
     pcm.WindowPtr = BUFLEN/2;
   } else {
 
     // Move buffer and push samples
     for (i=0; i<BUFLEN-numsamples;      i++) pcm.Buffer[i] = pcm.Buffer[i+numsamples];
-    for (i=BUFLEN-numsamples; i<BUFLEN; i++) pcm.Buffer[i] = tmp[i-(BUFLEN-numsamples)] & 0xffff;
+    for (i=BUFLEN-numsamples; i<BUFLEN; i++) pcm.Buffer[i] = tmp[i-(BUFLEN-numsamples)];
 
     pcm.WindowPtr -= numsamples;
   }
@@ -75,7 +110,7 @@ void readPcm(int32_t numsamples) {
 //  PCM_RES_SUCCESS = opened ok
 //  PCM_RES_SUBOPTIMAL = opened, but suboptimal
 //  PCM_RES_FAILURE = couldn't be opened
-int32_t initPcmDevice(const char *wanteddevname, uint16_t samplerate) {
+int32_t initPcmDevice(const char *wanteddevname, uint16_t samplerate, uint8_t channel) {
 
   snd_pcm_hw_params_t *hwparams;
   char                 pcm_name[30];
@@ -155,6 +190,7 @@ int32_t initPcmDevice(const char *wanteddevname, uint16_t samplerate) {
 
   pcm.Buffer = calloc( BUFLEN, sizeof(int16_t));
   pcm.SampleRate = exact_rate;
+  pcm.Channel = channel;
   memset(pcm.Buffer, 0, BUFLEN);
   
   if (exact_rate != samplerate) {

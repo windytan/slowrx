@@ -1042,6 +1042,7 @@ int main(int argc, char *argv[]) {
   ListenerEnableFSKID = true;
   VisAutoStart = true;
   uint16_t sample_rate = 44100;
+  uint8_t channel = PCM_CH_LEFT;
 
   {
     _Bool path_inprogress_img_set = false;
@@ -1052,7 +1053,7 @@ int main(int argc, char *argv[]) {
     _Bool path_latest_audio_set = false;
     int opt;
 
-    while ((opt = getopt(argc, argv, "A:FI:Sh:L:a:d:i:l:p:r:x:")) != -1) {
+    while ((opt = getopt(argc, argv, "A:FI:Sh:L:a:c:d:i:l:p:r:x:")) != -1) {
       switch (opt) {
         case 'A': // In-progress audio path
           if (path_inprogress_audio_set) {
@@ -1124,6 +1125,23 @@ int main(int argc, char *argv[]) {
             }
           }
           break;
+        case 'c': // Audio channel selection
+          switch (optarg[0]) {
+            case 'l':
+            case 'L':
+              channel = PCM_CH_LEFT;
+              break;
+            case 'r':
+            case 'R':
+              channel = PCM_CH_RIGHT;
+              break;
+            case 'm':
+            case 'M':
+            default:
+              channel = PCM_CH_MONO;
+              break;
+          }
+          break;
         case 'd': // Set the output directory
           {
             char abs_dir[PATH_MAX];
@@ -1138,8 +1156,9 @@ int main(int argc, char *argv[]) {
         case 'h':
           printf("Usage: %s [-h] [-F] [-S] [-A inprogress.au]\n"
               "[-I inprogress.png] [-L inprogress.ndjson] [-a latest.au]\n"
-              "[-d directory] [-i latest.png] [-l latest.ndjson]\n"
-              "[-p pcmdevice] [-r samplerate] [-x script]\n"
+              "[-c channel] [-d directory] [-i latest.png]\n"
+              "[-l latest.ndjson] [-p pcmdevice] [-r samplerate]\n"
+              "[-x script]\n"
               "\n"
               "where:\n"
               "  -F : disable FSK ID detection\n"
@@ -1150,6 +1169,7 @@ int main(int argc, char *argv[]) {
               "  -I : set the in-progress image path (- to disable)\n"
               "  -L : set the in-progress receive log path (- to disable)\n"
               "  -a : set the latest audio dump path (- to disable)\n"
+              "  -c : set the audio channel to use, left, right or mono\n"
               "  -i : set the latest image path (- to disable)\n"
               "  -l : set the latest receive log path (- to disable)\n"
               "  -r : set the ALSA PCM sample rate\n"
@@ -1283,7 +1303,7 @@ int main(int argc, char *argv[]) {
     exit(DAEMON_EXIT_INIT_FFT_ERR);
   }
 
-  res = initPcmDevice(pcm_device, sample_rate);
+  res = initPcmDevice(pcm_device, sample_rate, channel);
   switch (res) {
   case PCM_RES_SUCCESS:
     break;

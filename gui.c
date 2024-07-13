@@ -306,7 +306,11 @@ static void evt_changeDevices() {
 
   if (pcm.handle != NULL) snd_pcm_close(pcm.handle);
 
-  status = initPcmDevice(gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(gui.combo_card)), 44100);
+  /*
+   * Choose 44.1kHz and left channel, to preserve current default behaviour.
+   * TODO: add UI elements to let the user choose.
+   */
+  status = initPcmDevice(gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(gui.combo_card)), 44100, PCM_CH_LEFT);
 
 
   switch(status) {
