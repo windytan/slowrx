@@ -952,8 +952,8 @@ static void showVU(double *Power, int FFTLen, int WinIdx) {
       ", \"win\": %d, "
       "\"num\": %d, "
       "\"first\": %d, "
-      "\"last\": \"fft\": [",
-      WinIdx, FFTLen, first_bucket);
+      "\"last\": %d, \"fft\": [",
+      WinIdx, FFTLen, first_bucket, last_bucket);
   if (res < 0) {
     perror("Failed to write window index or start of FFT array");
     Abort = true;
