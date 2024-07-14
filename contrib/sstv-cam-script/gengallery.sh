@@ -48,6 +48,7 @@ set -x
 showimg() {
   alt_text="${1}"
   img_src="$( basename "${2}" )"
+  name="img${img_src%.png}"
   img_file="$( realpath "${2}" )"
   style="${3}"
 
@@ -108,10 +109,10 @@ showimg() {
       spec_h=$(( ${h} - ((${SPECTROGRAM_HEIGHT} * ${out_w}) / ${orig_w}) ))
 
       map="<map name=\"${name}-map\">"
-      map="${map}<area shape=\"rect\""
+      map="${map}<area shape=\"rect\" alt=\"Original image\""
       map="${map} coords=\"0, 0, ${w}, ${spec_h}\""
       map="${map} href=\"$( basename ${orig_file} )\" />"
-      map="${map}<area shape=\"rect\""
+      map="${map}<area shape=\"rect\" alt=\"Spectrogram\""
       map="${map} coords=\"0, ${spec_h}, ${w}, ${h}\""
       map="${map} href=\"$( basename ${spec_file} )\" />"
       map="${map}</map>"
