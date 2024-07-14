@@ -19,3 +19,12 @@ Usage
 
 Drop these files into your image directory and adjust to taste.  Point
 `slowrxd -x` at the `upload.sh` script.
+
+W3C validator images can be pulled from the W3C site, *if* your page actually
+validates and you care to show others that it does.  These two commands will
+fetch the images you need.
+
+```
+wget -O valid-xhtml11.png https://www.w3.org/Icons/valid-xhtml11
+wget -O valid-css3.png https://jigsaw.w3.org/css-validator/images/vcss
+```
