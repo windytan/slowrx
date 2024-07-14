@@ -279,7 +279,7 @@ cat >> ${IMAGE_DIR}/index.html <<EOF
     <hr />
     <div id="footer">
       <p>
-        <a href="https://validator.w3.org/markup/check?uri=referer"><img
+        <a href="https://validator.w3.org/check?uri=referer"><img
           src="valid-xhtml11.png" alt="Valid XHTML 1.1" height="31" width="88" /></a>
         <a href="https://jigsaw.w3.org/css-validator/check/referer">
           <img style="border:0;width:88px;height:31px"
