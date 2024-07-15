@@ -108,7 +108,7 @@ showimg() {
     if [ -f "${spec_file}" ]; then
       spec_h=$(( ${h} - ((${SPECTROGRAM_HEIGHT} * ${out_w}) / ${orig_w}) ))
 
-      map="<map name=\"${name}-map\">"
+      map="<map id=\"${name}-map\">"
       map="${map}<area shape=\"rect\" alt=\"Original image\""
       map="${map} coords=\"0, 0, ${w}, ${spec_h}\""
       map="${map} href=\"$( basename ${orig_file} )\" />"
@@ -187,12 +187,12 @@ if [ "${SSTV_EVENT}" = RECEIVE_END ]; then
   generateoutimg "${SSTV_BASE}"
 fi
 
-if [ "${SSTV_LOG}" = "${IMAGE_DIR}/inprogress.ndjson" ]; then
+if [ "${SSTV_IMAGE}" = "${IMAGE_DIR}/inprogress.png" ]; then
   # We're receiving an image, check back in 5 seconds
   refresh_in=5
 else
-  # We're receiving an image, check back in a minute
-  refresh_in=60
+  # No image being received, check back in 5 minutes
+  refresh_in=300
 fi
 
 # Emit the start of the web page.
@@ -208,12 +208,12 @@ cat > ${IMAGE_DIR}/index.html <<EOF
   xsi:schemaLocation="http://www.w3.org/1999/xhtml http://www.w3.org/MarkUp/SCHEMA/xhtml11.xsd"
 >
   <head>
-    <title>SSTV traffic -- ${STATION_IDENT}</title>
+    <title>$( echo "${STATION_IDENT}" | htmlescape )</title>
     <link rel="stylesheet" href="style.css" />
     <meta http-equiv="Refresh" content="${refresh_in}" />
   </head>
   <body>
-    <h1>${STATION_IDENT}</h1>
+    <h1>$( echo "${STATION_IDENT}" | htmlescape )</h1>
     <p>
       This is an experimental SSTV receiver station using <code>slowrxd</code>.
       <strong>Please note I do not control what people transmit on SSTV
@@ -234,7 +234,7 @@ cat > ${IMAGE_DIR}/index.html <<EOF
     <hr />
 EOF
 
-if [ "${SSTV_LOG}" = ${IMAGE_DIR}/inprogress.ndjson ]; then
+if [ "${SSTV_IMAGE}" = ${IMAGE_DIR}/inprogress.png ]; then
   cat >> ${IMAGE_DIR}/index.html <<EOF
     <div id="inprogress">
       <h2>Currently in progress</h2>

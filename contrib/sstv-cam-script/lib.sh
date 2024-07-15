@@ -43,6 +43,11 @@ parsets() {
   fi
 }
 
+# HTML-escape a string
+htmlescape() {
+  sed -e 's/&/\&amp;/; s/</\&lt;/; s/>/\&gt;/;'
+}
+
 # Format a frequency in Hz as kHz.
 # Arguments:
 # 1: frequency in Hz
