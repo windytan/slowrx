@@ -4,8 +4,19 @@
 FEATURED_WIDTH=720
 STANDARD_WIDTH=320
 
+# Station locator, you can use a script like
+# https://gist.github.com/sjlongland/2fc720b1cfab77deddd646dced1f5418
+# run from cron to write the current location to a file, or just manually
+# create it yourself.
+if [ -f "${IMAGE_DIR}/locator.txt" ]; then
+  STATION_LOC="$( cat "${IMAGE_DIR}/locator.txt" )"
+else
+  # Or hard-code it here.
+  STATION_LOC="XY12ab"
+fi
+
 # Station identity
-STATION_IDENT="N0CALL SSTV @ QTH"
+STATION_IDENT="N0CALL SSTV RX @ ${STATION_LOC}"
 
 # Information text font -- use any TTF font you like, but the full path
 # must be known here.  See generateoutimg for how this is used, you may
@@ -162,6 +173,40 @@ summarisendjsonlog() {
   fi
 }
 
+# Get the VFO
+getvfo() {
+  rigctl -m 2 -r localhost:4532 --skipinit v | grep -v ^rigctld
+}
+
+# Capture the frequency from rigctl
+getfreq() {
+  rigctl -m 2 -r localhost:4532 --skipinit --vfo f $( getvfo ) | grep -v ^rigctld
+}
+
+# Capture the PTT state
+getptt() {
+  rigctl -m 2 -r localhost:4532 --skipinit --vfo t $( getvfo ) | grep -v ^rigctld
+}
+
+# Capture the signal strength from rigctl
+getstrength() {
+  rigctl -m 2 -r localhost:4532 --skipinit --vfo l RAWSTR VFOCUR | grep -v ^rigctld
+}
+
+# Decode the signal strength from rigctl
+parsestrength() {
+  case "${1}" in
+  [0123456789]) echo "S${1}"
+      ;;
+  10)   echo "S9+10dB"
+      ;;
+  1[12345]) echo "S9+20dB"
+      ;;
+  *)
+      echo "${1}?"
+  esac
+}
+
 # Generate a spectrogram of the audio recording
 # 1: image file from the transmission
 # 2: audio file of the transmission
@@ -210,6 +255,7 @@ generateoutimg() {
   input_img="${1}-orig.png"
   spec_img="${1}-spec.png"
   freq_file="${1}.freq"
+  strength_file="${1}.strength"
   output_img="${1}.png"
   left_img="${1}-left.png"
   right_img="${1}-right.png"
@@ -257,7 +303,52 @@ generateoutimg() {
   mode=$( logfetch "${log_file}" "mode" )
   fsk_id=$( logfetch "${log_file}" "fsk_id" )
 
-  infotxt="SSTV Mode: ${mode}"
+  infotxt=""
+  if [ -f "${strength_file}" ]; then
+    strength="$( parsestrength $( cat ${strength_file} ) )"
+    infotxt="Signal strength: ${strength}"
+
+    # You can make your own meter images, or feel free
+    # to grab them from here:
+    # https://static.vk4msl.com/sstv/meter/
+    case "${strength}" in
+    S0) strength_img="${IMAGE_DIR}/meter/meter-0.png"
+        ;;
+    S1) strength_img="${IMAGE_DIR}/meter/meter-1.png"
+        ;;
+    S2) strength_img="${IMAGE_DIR}/meter/meter-2.png"
+        ;;
+    S3) strength_img="${IMAGE_DIR}/meter/meter-3.png"
+        ;;
+    S4) strength_img="${IMAGE_DIR}/meter/meter-4.png"
+        ;;
+    S5) strength_img="${IMAGE_DIR}/meter/meter-5.png"
+        ;;
+    S6) strength_img="${IMAGE_DIR}/meter/meter-6.png"
+        ;;
+    S7) strength_img="${IMAGE_DIR}/meter/meter-7.png"
+        ;;
+    S8) strength_img="${IMAGE_DIR}/meter/meter-8.png"
+        ;;
+    S9) strength_img="${IMAGE_DIR}/meter/meter-9.png"
+        ;;
+    S9+10dB)
+        strength_img="${IMAGE_DIR}/meter/meter-9p.png"
+        ;;
+    *)  strength_img="${IMAGE_DIR}/meter/meter-9pp.png"
+        ;;
+    esac
+
+    if [ ! -f "${strength_img}.pam" ]; then
+      pngtopam -alpha "${strength_img}" > "${strength_img}.pam"
+    fi
+
+    strength_cmd="pamcomp -align right -valign top ${strength_img}.pam - "
+  else
+    strength_cmd="cat"
+  fi
+
+  infotxt="${infotxt}\nSSTV Mode: ${mode}"
   if [ -n "${fsk_id}" ]; then
     infotxt="${infotxt}\nFSK ID: ${fsk_id}"
   else
@@ -268,8 +359,9 @@ generateoutimg() {
   convert -size ${orig_h}x56 canvas:none \
     -font ${INFO_IMG_FONT} \
     -pointsize 16 -fill white \
-    -draw "text 0,32 '$( echo -e "${infotxt}" | tail -n +1 | head -n 1 )'" \
-    -draw "text 0,48 '$( echo -e "${infotxt}" | tail -n +2 | head -n 1 )'" \
+    -draw "text 0,16 '$( echo -e "${infotxt}" | tail -n +1 | head -n 1 )'" \
+    -draw "text 0,32 '$( echo -e "${infotxt}" | tail -n +2 | head -n 1 )'" \
+    -draw "text 0,48 '$( echo -e "${infotxt}" | tail -n +3 | head -n 1 )'" \
     -rotate -90 \
     "${right_img}"
 
@@ -287,6 +379,7 @@ generateoutimg() {
       "${input_img}.pam" "${spec_img}.pam" \
     | pamcomp -align left -valign top "${left_img}.pam" - \
     | pamcomp -align right -valign top "${right_img}.pam" - \
+    | ${strength_cmd} \
     | pamtopng -interlace > "${output_img}"
 
   # Remove temporary PAM files and images

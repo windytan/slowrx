@@ -27,9 +27,23 @@ SSTV_AUDIO="$( realpath "${4}" )" # SSTV audio file (Sun audio or MP3)
 SSTV_BASE="${SSTV_IMAGE%.png}"
 
 # Derive generated file names
+SSTV_STRENGTH="${SSTV_BASE}.strength"
 SSTV_FREQ="${SSTV_BASE}.freq"
 SSTV_SPEC="${SSTV_BASE}-spec.png"
 SSTV_ORIG="${SSTV_BASE}-orig.png"
+
+# Derive names of the latest and in-progress image files.
+SSTV_IP_IMAGE="${IMAGE_DIR}/inprogress.png"
+SSTV_IP_LOG="${IMAGE_DIR}/inprogress.ndjson"
+SSTV_IP_AUDIO="${IMAGE_DIR}/inprogress.au"
+SSTV_IP_FREQ="${IMAGE_DIR}/inprogress.freq"
+SSTV_IP_STRENGTH="${IMAGE_DIR}/inprogress.strength"
+
+SSTV_LATEST_IMAGE="${IMAGE_DIR}/latest.png"
+SSTV_LATEST_LOG="${IMAGE_DIR}/latest.ndjson"
+SSTV_LATEST_AUDIO="${IMAGE_DIR}/latest.mp3"
+SSTV_LATEST_FREQ="${IMAGE_DIR}/latest.freq"
+SSTV_LATEST_STRENGTH="${IMAGE_DIR}/latest.strength"
 
 . ${IMAGE_DIR}/lib.sh
 
@@ -160,8 +174,36 @@ EOF
 EOF
 }
 
+# Is this an incoming image transmission?
+if [ "${SSTV_IMAGE}" = "${SSTV_IP_IMAGE}" ]; then
+  # Are we transmitting?
+  if [ "$( getptt )" = 0 ]; then
+    # Capture the signal strength
+    str_now=$( getstrength )
+    if [ -f "${SSTV_STRENGTH}" ]; then
+      str_prev=$( cat "${SSTV_STRENGTH}" )
+      if [ ${str_now} > ${str_prev} ]; then
+        echo "${str_now}" > "${SSTV_STRENGTH}"
+      fi
+    else
+      echo "${str_now}" > "${SSTV_STRENGTH}"
+    fi
+  fi
+fi
+
 # Are we at the end of a transmission?
 if [ "${SSTV_EVENT}" = RECEIVE_END ]; then
+  # Sanity check, this is the latest file.
+  if [ "${SSTV_IMAGE}" = "$( realpath "${SSTV_LATEST_IMAGE}" )" ]; then
+    # It is, rename the signal strength file if present.
+    if [ -f "${SSTV_IP_STRENGTH}" ]; then
+      mv "${SSTV_IP_STRENGTH}" "${SSTV_STRENGTH}"
+      rm -f "${SSTV_LATEST_STRENGTH}"
+      ln -sv "$( basename "${SSTV_STRENGTH}" )" \
+        "${SSTV_LATEST_STRENGTH}"
+    fi
+  fi
+
   # Capture the frequency if not yet done, this can disrupt
   # reception due to quirks in rigctl, so we can't do this during
   # reception.
@@ -187,7 +229,7 @@ if [ "${SSTV_EVENT}" = RECEIVE_END ]; then
   generateoutimg "${SSTV_BASE}"
 fi
 
-if [ "${SSTV_IMAGE}" = "${IMAGE_DIR}/inprogress.png" ]; then
+if [ "${SSTV_IMAGE}" = "${SSTV_IP_IMAGE}" ]; then
   # We're receiving an image, check back in 5 seconds
   refresh_in=5
 else
@@ -210,6 +252,7 @@ cat > ${IMAGE_DIR}/index.html <<EOF
   <head>
     <title>$( echo "${STATION_IDENT}" | htmlescape )</title>
     <link rel="stylesheet" href="style.css" />
+    <script type="application/javascript" src="gallery.js"></script>
     <meta http-equiv="Refresh" content="${refresh_in}" />
   </head>
   <body>
@@ -234,7 +277,7 @@ cat > ${IMAGE_DIR}/index.html <<EOF
     <hr />
 EOF
 
-if [ "${SSTV_IMAGE}" = ${IMAGE_DIR}/inprogress.png ]; then
+if [ "${SSTV_IMAGE}" = "${SSTV_IP_IMAGE}" ]; then
   cat >> ${IMAGE_DIR}/index.html <<EOF
     <div id="inprogress">
       <h2>Currently in progress</h2>
@@ -264,12 +307,13 @@ cat >> ${IMAGE_DIR}/index.html <<EOF
 EOF
 
 latest_img="$( realpath ${IMAGE_DIR}/latest.png )"
-for img in $( ls -1r ${IMAGE_DIR}/20*-orig.png ); do
-  imgbase="${img%-orig.png}"
+for img in $( ls -1r ${IMAGE_DIR}/20*-orig.png ${IMAGE_DIR}/20*-orig.jpg ); do
+  ext="${img##*.}"
+  imgbase="${img%-orig.${ext}}"
   if [ "${imgbase}.png" != "${latest_img}" ]; then
     if [ ! -f "${imgbase}.htmlpart" ]; then
       showimg "Previous image $( basename ${img} )" \
-        "${imgbase}.png" \
+        "${imgbase}.${ext}" \
         > "${imgbase}.htmlpart"
     fi
     cat "${imgbase}.htmlpart" >> ${IMAGE_DIR}/index.html
@@ -280,12 +324,13 @@ cat >> ${IMAGE_DIR}/index.html <<EOF
     <hr />
     <div id="footer">
       <p>
-        <a href="https://validator.w3.org/check?uri=referer"><img
-          src="valid-xhtml11.png" alt="Valid XHTML 1.1" height="31" width="88" /></a>
+        <a href="https://validator.w3.org/check?uri=referer">
+          <img style="border:0;" src="valid-xhtml11.png" alt="Valid XHTML 1.1"
+          height="31" width="88" />
+        </a>
         <a href="https://jigsaw.w3.org/css-validator/check/referer">
           <img style="border:0;width:88px;height:31px"
-            src="valid-css3.png"
-          alt="Valid CSS!" />
+            src="valid-css3.png" alt="Valid CSS!" />
         </a>
       </p>
       <p>Generated $( TZ=UTC date -Imin )</p>
@@ -294,16 +339,16 @@ cat >> ${IMAGE_DIR}/index.html <<EOF
 </html>
 EOF
 
-# Upload the resulting files
-rsync -zaHS --partial \
-  --exclude "$( basename "$0" )" \
+rsync -zaHS --partial --delete-before \
   --exclude .\*.swp \
   --exclude \*.sh \
   --exclude \*.au \
   --exclude \*.ndjson \
+  --exclude \*.htmlpart \
   --exclude \*.log \
   --exclude \*.freq \
-  --exclude \*.htmlpart \
-  --delete-before \
-  ${IMAGE_DIR}/ \
+  --exclude \*.strength \
+  --exclude \*.xz \
+  --exclude \*.pam \
+  --exclude archive/ \
   you@yourserver.example.com:/var/www/sites/sstv.example.com/htdocs/
