@@ -156,7 +156,7 @@ static void exec_rx_cmd(const char* event, const char* img_path, const char* log
 
       char* argv[] = { _rx_exec, _event, _img_path, _log_path, _audio_path, NULL };
       printf("Executing script\n");
-      int res = execve(rx_exec, argv, NULL);
+      int res = execv(rx_exec, argv);
       if (res < 0) {
         perror("Failed to exec() receive command");
       }
