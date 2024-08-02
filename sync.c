@@ -2,10 +2,11 @@
 #include <math.h>
 #include <string.h>
 #include <fftw3.h>
-#include <gtk/gtk.h>
 #include <alsa/asoundlib.h>
 
 #include "common.h"
+#include "modespec.h"
+#include "pcm.h"
 
 /* Find the slant angle of the sync singnal and adjust sample rate to cancel it out
  *   Length:  number of PCM samples to process
@@ -15,29 +16,29 @@
  *   returns  adjusted sample rate
  *
  */
-double FindSync (guchar Mode, double Rate, int *Skip) {
+double FindSync (uint8_t Mode, double Rate, int32_t *Skip) {
 
-  int      LineWidth = ModeSpec[Mode].LineTime / ModeSpec[Mode].SyncTime * 4;
-  int      x,y;
-  int      q, d, qMost, dMost;
-  gushort  xAcc[700] = {0};
-  gushort  lines[600][(MAXSLANT-MINSLANT)*2];
-  gushort  cy, cx, Retries = 0;
-  gboolean SyncImg[700][630] = {{FALSE}};
+  int32_t  LineWidth = ModeSpec[Mode].LineTime / ModeSpec[Mode].SyncTime * 4;
+  int32_t  x,y;
+  int32_t  q, d, qMost, dMost;
+  uint16_t xAcc[700] = {0};
+  uint16_t lines[600][(MAXSLANT-MINSLANT)*2];
+  uint16_t cy, cx, Retries = 0;
+  _Bool    SyncImg[700][630] = {{false}};
   double   t=0, slantAngle, s;
   double   ConvoFilter[8] = { 1,1,1,1,-1,-1,-1,-1 };
   double   convd, maxconvd=0;
-  int      xmax=0;
+  int32_t  xmax=0;
 
   // Repeat until slant < 0.5° or until we give up
-  while (TRUE) {
+  while (true) {
 
     // Draw the 2D sync signal at current rate
     
     for (y=0; y<ModeSpec[Mode].NumLines; y++) {
       for (x=0; x<LineWidth; x++) {
         t = (y + 1.0*x/LineWidth) * ModeSpec[Mode].LineTime;
-        SyncImg[x][y] = HasSync[ (int)( t * Rate / 13.0) ];
+        SyncImg[x][y] = HasSync[ (int32_t)( t * Rate / 13.0) ];
       }
     }
 
@@ -85,8 +86,8 @@ double FindSync (guchar Mode, double Rate, int *Skip) {
       break;
     } else if (Retries == 3) {
       printf("            still slanted; giving up\n");
-      Rate = 44100;
-      printf("    -> 44100\n");
+      Rate = pcm.SampleRate;
+      printf("    -> %u\n", pcm.SampleRate);
       break;
     }
     printf(" -> %.1f    recalculating\n", Rate);
@@ -98,14 +99,14 @@ double FindSync (guchar Mode, double Rate, int *Skip) {
   for (y=0; y<ModeSpec[Mode].NumLines; y++) {
     for (x=0; x<700; x++) { 
       t = y * ModeSpec[Mode].LineTime + x/700.0 * ModeSpec[Mode].LineTime;
-      xAcc[x] += HasSync[ (int)(t / (13.0/44100) * Rate/44100) ];
+      xAcc[x] += HasSync[ (int32_t)(t / (13.0/pcm.SampleRate) * Rate/pcm.SampleRate) ];
     }
   }
 
   // find falling edge of the sync pulse by 8-point convolution
   for (x=0;x<700-8;x++) {
     convd = 0;
-    for (int i=0;i<8;i++) convd += xAcc[x+i] * ConvoFilter[i];
+    for (int32_t i=0;i<8;i++) convd += xAcc[x+i] * ConvoFilter[i];
     if (convd > maxconvd) {
       maxconvd = convd;
       xmax = x+4;

@@ -1,20 +1,69 @@
-CC = gcc
+CC ?= gcc
+AR ?= ar
+RANLIB ?= ranlib
 
-CFLAGS    = -Wall -Wextra -std=gnu99 -pedantic -g -DGDK_VERSION_MIN_REQUIRED=GDK_VERSION_3_4
-GTKCFLAGS = `pkg-config --cflags gtk+-3.0`
-GTKLIBS   = `pkg-config --libs gtk+-3.0`
+CFLAGS    = -Wall -Wextra -std=gnu99 -pedantic -g
+
+GTKCFLAGS = $(shell pkg-config --cflags gtk+-3.0)
+GTKLIBS   = $(shell pkg-config --libs gtk+-3.0)
+
+GDCFLAGS = $(shell pkg-config --cflags gdlib)
+GDLIBS   = $(shell pkg-config --libs gdlib)
 
 OFLAGS = -O3
 
-OBJECTS = common.o modespec.o gui.o video.o vis.o sync.o pcm.o fsk.o slowrx.o
+GUI_BIN = slowrx
+DAEMON_BIN = slowrxd
+COMMON_LIB = libslowrx.a
 
-all: slowrx
+TARGETS ?= $(GUI_BIN) $(DAEMON_BIN)
 
-slowrx: $(OBJECTS)
-	$(CC) $(CFLAGS) -o $@ $(OBJECTS) $(GTKLIBS) -lfftw3 -lgthread-2.0 -lasound -lm -lpthread
+COMMON_CFLAGS  = $(CFLAGS) $(OFLAGS)
+COMMON_LDFLAGS = -lfftw3 -lasound -lm -lpthread
 
-%.o: %.c common.h
-	$(CC) $(CFLAGS) $(GTKCFLAGS) $(OFLAGS) -c -o $@ $<
+LIB_SOURCES = common.c fft.c fsk.c listen.c modespec.c sync.c pic.c pcm.c vis.c video.c
+LIB_OBJECTS = $(patsubst %.c,%.o,$(LIB_SOURCES))
+LIB_DEPENDS = $(patsubst %.c,%.d,$(LIB_SOURCES))
+LIB_CFLAGS  = $(COMMON_CFLAGS)
+
+GUI_SOURCES = config.c gui.c slowrx.c
+GUI_OBJECTS = $(patsubst %.c,%.o,$(GUI_SOURCES))
+GUI_DEPENDS = $(patsubst %.c,%.d,$(GUI_SOURCES))
+GUI_CFLAGS  = $(COMMON_CFLAGS) $(LIB_CFLAGS) $(GTKCFLAGS) -DGDK_VERSION_MIN_REQUIRED=GDK_VERSION_3_4
+GUI_LDFLAGS = $(COMMON_LDFLAGS) -lgthread-2.0 $(GTKLIBS)
+
+DAEMON_SOURCES = slowrxd.c
+DAEMON_OBJECTS = $(patsubst %.c,%.o,$(DAEMON_SOURCES))
+DAEMON_DEPENDS = $(patsubst %.c,%.d,$(DAEMON_SOURCES))
+DAEMON_CFLAGS  = $(COMMON_CFLAGS) $(LIB_CFLAGS) $(GDCFLAGS)
+DAEMON_LDFLAGS = $(COMMON_LDFLAGS) $(GDLIBS)
+
+OBJECTS = $(GUI_OBJECTS) $(LIB_OBJECTS) $(DAEMON_OBJECTS)
+DEPENDS = $(GUI_DEPENDS) $(LIB_DEPENDS) $(DAEMON_DEPENDS)
+
+all: $(TARGETS)
+
+$(GUI_BIN): $(COMMON_LIB) $(GUI_OBJECTS)
+	$(CC) $(GUI_CFLAGS) -o $@ -Wl,--as-needed -Wl,--start-group $^ $(GUI_LDFLAGS) -Wl,--end-group 
+
+$(DAEMON_BIN): $(COMMON_LIB) $(DAEMON_OBJECTS)
+	$(CC) $(DAEMON_CFLAGS) -o $@ -Wl,--as-needed -Wl,--start-group $^ $(DAEMON_LDFLAGS) -Wl,--end-group 
+
+$(COMMON_LIB): $(LIB_OBJECTS)
+	$(AR) cr $@ $^
+	$(RANLIB) $@
+
+%.o: %.c
+	$(CC) -MM -MF $(*F).d $(OBJ_CFLAGS) $<
+	$(CC) $(OBJ_CFLAGS) -c -o $@ $<
+
+$(GUI_OBJECTS): OBJ_CFLAGS=$(GUI_CFLAGS)
+$(LIB_OBJECTS): OBJ_CFLAGS=$(LIB_CFLAGS)
+$(DAEMON_OBJECTS): OBJ_CFLAGS=$(DAEMON_CFLAGS)
 
 clean:
-	rm -f slowrx $(OBJECTS)
+	rm -f $(TARGETS) $(COMMON_LIB) $(OBJECTS) $(DEPENDS)
+
+-include $(DEPENDS)
+
+gui.c: aboutdialog.ui slowrx.ui

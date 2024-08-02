@@ -1,31 +1,55 @@
 #include <stdlib.h>
+#include <complex.h>
 #include <math.h>
-#include <gtk/gtk.h>
 #include <alsa/asoundlib.h>
+
+#include <stdbool.h>
 
 #include <fftw3.h>
 
 #include "common.h"
+#include "fft.h"
+#include "fsk.h"
+#include "pcm.h"
+#include "pic.h"
+
+#define FSK_FFT_LEN (FFT_FULL_SZ)
+
+/* 11ms approximately in frames; half of 22ms bit period */
+#define FSK_11MS_FRAMES	PCM_MS_FRAMES(11)
+#define FSK_11MS_SAMPLES (FSK_11MS_FRAMES*2)
+
+/*
+ * 5.5ms in samples; which is half FSK_11MS_SAMPLES.
+ * GCC should be smart enough to realise the *2 and /2 cancel.
+ */
+#define FSK_5M5S_SAMPLES (FSK_11MS_SAMPLES/2)
+
+/*
+ * Set a limit of 5 seconds for a FSK.  That allows for ~227 bits of FSK
+ * data or approximately 34 characters for an ID.  That should be plenty!
+ */
+#define FSK_TIMEOUT     PCM_MS_FRAMES(5000)
 
 /* 
- *
  * Decode FSK ID
  *
- * * The FSK IDs are 6-bit bytes, LSB first, 45.45 baud (22 ms/bit), 1900 Hz = 1, 2100 Hz = 0
- * * Text data starts with 20 2A and ends in 01
- * * Add 0x20 and the data becomes ASCII
- *
+ * - The FSK IDs are 6-bit bytes, LSB first, 45.45 baud (22 ms/bit), 1900 Hz = 1, 2100 Hz = 0
+ * - Text data starts with 20 2A and ends in 01
+ * - Add 0x20 and the data becomes ASCII
  */
 
-void GetFSK (char *dest) {
+void GetFSK (char* const dest, uint8_t dest_sz) {
 
-  guint      FFTLen = 2048, i=0, LoBin, HiBin, MidBin, TestNum=0, TestPtr=0;
-  guchar     Bit = 0, AsciiByte = 0, BytePtr = 0, TestBits[24] = {0}, BitPtr=0;
-  double     HiPow,LoPow,Hann[970];
-  gboolean   InSync = FALSE;
+  uint32_t   i=0, LoBin, HiBin, MidBin, TestNum=0, TestPtr=0;
+  uint8_t    Bit = 0, AsciiByte = 0, BytePtr = 0, TestBits[24] = {0}, BitPtr=0;
+  double     HiPow,LoPow,Hann[FSK_11MS_SAMPLES];
+  _Bool      InSync = false;
+
+  uint32_t   remain = FSK_TIMEOUT;
 
   // Bit-reversion lookup table
-  static const guchar BitRev[] = {
+  static const uint8_t BitRev[] = {
     0x00, 0x20, 0x10, 0x30,   0x08, 0x28, 0x18, 0x38,
     0x04, 0x24, 0x14, 0x34,   0x0c, 0x2c, 0x1c, 0x3c,
     0x02, 0x22, 0x12, 0x32,   0x0a, 0x2a, 0x1a, 0x3a,
@@ -35,32 +59,44 @@ void GetFSK (char *dest) {
     0x03, 0x23, 0x13, 0x33,   0x0b, 0x2b, 0x1b, 0x3b,
     0x07, 0x27, 0x17, 0x37,   0x0f, 0x2f, 0x1f, 0x3f };
 
-  for (i = 0; i < FFTLen; i++) fft.in[i] = 0;
+  for (i = 0; i < FSK_FFT_LEN; i++) fft.in[i] = 0;
 
   // Create 22ms Hann window
-  for (i = 0; i < 970; i++) Hann[i] = 0.5 * (1 - cos( 2 * M_PI * i / 969.0 ) );
+  for (i = 0; i < FSK_11MS_SAMPLES; i++) {
+    Hann[i] = 0.5 * (1 - cos( 2 * M_PI * i / ((double)(FSK_11MS_SAMPLES-1)) ) );
+  }
 
-  while ( TRUE ) {
+  while ( remain > 0 ) {
+    // Figure out how much data to read?  If not in sync, use 5.5ms steps.
+    uint32_t read_sz = (InSync ? FSK_11MS_SAMPLES: FSK_5M5S_SAMPLES);
 
-    // Read data from DSP
-    readPcm(InSync ? 970: 485);
+    // Read data from DSP: half the number of samples if not in sync.
+    readPcm(read_sz);
 
-    if (pcm.WindowPtr < 485) {
-      pcm.WindowPtr += (InSync ? 970 : 485);
+    if (remain > read_sz) {
+      remain -= read_sz;
+    } else {
+      remain = 0;
+    }
+
+    if (pcm.WindowPtr < (int32_t)FSK_5M5S_SAMPLES) {
+      pcm.WindowPtr += read_sz;
       continue;
     }
 
     // Apply Hann window
-    for (i = 0; i < 970; i++) fft.in[i] = pcm.Buffer[pcm.WindowPtr+i- 485] * Hann[i];
+    for (i = 0; i < FSK_11MS_SAMPLES; i++) {
+      fft.in[i] = pcm.Buffer[pcm.WindowPtr+i- FSK_5M5S_SAMPLES] * Hann[i];
+    }
     
-    pcm.WindowPtr += (InSync ? 970 : 485);
+    pcm.WindowPtr += read_sz;
 
     // FFT of last 22 ms
-    fftw_execute(fft.Plan2048);
+    fftw_execute(fft.PlanFull);
 
-    LoBin  = GetBin(1900+CurrentPic.HedrShift, FFTLen)-1;
-    MidBin = GetBin(2000+CurrentPic.HedrShift, FFTLen);
-    HiBin  = GetBin(2100+CurrentPic.HedrShift, FFTLen)+1;
+    LoBin  = GetBin(1900+CurrentPic.HedrShift, FSK_FFT_LEN)-1;
+    MidBin = GetBin(2000+CurrentPic.HedrShift, FSK_FFT_LEN);
+    HiBin  = GetBin(2100+CurrentPic.HedrShift, FSK_FFT_LEN)+1;
 
     LoPow = 0;
     HiPow = 0;
@@ -82,7 +118,7 @@ void GetFSK (char *dest) {
       for (i=0; i<12; i++) TestNum |= TestBits[(TestPtr - (23-i*2)) % 24] << (11-i);
 
       if (BitRev[(TestNum >>  6) & 0x3f] == 0x20 && BitRev[TestNum & 0x3f] == 0x2a) {
-        InSync    = TRUE;
+        InSync    = true;
         AsciiByte = 0;
         BitPtr    = 0;
         BytePtr   = 0;
@@ -96,15 +132,17 @@ void GetFSK (char *dest) {
 
       if (++BitPtr == 6) {
         if (AsciiByte < 0x0d || BytePtr > 9) break;
-        dest[BytePtr] = AsciiByte + 0x20;
+        if (BytePtr < dest_sz) {
+          dest[BytePtr] = AsciiByte + 0x20;
+        }
         BitPtr        = 0;
         AsciiByte     = 0;
         BytePtr ++;
       }
     }
-
   }
     
-  dest[BytePtr] = '\0';
-
+  if (BytePtr < dest_sz) {
+    dest[BytePtr] = '\0';
+  }
 }

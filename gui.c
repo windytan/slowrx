@@ -6,6 +6,31 @@
 #include <fftw3.h>
 
 #include "common.h"
+#include "config.h"
+#include "gui.h"
+#include "listen.h"
+#include "modespec.h"
+#include "pcm.h"
+#include "pic.h"
+
+static void     evt_chooseDir     ();
+static void     evt_show_about    ();
+static void     evt_AbortRx       ();
+static void     evt_changeDevices ();
+static void     evt_clearPix      ();
+static void     evt_clickimg      ();
+static void     evt_deletewindow  ();
+static void     evt_GetAdaptive   ();
+static void     evt_ManualStart   ();
+
+GuiObjs      gui;
+
+GdkPixbuf   *pixbuf_rx       = NULL;
+GdkPixbuf   *pixbuf_disp     = NULL;
+GdkPixbuf   *pixbuf_PWR      = NULL;
+GdkPixbuf   *pixbuf_SNR      = NULL;
+
+GtkListStore *savedstore     = NULL;
 
 void createGUI() {
 
@@ -83,8 +108,25 @@ void createGUI() {
 
 }
 
+void showStatusbarMessage(const char* message) {
+  gdk_threads_enter();
+  gtk_statusbar_push( GTK_STATUSBAR(gui.statusbar), 0, message );
+  gdk_threads_leave();
+}
+
+void showPCMError(const char *error) {
+  gtk_widget_set_tooltip_text(gui.image_devstatus, error);
+}
+
+void showPCMDropWarning(void) {
+  gdk_threads_enter();
+  gtk_image_set_from_stock(GTK_IMAGE(gui.image_devstatus),GTK_STOCK_DIALOG_WARNING,GTK_ICON_SIZE_SMALL_TOOLBAR);
+  gtk_widget_set_tooltip_text(gui.image_devstatus, "Device is dropping samples");
+  gdk_threads_leave();
+}
+
 // Draw signal level meters according to given values
-void setVU (double *Power, int FFTLen, int WinIdx, gboolean ShowWin) {
+void setVU (double *Power, int FFTLen, int WinIdx) {
   int          x,y, W=100, H=30;
   guchar       *pixelsPWR, *pixelsSNR, *pPWR, *pSNR;
   unsigned int rowstridePWR,rowstrideSNR, LoBin, HiBin, i;
@@ -120,8 +162,8 @@ void setVU (double *Power, int FFTLen, int WinIdx, gboolean ShowWin) {
         }
       }
 
-      LoBin = (int)((W-1-x)*(6000/W)/44100.0 * FFTLen);
-      HiBin = (int)((W  -x)*(6000/W)/44100.0 * FFTLen);
+      LoBin = (int)((W-1-x)*(6000/W)/((double)pcm.SampleRate) * FFTLen);
+      HiBin = (int)((W  -x)*(6000/W)/((double)pcm.SampleRate) * FFTLen);
 
       logpow = 0;
       for (i=LoBin; i<HiBin; i++) logpow += log(850*Power[i]) / 2;
@@ -153,7 +195,61 @@ void setVU (double *Power, int FFTLen, int WinIdx, gboolean ShowWin) {
 
 }
 
-void evt_chooseDir() {
+// Save current picture as PNG
+void saveCurrentPic() {
+  GdkPixbuf *scaledpb;
+  GString   *pngfilename;
+
+  pngfilename = g_string_new(g_key_file_get_string(config,"slowrx","rxdir",NULL));
+  g_string_append_printf(pngfilename, "/%s_%s.png", CurrentPic.timestr, ModeSpec[CurrentPic.Mode].ShortName);
+  printf("  Saving to %s\n", pngfilename->str);
+
+  scaledpb = gdk_pixbuf_scale_simple (pixbuf_rx, ModeSpec[CurrentPic.Mode].ImgWidth,
+    ModeSpec[CurrentPic.Mode].NumLines * ModeSpec[CurrentPic.Mode].LineHeight, GDK_INTERP_HYPER);
+
+  ensure_dir_exists(g_key_file_get_string(config,"slowrx","rxdir",NULL));
+  gdk_pixbuf_savev(scaledpb, pngfilename->str, "png", NULL, NULL, NULL);
+  g_object_unref(scaledpb);
+  g_string_free(pngfilename, TRUE);
+}
+
+// Populate the GUI device list box with the available PCM devices.
+void populateDeviceList() {
+  int                  card;
+  char                *cardname;
+  int                  numcards, row;
+
+
+  gdk_threads_enter();
+  gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(gui.combo_card), "default");
+  gdk_threads_leave();
+
+  numcards = 0;
+  card     = -1;
+  row      = 0;
+  do {
+    snd_card_next(&card);
+    if (card != -1) {
+      row++;
+      snd_card_get_name(card,&cardname);
+      gdk_threads_enter();
+      gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(gui.combo_card), cardname);
+      char *dev = g_key_file_get_string(config,"slowrx","device",NULL);
+      if (dev == NULL || strcmp(cardname, dev) == 0)
+        gtk_combo_box_set_active(GTK_COMBO_BOX(gui.combo_card), row);
+
+      gdk_threads_leave();
+      numcards++;
+    }
+  } while (card != -1);
+
+  if (numcards == 0) {
+    perror("No sound devices found!\n");
+    exit(EXIT_FAILURE);
+  }
+}
+
+static void evt_chooseDir() {
   GtkWidget *dialog;
   dialog = gtk_file_chooser_dialog_new ("Select folder",
                                       GTK_WINDOW(gui.window_main),
@@ -170,7 +266,129 @@ void evt_chooseDir() {
   gtk_widget_destroy (dialog);
 }
 
-void evt_show_about() {
+static void evt_show_about() {
   gtk_dialog_run(GTK_DIALOG(gui.window_about));
   gtk_widget_hide(gui.window_about);
+}
+
+// Quit
+static void evt_deletewindow() {
+  gtk_main_quit ();
+}
+
+// Transform the NoiseAdapt toggle state into a variable
+static void evt_GetAdaptive() {
+  Adaptive = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON(gui.tog_adapt));
+}
+
+// Manual Start clicked
+static void evt_ManualStart() {
+  ManualActivated = TRUE;
+}
+
+// Abort clicked during rx
+static void evt_AbortRx() {
+  Abort = TRUE;
+}
+
+// Another device selected from list
+static void evt_changeDevices() {
+
+  int status;
+
+  pcm.BufferDrop = FALSE;
+  Abort = TRUE;
+
+  static int init;
+  if (init)
+    WaitForListenerStop();
+  init = 1;
+
+  if (pcm.handle != NULL) snd_pcm_close(pcm.handle);
+
+  /*
+   * Choose 44.1kHz and left channel, to preserve current default behaviour.
+   * TODO: add UI elements to let the user choose.
+   */
+  status = initPcmDevice(gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(gui.combo_card)), 44100, PCM_CH_LEFT);
+
+
+  switch(status) {
+    case 0:
+      gtk_image_set_from_stock(GTK_IMAGE(gui.image_devstatus),GTK_STOCK_YES,GTK_ICON_SIZE_SMALL_TOOLBAR);
+      gtk_widget_set_tooltip_text(gui.image_devstatus, "Device successfully opened");
+      break;
+    case -1:
+      gtk_image_set_from_stock(GTK_IMAGE(gui.image_devstatus),GTK_STOCK_DIALOG_WARNING,GTK_ICON_SIZE_SMALL_TOOLBAR);
+      gtk_widget_set_tooltip_text(gui.image_devstatus, "Device was opened, but doesn't support 44100 Hz");
+      break;
+    case -2:
+      gtk_image_set_from_stock(GTK_IMAGE(gui.image_devstatus),GTK_STOCK_DIALOG_ERROR,GTK_ICON_SIZE_SMALL_TOOLBAR);
+      gtk_widget_set_tooltip_text(gui.image_devstatus, "Failed to open device");
+      break;
+  }
+
+  g_key_file_set_string(config,"slowrx","device",gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(gui.combo_card)));
+
+  StartListener();
+
+}
+
+// Clear received picture & metadata
+static void evt_clearPix() {
+  gdk_pixbuf_fill (pixbuf_disp, 0);
+  gtk_image_set_from_pixbuf(GTK_IMAGE(gui.image_rx), pixbuf_disp);
+  gtk_label_set_markup (GTK_LABEL(gui.label_fskid), "");
+  gtk_label_set_markup (GTK_LABEL(gui.label_utc), "");
+  gtk_label_set_markup (GTK_LABEL(gui.label_lastmode), "");
+}
+
+// Manual slant adjust
+static void evt_clickimg(GtkWidget *widget, GdkEventButton* event, GdkWindowEdge edge) {
+  static double prevx=0,prevy=0,newrate;
+  static gboolean   secondpress=FALSE;
+  double        x,y,dx,dy,xic;
+
+  (void)widget;
+  (void)edge;
+
+  if (event->type == GDK_BUTTON_PRESS && event->button == 1 && gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON(gui.tog_setedge))) {
+
+    x = event->x * (ModeSpec[CurrentPic.Mode].ImgWidth / 500.0);
+    y = event->y * (ModeSpec[CurrentPic.Mode].ImgWidth / 500.0) / ModeSpec[CurrentPic.Mode].LineHeight;
+
+    if (secondpress) {
+      secondpress=FALSE;
+
+      dx = x - prevx;
+      dy = y - prevy;
+
+      gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON(gui.tog_setedge),FALSE);
+
+      // Adjust sample rate, if in sensible limits
+      newrate = CurrentPic.Rate + CurrentPic.Rate * (dx * ModeSpec[CurrentPic.Mode].PixelTime) / (dy * ModeSpec[CurrentPic.Mode].LineHeight * ModeSpec[CurrentPic.Mode].LineTime);
+      if (newrate > 32000 && newrate < 56000) {
+        CurrentPic.Rate = newrate;
+
+        // Find x-intercept and adjust skip
+        xic = fmod( (x - (y / (dy/dx))), ModeSpec[CurrentPic.Mode].ImgWidth);
+        if (xic < 0) xic = ModeSpec[CurrentPic.Mode].ImgWidth - xic;
+        CurrentPic.Skip = fmod(CurrentPic.Skip + xic * ModeSpec[CurrentPic.Mode].PixelTime * CurrentPic.Rate,
+          ModeSpec[CurrentPic.Mode].LineTime * CurrentPic.Rate);
+        if (CurrentPic.Skip > ModeSpec[CurrentPic.Mode].LineTime * CurrentPic.Rate / 2.0)
+          CurrentPic.Skip -= ModeSpec[CurrentPic.Mode].LineTime * CurrentPic.Rate;
+
+        // Signal the listener to exit from GetVIS() and re-process the pic
+        ManualResync = TRUE;
+      }
+
+    } else {
+      secondpress = TRUE;
+      prevx = x;
+      prevy = y;
+    }
+  } else {
+    secondpress=FALSE;
+    gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON(gui.tog_setedge), FALSE);
+  }
 }
