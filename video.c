@@ -60,6 +60,14 @@ gboolean GetVideo(guchar Mode, double Rate, int Skip, gboolean Redraw) {
   // Starting times of video channels on every line, counted from beginning of line
   switch (Mode) {
 
+    case R72:
+      ChanLen[0]   = ModeSpec[Mode].PixelTime * ModeSpec[Mode].ImgWidth * 2;
+      ChanLen[1]   = ChanLen[2] = ModeSpec[Mode].PixelTime * ModeSpec[Mode].ImgWidth;
+      ChanStart[0] = ModeSpec[Mode].SyncTime + ModeSpec[Mode].PorchTime;
+      ChanStart[1] = ChanStart[0] + ChanLen[0] + ModeSpec[Mode].SeptrTime;
+      ChanStart[2] = ChanStart[1] + ChanLen[1] + ModeSpec[Mode].SeptrTime;
+      break;
+
     case R36:
     case R24:
       ChanLen[0]   = ModeSpec[Mode].PixelTime * ModeSpec[Mode].ImgWidth * 2;
