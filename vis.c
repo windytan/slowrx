@@ -7,6 +7,14 @@
 
 #include "common.h"
 
+/* Handle selection of the VIS mode in the GUI */
+static void onGotVis(guchar VIS) {
+  gdk_threads_enter();
+  gtk_combo_box_set_active (GTK_COMBO_BOX(gui.combo_mode), VISmap[VIS]-1);
+  gtk_spin_button_set_value (GTK_SPIN_BUTTON(gui.spin_shift), CurrentPic.HedrShift);
+  gdk_threads_leave();
+}
+
 /* 
  *
  * Detect VIS & frequency shift
@@ -113,19 +121,24 @@ guchar GetVIS () {
 
             Parity = Bit[0] ^ Bit[1] ^ Bit[2] ^ Bit[3] ^ Bit[4] ^ Bit[5] ^ Bit[6];
 
-            if (VISmap[VIS] == R12BW) Parity = !Parity;
-
             if (Parity != ParityBit) {
-              printf("  Parity fail\n");
-              gotvis = FALSE;
+              // Maybe this mode uses odd parity?
+              printf("  Parity inconclusive, trying odd parity\n");
+              if (VISmap[VIS | VIS_PARITY_ODD] == UNKNOWN) {
+                // Nope!
+                printf("  Parity fail\n");
+                gotvis = FALSE;
+              } else {
+                // Yep, that was it.  Inverted parity.
+                VIS |= VIS_PARITY_ODD;
+                onGotVis(VIS);
+                break;
+              }
             } else if (VISmap[VIS] == UNKNOWN) {
               printf("  Unknown VIS\n");
               gotvis = FALSE;
             } else {
-              gdk_threads_enter();
-              gtk_combo_box_set_active (GTK_COMBO_BOX(gui.combo_mode), VISmap[VIS]-1);
-              gtk_spin_button_set_value (GTK_SPIN_BUTTON(gui.spin_shift), CurrentPic.HedrShift);
-              gdk_threads_leave();
+              onGotVis(VIS);
               break;
             }
           }
