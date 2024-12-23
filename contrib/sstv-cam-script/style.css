@@ -1,0 +1,64 @@
+.imgcard {
+	display: inline-block;
+	padding: 1em;
+	margin: 20px 20px 20px 20px;
+	border: 1px solid black;
+	border-radius: 20px;
+	background: white;
+	filter: drop-shadow(20px 20px 10px black);
+}
+
+.imgcard > img {
+	border-left: 5px solid #666;
+	border-top: 5px solid #666;
+	border-right: 5px solid #ccc;
+	border-bottom: 5px solid #ccc;
+	border-radius: 5px;
+}
+
+.imgcard > button {
+	position: fixed;
+	z-index: 20;
+	right: 0px;
+	top: 0px;
+	padding: 1em;
+	opacity: 0.4;
+	font-weight: bold;
+	font-size: large;
+	border-radius: 20px;
+}
+
+.imgcard > button:hover {
+	opacity: 1.0;
+}
+
+#inprogress, #lastrx, #previous {
+	text-align: center;
+}
+
+.overlay {
+	z-index: 10;
+	position: fixed;
+	left: 0px;
+	top: 0px;
+	width: 100vw;
+	height: 100vh;
+	text-align: center;
+	background-color: #333;
+}
+
+.overlay > button {
+	z-index: 20;
+	position: fixed;
+	right: 0px;
+	top: 0px;
+	padding: 1em;
+	opacity: 0.4;
+	font-weight: bold;
+	font-size: large;
+	border-radius: 20px;
+}
+
+.overlay > button:hover {
+	opacity: 1.0;
+}

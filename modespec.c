@@ -1,11 +1,4 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <gtk/gtk.h>
-#include <alsa/asoundlib.h>
-
-#include <fftw3.h>
-
-#include "common.h"
+#include "modespec.h"
 
 /*
  * Mode specifications
@@ -34,7 +27,7 @@
  *             <http://www.tima.com/~djones/line.txt>
  */
 
-_ModeSpec ModeSpec[] = {
+const _ModeSpec ModeSpec[] = {
 
   [M1] = {  // N7CXI, 2000
     .Name         = "Martin M1",
@@ -131,9 +124,9 @@ _ModeSpec ModeSpec[] = {
     .Name         = "Robot 72",
     .ShortName    = "R72",
     .SyncTime     = 9e-3,
-    .PorchTime    = 3e-3,
-    .SeptrTime    = 4.7e-3,
-    .PixelTime    = 0.2875e-3,
+    .PorchTime    = 3.0e-3,
+    .SeptrTime    = 4.5e-3 + 1.5e-3,
+    .PixelTime    = 0.215625e-3,
     .LineTime     = 300e-3,
     .ImgWidth     = 320,
     .NumLines     = 240,
@@ -204,7 +197,22 @@ _ModeSpec ModeSpec[] = {
     .NumLines     = 120,
     .LineHeight   = 2,
     .ColorEnc     = BW },
-  
+
+  [W260] = {
+    // Reverse-engineered by taking half the W2120 pixel time as an educated guess then
+    // tweaking the generated image timings until QSSTV decoded them without slant. -- VK4MSL
+    .Name         = "Wraase SC-2 60",
+    .ShortName    = "W260",
+    .SyncTime     = 5.5225e-3,
+    .PorchTime    = 0.0e-3,
+    .SeptrTime    = 0.5e-3,
+    .PixelTime    = 0.2425859375e-3,
+    .LineTime     = 240.405e-3,
+    .ImgWidth     = 320,
+    .NumLines     = 256,
+    .LineHeight   = 1,
+    .ColorEnc     = RGB },
+
   [W2120] = { // KB4YZ, 1999
     .Name         = "Wraase SC-2 120",
     .ShortName    = "W2120",
@@ -371,15 +379,26 @@ _ModeSpec ModeSpec[] = {
  *
  */
 
-//                  0     1     2     3    4     5     6     7     8     9     A     B    C    D    E     F
+//                  0     1     2     3    4     5     6     7     8     9     A     B     C    D    E     F
 
-guchar VISmap[] = { 0,    0,    R8BW, 0,   R24,  0,    R12BW,0,    R36,  0,    R24BW,0,   R72, 0,   0,    0,     // 0
-                    0,    0,    0,    0,   0,    0,    0,    0,    0,    0,    0,    0,   0,   0,   0,    0,     // 1
-                    M4,   0,    0,    0,   M3,   0,    0,    0,    M2,   0,    0,    0,   M1,  0,   0,    0,     // 2
-                    0,    0,    0,    0,   0,    0,    0,    W2180,S2,   0,    0,    0,   S1,  0,   0,    W2120, // 3
-                    0,    0,    0,    0,   0,    0,    0,    0,    0,    0,    0,    0,   SDX, 0,   0,    0,     // 4
-                    0,    0,    0,    0,   0,    0,    0,    0,    0,    0,    0,    0,   0,   PD50,PD290,PD120, // 5
-                    PD180,PD240,PD160,PD90,0,    0,    0,    0,    0,    0,    0,    0,   0,   0,   0,    0,     // 6
-                    0,    P3,   P5,   P7,  0,    0,    0,    0,    0,    0,    0,    0,   0,   0,   0,    0 };   // 7
+const uint8_t VISmap[] = {
+                    // Normal (even) parity
+                    0,    0,    R8BW, 0,   R24,  0,    0,    0,    R36,  0,    R24BW,0,    R72, 0,   0,    0,     // 0
+                    0,    0,    0,    0,   0,    0,    0,    0,    0,    0,    0,    0,    0,   0,   0,    0,     // 1
+                    M4,   0,    0,    0,   M3,   0,    0,    0,    M2,   0,    0,    0,    M1,  0,   0,    0,     // 2
+                    0,    0,    0,    0,   0,    0,    0,    W2180,S2,   0,    0,    0,    S1,  0,   0,    W2120, // 3
+                    0,    0,    0,    0,   0,    0,    0,    0,    0,    0,    0,    0,    SDX, 0,   0,    0,     // 4
+                    0,    0,    0,    0,   0,    0,    0,    0,    0,    0,    0,    0,    0,   PD50,PD290,PD120, // 5
+                    PD180,PD240,PD160,PD90,0,    0,    0,    0,    0,    0,    0,    0,    0,   0,   0,    0,     // 6
+                    0,    P3,   P5,   P7,  0,    0,    0,    0,    0,    0,    0,    0,    0,   0,   0,    0,     // 7
+                    // Inverted (odd) parity
+                    0,    0,    0,    0,   0,    0,    R12BW,0,    0,    0,    0,    0,    0,   0,   0,    0,     // 8
+                    0,    0,    0,    0,   0,    0,    0,    0,    0,    0,    0,    0,    0,   0,   0,    0,     // 9
+                    0,    0,    0,    0,   0,    0,    0,    0,    0,    0,    0,    0,    0,   0,   0,    0,     // A
+                    0,    0,    0,    0,   0,    0,    0,    0,    0,    0,    0,    W260, 0,   0,   0,    0,     // B
+                    0,    0,    0,    0,   0,    0,    0,    0,    0,    0,    0,    0,    0,   0,   0,    0,     // C
+                    0,    0,    0,    0,   0,    0,    0,    0,    0,    0,    0,    0,    0,   0,   0,    0,     // D
+                    0,    0,    0,    0,   0,    0,    0,    0,    0,    0,    0,    0,    0,   0,   0,    0,     // E
+                    0,    0,    0,    0,   0,    0,    0,    0,    0,    0,    0,    0,    0,   0,   0,    0 };   // F
 
-//                  0     1     2     3    4     5     6     7     8     9     A     B    C    D    E     F
+//                  0     1     2     3    4     5     6     7     8     9     A     B     C    D    E     F

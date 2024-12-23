@@ -638,6 +638,7 @@
                                               <item translatable="yes">Pasokon P3</item>
                                               <item translatable="yes">Pasokon P5</item>
                                               <item translatable="yes">Pasokon P7</item>
+                                              <item translatable="yes">Wraase SC-2 60</item>
                                               <item translatable="yes">Wraase SC-2 120</item>
                                               <item translatable="yes">Wraase SC-2 180</item>
                                             </items>
@@ -874,6 +875,60 @@
                                           </packing>
                                         </child>
                                         <child>
+                                          <object class="GtkComboBoxText" id="combo_rate">
+                                            <property name="visible">True</property>
+                                            <property name="can_focus">False</property>
+                                            <property name="has_tooltip">True</property>
+                                            <property name="tooltip_markup" translatable="yes">Sound card sample rate</property>
+                                            <property name="tooltip_text" translatable="yes">Sound card sample rate</property>
+                                            <property name="valign">start</property>
+                                            <property name="active">0</property>
+                                            <property name="entry_text_column">0</property>
+                                            <property name="id_column">1</property>
+                                            <items>
+                                              <item translatable="no">48000</item>
+                                              <item translatable="no">44100</item>
+                                              <item translatable="no">32000</item>
+                                              <item translatable="no">24000</item>
+                                              <item translatable="no">22050</item>
+                                              <item translatable="no">16000</item>
+                                              <item translatable="no">12000</item>
+                                              <item translatable="no">11025</item>
+                                              <item translatable="no">8000</item>
+                                            </items>
+                                            <signal name="changed" handler="AbortRx" swapped="no"/>
+                                          </object>
+                                          <packing>
+                                            <property name="expand">False</property>
+                                            <property name="fill">True</property>
+                                            <property name="position">1</property>
+                                          </packing>
+                                        </child>
+                                        <child>
+                                          <object class="GtkComboBoxText" id="combo_channel">
+                                            <property name="visible">True</property>
+                                            <property name="can_focus">False</property>
+                                            <property name="has_tooltip">True</property>
+                                            <property name="tooltip_markup" translatable="yes">Sound card audio channel</property>
+                                            <property name="tooltip_text" translatable="yes">Sound card audio channel</property>
+                                            <property name="valign">start</property>
+                                            <property name="active">0</property>
+                                            <property name="entry_text_column">0</property>
+                                            <property name="id_column">1</property>
+                                            <items>
+                                              <item translatable="yes">LEFT</item>
+                                              <item translatable="yes">RIGHT</item>
+                                              <item translatable="yes">MONO</item>
+                                            </items>
+                                            <signal name="changed" handler="AbortRx" swapped="no"/>
+                                          </object>
+                                          <packing>
+                                            <property name="expand">False</property>
+                                            <property name="fill">True</property>
+                                            <property name="position">2</property>
+                                          </packing>
+                                        </child>
+                                        <child>
                                           <object class="GtkImage" id="image_devstatus">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
@@ -883,7 +938,7 @@
                                             <property name="expand">False</property>
                                             <property name="fill">True</property>
                                             <property name="padding">4</property>
-                                            <property name="position">1</property>
+                                            <property name="position">3</property>
                                           </packing>
                                         </child>
                                       </object>
